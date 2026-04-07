@@ -1,0 +1,186 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Droplets, Eye, EyeOff, Mail, Lock, User, Phone } from 'lucide-react';
+
+export default function Login() {
+  const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('login'); // 'login' or 'signup'
+  const [showPassword, setShowPassword] = useState(false);
+
+  const handleAuth = (e) => {
+    e.preventDefault();
+    navigate('/home'); // Mock auth, go straight to home
+  };
+
+  return (
+    <div className="min-h-screen bg-[#0a0a0a] flex flex-col pt-safe relative overflow-y-auto">
+      {/* Background Glow */}
+      <div className="absolute top-10 left-1/2 -translate-x-1/2 w-80 h-80 bg-[#d4af37] opacity-10 rounded-full blur-[100px] pointer-events-none" />
+
+      {/* Header */}
+      <div className="flex flex-col items-center justify-center pt-12 pb-8 z-10 animate-slide-up">
+        <div className="w-16 h-16 bg-gradient-to-br from-[#f5c842] to-[#d4af37] text-[#0a0a0a] rounded-2xl flex items-center justify-center shadow-glow-gold mb-4 rotate-12">
+          <Droplets size={32} fill="currentColor" strokeWidth={1} className="-rotate-12" />
+        </div>
+        <h1 className="text-3xl font-black tracking-tight text-white">Pure<span className="text-[#d4af37]">Oil</span></h1>
+      </div>
+
+      {/* Main Card */}
+      <div className="flex-1 card rounded-t-[2.5rem] rounded-b-none border-t border-[#d4af37]/20 border-l-0 border-r-0 border-b-0 px-6 py-8 flex flex-col z-10">
+        
+        {/* Tabs */}
+        <div className="flex w-full border-b border-[#333] mb-8 relative">
+          <button 
+            onClick={() => setActiveTab('login')}
+            className={`flex-1 pb-4 text-sm font-bold tracking-widest uppercase transition-colors ${activeTab === 'login' ? 'text-[#d4af37]' : 'text-gray-500 hover:text-gray-400'}`}
+          >
+            Login
+          </button>
+          <button 
+            onClick={() => setActiveTab('signup')}
+            className={`flex-1 pb-4 text-sm font-bold tracking-widest uppercase transition-colors ${activeTab === 'signup' ? 'text-[#d4af37]' : 'text-gray-500 hover:text-gray-400'}`}
+          >
+            Sign Up
+          </button>
+          {/* Active Indicator */}
+          <div 
+            className={`absolute bottom-0 h-0.5 bg-[#d4af37] w-1/2 transition-transform duration-300 ease-out shadow-glow-gold ${activeTab === 'login' ? 'translate-x-0' : 'translate-x-full'}`}
+          />
+        </div>
+
+        {/* Form Container */}
+        <div className="flex-1">
+          {activeTab === 'login' ? (
+            <form onSubmit={handleAuth} className="flex flex-col gap-5 animate-fade-in">
+              <div className="relative">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                  <Mail size={20} />
+                </div>
+                <input 
+                  type="email" 
+                  placeholder="Email Address" 
+                  required
+                  className="w-full bg-[#1c1c1c] border border-[#333] focus:border-[#d4af37] text-white rounded-2xl py-4 pl-12 pr-4 outline-none transition-colors"
+                />
+              </div>
+
+              <div className="relative">
+                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                  <Lock size={20} />
+                </div>
+                <input 
+                  type={showPassword ? "text" : "password"} 
+                  placeholder="Password" 
+                  required
+                  className="w-full bg-[#1c1c1c] border border-[#333] focus:border-[#d4af37] text-white rounded-2xl py-4 pl-12 pr-12 outline-none transition-colors"
+                />
+                <button 
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                >
+                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                </button>
+              </div>
+
+              <div className="flex justify-end">
+                <button type="button" className="text-[#d4af37] text-sm font-semibold hover:text-[#f5c842] transition-colors">
+                  Forgot Password?
+                </button>
+              </div>
+
+              <button type="submit" className="w-full btn-primary mt-4">
+                LOGIN
+              </button>
+
+              <div className="flex items-center gap-4 my-4">
+                <div className="flex-1 h-px bg-[#333]" />
+                <span className="text-gray-500 text-xs font-bold uppercase tracking-widest">or continue with</span>
+                <div className="flex-1 h-px bg-[#333]" />
+              </div>
+
+              <button type="button" className="w-full btn-secondary text-white border-[#333] hover:bg-[#1c1c1c]">
+                <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="Google" />
+                Google
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleAuth} className="flex flex-col gap-4 animate-fade-in">
+              <div className="relative">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                  <User size={18} />
+                </div>
+                <input 
+                  type="text" placeholder="Full Name" required
+                  className="w-full bg-[#1c1c1c] border border-[#333] focus:border-[#d4af37] text-white rounded-2xl py-3.5 pl-11 pr-4 outline-none transition-colors text-sm"
+                />
+              </div>
+
+              <div className="relative">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                  <Mail size={18} />
+                </div>
+                <input 
+                  type="email" placeholder="Email Address" required
+                  className="w-full bg-[#1c1c1c] border border-[#333] focus:border-[#d4af37] text-white rounded-2xl py-3.5 pl-11 pr-4 outline-none transition-colors text-sm"
+                />
+              </div>
+
+              <div className="relative">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                  <Phone size={18} />
+                </div>
+                <input 
+                  type="tel" placeholder="Phone Number" required
+                  className="w-full bg-[#1c1c1c] border border-[#333] focus:border-[#d4af37] text-white rounded-2xl py-3.5 pl-11 pr-4 outline-none transition-colors text-sm"
+                />
+              </div>
+
+              <div className="relative">
+                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                  <Lock size={18} />
+                </div>
+                <input 
+                  type={showPassword ? "text" : "password"} placeholder="Password" required
+                  className="w-full bg-[#1c1c1c] border border-[#333] focus:border-[#d4af37] text-white rounded-2xl py-3.5 pl-11 pr-11 outline-none transition-colors text-sm"
+                />
+                <button 
+                  type="button" onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+
+              <div className="relative mb-2">
+                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                  <Lock size={18} />
+                </div>
+                <input 
+                  type="password" placeholder="Confirm Password" required
+                  className="w-full bg-[#1c1c1c] border border-[#333] focus:border-[#d4af37] text-white rounded-2xl py-3.5 pl-11 pr-4 outline-none transition-colors text-sm"
+                />
+              </div>
+
+              <label className="flex items-start gap-3 my-2 cursor-pointer group">
+                <div className="relative flex items-center justify-center mt-0.5">
+                  <input type="checkbox" className="peer sr-only" required />
+                  <div className="w-5 h-5 rounded border-2 border-[#333] peer-checked:bg-[#d4af37] peer-checked:border-[#d4af37] transition-all flex items-center justify-center">
+                    <svg className="w-3.5 h-3.5 text-[#0a0a0a] scale-0 peer-checked:scale-100 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                  </div>
+                </div>
+                <span className="text-xs text-gray-400 leading-tight">
+                  I agree to the <span className="text-[#d4af37]">Terms & Conditions</span> and <span className="text-[#d4af37]">Privacy Policy</span>
+                </span>
+              </label>
+
+              <button type="submit" className="w-full btn-primary mt-2">
+                CREATE ACCOUNT
+              </button>
+            </form>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
