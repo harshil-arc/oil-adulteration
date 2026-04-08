@@ -7,11 +7,14 @@ import ScanFlow from './pages/ScanFlow';
 import History from './pages/History';
 import MapPage from './pages/MapPage';
 import Profile from './pages/Profile';
+import { AppProvider } from './context/AppContext';
+import { PrivacySecurity, AboutApp, LearningCenter, ReportsList } from './pages/ProfileSubScreens';
 import './index.css';
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <AppProvider>
+      <BrowserRouter>
       <Routes>
         {/* Fullscreen No-Layout Routes */}
         <Route path="/onboarding" element={<SplashOnboarding />} />
@@ -27,10 +30,15 @@ export default function App() {
               <Route path="/history" element={<History />} />
               <Route path="/map" element={<MapPage />} />
               <Route path="/profile" element={<Profile />} />
+              <Route path="/privacy" element={<PrivacySecurity />} />
+              <Route path="/about" element={<AboutApp />} />
+              <Route path="/learning" element={<LearningCenter />} />
+              <Route path="/reports" element={<ReportsList />} />
             </Routes>
           </Layout>
         } />
       </Routes>
     </BrowserRouter>
+    </AppProvider>
   );
 }
