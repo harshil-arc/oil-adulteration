@@ -1,13 +1,24 @@
 import axios from 'axios';
 import { getBackendUrl } from './utils';
+import { supabase } from './supabase';
 
 const BASE_URL = getBackendUrl();
 
 const api = axios.create({ 
   baseURL: BASE_URL,
   headers: {
-    'x-api-key': 'dev_secret_key_123'
+    'x-device-api-key': 'dev_secret_key_123'
   }
+});
+
+api.interceptors.request.use(async (config) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.access_token) {
+    config.headers['Authorization'] = `Bearer ${session.access_token}`;
+  }
+  return config;
+}, (error) => {
+  return Promise.reject(error);
 });
 
 export const postSensorData = (payload) => api.post('/api/ingest-reading', payload);

@@ -1,0 +1,14 @@
+{
+    "device_id":  "ESP32_01",
+    "oil_type":  "Mustard Oil",
+    "timestamp":  "2026-04-08T18:26:24Z",
+    "sensor_values":  {
+                          "tds_ppm":  95,
+                          "turbidity_ntu":  10.2,
+                          "ph":  6.45,
+                          "density_gcm3":  0.908,
+                          "temperature_c":  27.5,
+                          "viscosity_cp":  74.2,
+                          "refractive_index":  1.466
+                      }
+}

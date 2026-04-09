@@ -106,6 +106,42 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Internal server error' });
 });
 
+// ── Heartbeat Monitor (REQR 1 & 7) ────────────────────────
+const supabase = require('./supabaseClient');
+setInterval(async () => {
+  try {
+    const tenSecondsAgo = new Date(Date.now() - 10000).toISOString();
+    
+    // Find devices that were online but haven't been seen in 10s
+    const { data: staleDevices } = await supabase
+      .from('devices')
+      .select('device_id')
+      .eq('status', 'online')
+      .lt('last_seen', tenSecondsAgo);
+
+    if (staleDevices && staleDevices.length > 0) {
+      for (const dev of staleDevices) {
+        await supabase
+          .from('devices')
+          .update({ status: 'offline' })
+          .eq('device_id', dev.device_id);
+        
+        console.log(`[Heartbeat] Device ${dev.device_id} timed out. Set to offline.`);
+        
+        if (io) {
+          io.emit('device_status', { 
+            device_id: dev.device_id, 
+            status: 'offline', 
+            last_seen: new Date() 
+          });
+        }
+      }
+    }
+  } catch (err) {
+    console.error('[Heartbeat Error]', err.message);
+  }
+}, 5000);
+
 // ── Start server ──────────────────────────────────────────
 const PORT = process.env.PORT || 4000;
 // Listen on 0.0.0.0 to enable local network access

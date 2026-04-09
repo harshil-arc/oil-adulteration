@@ -9,47 +9,58 @@ router.post('/', validateDeviceApiKey, async (req, res) => {
   try {
     const { device_id, oil_type, sensor_values, timestamp } = req.body;
 
+    // 1. Core Validation
     if (!device_id || !oil_type || !sensor_values) {
       return res.status(400).json({ error: 'Missing required fields: device_id, oil_type, sensor_values' });
     }
 
-    const { ir_value, uv_value, density, temperature } = sensor_values;
-    if (ir_value == null || uv_value == null || density == null || temperature == null) {
-      return res.status(400).json({ error: 'sensor_values must include ir_value, uv_value, density, temperature' });
+    const { tds_ppm, turbidity_ntu, ph, density_gcm3, temperature_c, viscosity_cp, refractive_index } = sensor_values;
+    const required = ['tds_ppm', 'turbidity_ntu', 'ph', 'density_gcm3', 'temperature_c', 'viscosity_cp', 'refractive_index'];
+    for (const field of required) {
+      if (sensor_values[field] == null) {
+        return res.status(400).json({ error: `Missing sensor field: ${field}` });
+      }
     }
 
-    // Fetch device to see if it has a shop_id
-    const { data: existingDevice } = await supabase.from('devices').select('shop_id').eq('device_id', device_id).single();
-    
-    let shop_id = existingDevice?.shop_id;
-    
-    // If no shop_id, assign a mock shop for testing (from seed data)
-    if (!shop_id) {
-       const { data: shops } = await supabase.from('shops').select('id').limit(1);
-       if (shops && shops.length > 0) {
-          shop_id = shops[0].id;
-       }
+    // 2. Freshness Check (REQR 2)
+    const dataTime = new Date(timestamp || new Date()).getTime();
+    const now = Date.now();
+    if (now - dataTime > 10000) {
+      return res.status(400).json({ error: 'Data rejected: Sensor reading is older than 10 seconds' });
     }
 
-    // Upsert device record
+    // 3. Sensor Sanity Validation (REQR 4)
+    if (tds_ppm < 0 || tds_ppm > 2000) return res.status(400).json({ error: 'Invalid sensor readings detected: TDS out of range' });
+    if (turbidity_ntu < 0 || turbidity_ntu > 1000) return res.status(400).json({ error: 'Invalid sensor readings detected: Turbidity out of range' });
+    if (ph < 0 || ph > 14) return res.status(400).json({ error: 'Invalid sensor readings detected: pH out of range' });
+    if (density_gcm3 < 0.7 || density_gcm3 > 1.3) return res.status(400).json({ error: 'Invalid sensor readings detected: Density out of range' });
+
+    // 4. Device State Management (REQR 1)
+    const { data: device } = await supabase.from('devices').select('id, shop_id').eq('device_id', device_id).single();
+    
+    // Auto-upsert device status
     await supabase.from('devices').upsert({
       device_id,
-      shop_id,
-      name: `ESP32 Sensor ${device_id}`,
       status: 'online',
       last_seen: new Date().toISOString(),
     }, { onConflict: 'device_id' });
 
-    // Save raw reading
+    // 5. Run Analysis
+    const analysis = analyzeOil(sensor_values, oil_type);
+
+    // 6. Save Reading & Result
     const { data: reading, error: readingError } = await supabase
       .from('oil_readings')
       .insert({
         device_id,
         oil_type,
-        ir_value,
-        uv_value,
-        density,
-        temperature,
+        tds_ppm,
+        turbidity_ntu,
+        ph,
+        density_gcm3,
+        temperature_c,
+        viscosity_cp,
+        refractive_index,
         timestamp: timestamp || new Date().toISOString(),
       })
       .select()
@@ -57,10 +68,6 @@ router.post('/', validateDeviceApiKey, async (req, res) => {
 
     if (readingError) throw readingError;
 
-    // Run analysis
-    const analysis = analyzeOil(sensor_values, oil_type);
-
-    // Save analysis result
     const { data: result, error: resultError } = await supabase
       .from('analysis_results')
       .insert({
@@ -81,56 +88,15 @@ router.post('/', validateDeviceApiKey, async (req, res) => {
 
     if (resultError) throw resultError;
 
-    // Map Integration: Update assigned shop based on the analysis
-    if (shop_id) {
-      const mappedStatus = analysis.quality === 'Unsafe' ? 'adulterated' : analysis.quality === 'Moderate' ? 'moderate' : 'safe';
-      
-      await supabase.from('shops').update({
-        last_purity: analysis.purity,
-        status: mappedStatus,
-        updated_at: new Date().toISOString()
-      }).eq('id', shop_id);
-    }
-
-    if (resultError) throw resultError;
-
-    // Create alert if adulteration exceeds threshold
-    const threshold = parseFloat(process.env.ADULTERATION_THRESHOLD || '20');
-    if (analysis.adulteration > threshold) {
-      await supabase.from('alerts').insert({
-        reading_id: reading.id,
-        device_id,
-        oil_type,
-        severity: analysis.adulteration > 35 ? 'critical' : 'warning',
-        message: `${oil_type} adulteration detected at ${analysis.adulteration}%. Adulterants: ${analysis.likely_adulterants.join(', ')}`,
-        adulteration: analysis.adulteration,
-      });
-    }
-
-    // Emit real-time event to connected Socket.io clients
+    // 7. Real-time Broadcast
     const io = req.app.get('io');
     if (io) {
-      io.emit('new_reading', {
-        reading,
-        analysis: result,
-        device_id,
-        oil_type,
-      });
+      io.emit('live_tensor_data', { device_id, sensor_values, timestamp });
+      io.emit('device_status', { device_id, status: 'online', last_seen: new Date() });
+      io.emit('new_reading', { reading, analysis: result, device_id });
     }
 
-    res.status(201).json({
-      success: true,
-      reading_id: reading.id,
-      analysis: {
-        purity: analysis.purity,
-        adulteration: analysis.adulteration,
-        quality: analysis.quality,
-        qualityLabel: analysis.qualityLabel,
-        likely_adulterants: analysis.likely_adulterants,
-        contaminants: analysis.contaminants,
-        health_advisory: analysis.health_advisory,
-      },
-    });
+    res.status(201).json({ success: true, analysis: result });
   } catch (err) {
     console.error('[POST /api/data] Error:', err.message);
     res.status(500).json({ error: 'Internal server error', details: err.message });

@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const supabase = require('../supabaseClient');
+const { validateUserSession } = require('../middleware/auth');
 
 // POST /api/complaints – Submit a new complaint
-router.post('/', async (req, res) => {
+router.post('/', validateUserSession, async (req, res) => {
   try {
     const { shop_id, description, lat, lng, contact_info, image_url } = req.body;
 
@@ -35,7 +36,7 @@ router.post('/', async (req, res) => {
 });
 
 // GET /api/complaints – List complaints
-router.get('/', async (req, res) => {
+router.get('/', validateUserSession, async (req, res) => {
   try {
     const { data: complaints, error } = await supabase
       .from('complaints')
@@ -55,7 +56,7 @@ router.get('/', async (req, res) => {
 });
 
 // PATCH /api/complaints/:id/verify – Verify a complaint and mark shop as adulturated
-router.patch('/:id/verify', async (req, res) => {
+router.patch('/:id/verify', validateUserSession, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -91,7 +92,7 @@ router.patch('/:id/verify', async (req, res) => {
 });
 
 // PATCH /api/complaints/:id/reject – Reject a complaint
-router.patch('/:id/reject', async (req, res) => {
+router.patch('/:id/reject', validateUserSession, async (req, res) => {
   try {
     const { id } = req.params;
 

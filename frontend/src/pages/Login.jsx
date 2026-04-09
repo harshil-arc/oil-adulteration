@@ -1,15 +1,84 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Droplets, Eye, EyeOff, Mail, Lock, User, Phone } from 'lucide-react';
+import { Droplets, Eye, EyeOff, Mail, Lock, User, Phone, AlertCircle } from 'lucide-react';
+import { useApp } from '../context/AppContext';
 
 export default function Login() {
   const navigate = useNavigate();
+  const { login, signup, loginWithGoogle, session } = useApp();
+  
   const [activeTab, setActiveTab] = useState('login'); // 'login' or 'signup'
   const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
-  const handleAuth = (e) => {
+  // Form Fields
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [phone, setPhone] = useState('');
+
+  useEffect(() => {
+    if (session) navigate('/home');
+  }, [session, navigate]);
+
+  const handleLoginSubmit = async (e) => {
     e.preventDefault();
-    navigate('/home'); // Mock auth, go straight to home
+    setIsLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    const { error } = await login(email, password);
+    
+    if (error) {
+      setErrorMsg(error.message);
+      setIsLoading(false);
+    } else {
+      navigate('/home');
+    }
+  };
+
+  const handleSignupSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    if (password !== confirmPassword) {
+      setErrorMsg("Passwords do not match");
+      setIsLoading(false);
+      return;
+    }
+
+    if (password.length < 6) {
+      setErrorMsg("Password must be at least 6 characters");
+      setIsLoading(false);
+      return;
+    }
+
+    const { error } = await signup(email, password, fullName);
+    
+    if (error) {
+      setErrorMsg(error.message);
+    } else {
+      setSuccessMsg("Account created! You can now log in.");
+      setActiveTab('login');
+      setPassword('');
+      setConfirmPassword('');
+    }
+    setIsLoading(false);
+  };
+
+  const handleGoogleAuth = async () => {
+    setIsLoading(true);
+    setErrorMsg('');
+    const { error } = await loginWithGoogle();
+    if (error) {
+      setErrorMsg(error.message);
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -49,18 +118,34 @@ export default function Login() {
         </div>
 
         {/* Form Container */}
-        <div className="flex-1">
+        <div className="flex-1 flex flex-col pt-2 w-full">
+          {errorMsg && (
+            <div className="mb-4 bg-red-500/10 border border-red-500/50 rounded-xl p-3 flex items-start gap-3 text-red-500 animate-slide-up">
+              <AlertCircle size={20} className="shrink-0 mt-0.5" />
+              <p className="text-sm font-medium leading-tight">{errorMsg}</p>
+            </div>
+          )}
+          {successMsg && (
+            <div className="mb-4 bg-green-500/10 border border-green-500/50 rounded-xl p-3 flex items-start gap-3 text-green-500 animate-slide-up">
+              <CheckCircle2 size={20} className="shrink-0 mt-0.5" />
+              <p className="text-sm font-medium leading-tight">{successMsg}</p>
+            </div>
+          )}
+
           {activeTab === 'login' ? (
-            <form onSubmit={handleAuth} className="flex flex-col gap-5 animate-fade-in">
+            <form onSubmit={handleLoginSubmit} className="flex flex-col gap-5 animate-fade-in w-full">
               <div className="relative">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
                   <Mail size={20} />
                 </div>
                 <input 
                   type="email" 
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   placeholder="Email Address" 
                   required
-                  className="w-full bg-[#1c1c1c] border border-[#333] focus:border-[#d4af37] text-white rounded-2xl py-4 pl-12 pr-4 outline-none transition-colors"
+                  disabled={isLoading}
+                  className="w-full bg-[#1c1c1c] border border-[#333] focus:border-[#d4af37] text-white rounded-2xl py-4 pl-12 pr-4 outline-none transition-colors disabled:opacity-50"
                 />
               </div>
 
@@ -70,9 +155,13 @@ export default function Login() {
                 </div>
                 <input 
                   type={showPassword ? "text" : "password"} 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   placeholder="Password" 
                   required
-                  className="w-full bg-[#1c1c1c] border border-[#333] focus:border-[#d4af37] text-white rounded-2xl py-4 pl-12 pr-12 outline-none transition-colors"
+                  minLength={6}
+                  disabled={isLoading}
+                  className="w-full bg-[#1c1c1c] border border-[#333] focus:border-[#d4af37] text-white rounded-2xl py-4 pl-12 pr-12 outline-none transition-colors disabled:opacity-50"
                 />
                 <button 
                   type="button"
@@ -89,8 +178,8 @@ export default function Login() {
                 </button>
               </div>
 
-              <button type="submit" className="w-full btn-primary mt-4">
-                LOGIN
+              <button type="submit" disabled={isLoading} className="w-full btn-primary mt-4 disabled:opacity-70 flex justify-center items-center gap-2">
+                {isLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'LOGIN'}
               </button>
 
               <div className="flex items-center gap-4 my-4">
@@ -99,20 +188,20 @@ export default function Login() {
                 <div className="flex-1 h-px bg-[#333]" />
               </div>
 
-              <button type="button" className="w-full btn-secondary text-white border-[#333] hover:bg-[#1c1c1c]">
+              <button type="button" onClick={handleGoogleAuth} disabled={isLoading} className="w-full btn-secondary text-white border-[#333] hover:bg-[#1c1c1c] disabled:opacity-50">
                 <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="Google" />
                 Google
               </button>
             </form>
           ) : (
-            <form onSubmit={handleAuth} className="flex flex-col gap-4 animate-fade-in">
+            <form onSubmit={handleSignupSubmit} className="flex flex-col gap-4 animate-fade-in w-full">
               <div className="relative">
                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
                   <User size={18} />
                 </div>
                 <input 
-                  type="text" placeholder="Full Name" required
-                  className="w-full bg-[#1c1c1c] border border-[#333] focus:border-[#d4af37] text-white rounded-2xl py-3.5 pl-11 pr-4 outline-none transition-colors text-sm"
+                  type="text" placeholder="Full Name" required value={fullName} onChange={e=>setFullName(e.target.value)} disabled={isLoading}
+                  className="w-full bg-[#1c1c1c] border border-[#333] focus:border-[#d4af37] text-white rounded-2xl py-3.5 pl-11 pr-4 outline-none transition-colors text-sm disabled:opacity-50"
                 />
               </div>
 
@@ -121,8 +210,8 @@ export default function Login() {
                   <Mail size={18} />
                 </div>
                 <input 
-                  type="email" placeholder="Email Address" required
-                  className="w-full bg-[#1c1c1c] border border-[#333] focus:border-[#d4af37] text-white rounded-2xl py-3.5 pl-11 pr-4 outline-none transition-colors text-sm"
+                  type="email" placeholder="Email Address" required value={email} onChange={e=>setEmail(e.target.value)} disabled={isLoading}
+                  className="w-full bg-[#1c1c1c] border border-[#333] focus:border-[#d4af37] text-white rounded-2xl py-3.5 pl-11 pr-4 outline-none transition-colors text-sm disabled:opacity-50"
                 />
               </div>
 
@@ -131,8 +220,8 @@ export default function Login() {
                   <Phone size={18} />
                 </div>
                 <input 
-                  type="tel" placeholder="Phone Number" required
-                  className="w-full bg-[#1c1c1c] border border-[#333] focus:border-[#d4af37] text-white rounded-2xl py-3.5 pl-11 pr-4 outline-none transition-colors text-sm"
+                  type="tel" placeholder="Phone Number" required value={phone} onChange={e=>setPhone(e.target.value)} disabled={isLoading}
+                  className="w-full bg-[#1c1c1c] border border-[#333] focus:border-[#d4af37] text-white rounded-2xl py-3.5 pl-11 pr-4 outline-none transition-colors text-sm disabled:opacity-50"
                 />
               </div>
 
@@ -141,8 +230,8 @@ export default function Login() {
                   <Lock size={18} />
                 </div>
                 <input 
-                  type={showPassword ? "text" : "password"} placeholder="Password" required
-                  className="w-full bg-[#1c1c1c] border border-[#333] focus:border-[#d4af37] text-white rounded-2xl py-3.5 pl-11 pr-11 outline-none transition-colors text-sm"
+                  type={showPassword ? "text" : "password"} placeholder="Password" required minLength={6} value={password} onChange={e=>setPassword(e.target.value)} disabled={isLoading}
+                  className="w-full bg-[#1c1c1c] border border-[#333] focus:border-[#d4af37] text-white rounded-2xl py-3.5 pl-11 pr-11 outline-none transition-colors text-sm disabled:opacity-50"
                 />
                 <button 
                   type="button" onClick={() => setShowPassword(!showPassword)}
@@ -157,8 +246,8 @@ export default function Login() {
                   <Lock size={18} />
                 </div>
                 <input 
-                  type="password" placeholder="Confirm Password" required
-                  className="w-full bg-[#1c1c1c] border border-[#333] focus:border-[#d4af37] text-white rounded-2xl py-3.5 pl-11 pr-4 outline-none transition-colors text-sm"
+                  type="password" placeholder="Confirm Password" required minLength={6} value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} disabled={isLoading}
+                  className="w-full bg-[#1c1c1c] border border-[#333] focus:border-[#d4af37] text-white rounded-2xl py-3.5 pl-11 pr-4 outline-none transition-colors text-sm disabled:opacity-50"
                 />
               </div>
 
@@ -174,8 +263,8 @@ export default function Login() {
                 </span>
               </label>
 
-              <button type="submit" className="w-full btn-primary mt-2">
-                CREATE ACCOUNT
+              <button type="submit" disabled={isLoading} className="w-full btn-primary mt-2 flex justify-center items-center gap-2 disabled:opacity-70">
+                {isLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'CREATE ACCOUNT'}
               </button>
             </form>
           )}

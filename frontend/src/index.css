@@ -27,6 +27,8 @@
   --border-radius-4xl: 3.125rem; /* 50px pill buttons */
 
   --shadow-glow-gold: 0 4px 20px rgba(212, 175, 55, 0.25);
+  --shadow-glow-green: 0 4px 25px rgba(34, 197, 94, 0.4);
+  --shadow-glow-red: 0 4px 25px rgba(239, 68, 68, 0.4);
   --shadow-glass: 0 8px 32px rgba(0, 0, 0, 0.6);
 }
 
@@ -145,6 +147,19 @@ body {
 .animate-fade-in  { animation: fadeIn 0.4s ease-out; }
 .animate-slide-up { animation: slideUp 0.4s ease-out; }
 .animate-scan-gold { animation: scanPulseGold 2s infinite; }
+.animate-shake { animation: shake 0.5s cubic-bezier(.36,.07,.19,.97) both; }
+.animate-spin-slow { animation: spin 3s linear infinite; }
+
+.shadow-glow-green { box-shadow: var(--shadow-glow-green); }
+.shadow-glow-red   { box-shadow: var(--shadow-glow-red); }
+.shadow-glow-gold  { box-shadow: var(--shadow-glow-gold); }
+
+@keyframes shake {
+  10%, 90% { transform: translate3d(-1px, 0, 0); }
+  20%, 80% { transform: translate3d(2px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+  40%, 60% { transform: translate3d(4px, 0, 0); }
+}
 
 ::-webkit-scrollbar       { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }

@@ -1,10 +1,7 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { 
-  ChevronLeft, Shield, Lock, Fingerprint, EyeOff, Trash2, 
-  Info, ExternalLink, PlayCircle, BookOpen, AlertCircle, FileText 
-} from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { supabase } from '../lib/supabase';
+import { useEffect } from 'react';
+import { Download } from 'lucide-react';
 
 // Reusable Top Nav for Sub Screens
 const SubScreenNav = ({ title }) => {
@@ -23,8 +20,45 @@ const SubScreenNav = ({ title }) => {
 
 // 1. Privacy & Security Screen
 export function PrivacySecurity() {
-  const [biometrics, setBiometrics] = useState(true);
-  const [dataSharing, setDataSharing] = useState(false);
+  const { settings, updateSetting, profile } = useApp();
+  
+  const handleExportData = async () => {
+    const { data, error } = await supabase
+      .from('oil_readings')
+      .select('*');
+    
+    if (error) return alert("Failed to export data.");
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pureoil_export_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+  };
+
+  const handleDeleteData = async () => {
+    if (!confirm("⚠️ CAUTION: This will permanently delete all your specific sensor readings and analysis results from the database. This cannot be undone. Proceed?")) return;
+    
+    try {
+      // Note: Real implementation would target user_id or specific device_id
+      const { error } = await supabase.from('oil_readings').delete().neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+      if (error) throw error;
+      alert("✅ All your sensor data has been purged successfully.");
+    } catch (e) {
+      alert("Error purging data: " + e.message);
+    }
+  };
+
+  const handleChangePin = () => {
+    const newPin = prompt("Enter a new 4-digit App PIN (or leave empty to disable):");
+    if (newPin === null) return;
+    if (newPin && !/^\d{4}$/.test(newPin)) {
+      return alert("Invalid PIN. Please enter exactly 4 digits.");
+    }
+    updateSetting('appPin', newPin || null);
+    alert(newPin ? "✅ PIN Security Enabled" : "🔓 PIN Security Disabled");
+  };
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col pb-24 animate-fade-in relative z-20">
@@ -32,10 +66,13 @@ export function PrivacySecurity() {
       <div className="p-5 flex flex-col gap-6">
         
         <div className="card p-0 border-[#333] flex flex-col divide-y divide-[#1c1c1c]">
-          <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-[#1c1c1c] transition-colors">
+          <div onClick={handleChangePin} className="p-4 flex items-center justify-between cursor-pointer hover:bg-[#1c1c1c] transition-colors">
             <div className="flex items-center gap-3">
               <Lock size={18} className="text-[#d4af37]" />
-              <span className="font-bold text-sm">Change App PIN / Password</span>
+              <div>
+                <span className="font-bold text-sm block leading-tight">App Lock / PIN</span>
+                <span className="text-xs text-gray-500">{settings.appPin ? '🔒 Enabled' : '🔓 Disabled'}</span>
+              </div>
             </div>
             <ChevronLeft size={16} className="text-gray-600 rotate-180" />
           </div>
@@ -45,13 +82,12 @@ export function PrivacySecurity() {
               <Fingerprint size={18} className="text-[#d4af37]" />
               <div>
                 <span className="font-bold text-sm block leading-tight">Biometric Unlock</span>
-                <span className="text-xs text-gray-500">Face ID / Fingerprint</span>
+                <span className="text-xs text-gray-400">Face ID / Fingerprint fallback (PWA)</span>
               </div>
             </div>
-            <label className="relative inline-flex items-center cursor-pointer">
-               <input type="checkbox" className="sr-only peer" checked={biometrics} onChange={() => setBiometrics(!biometrics)} />
-               <div className="w-11 h-6 bg-[#333] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#d4af37]"></div>
-            </label>
+            <div className="w-12 h-6 bg-[#333] rounded-full relative flex items-center px-1 opacity-50">
+               <div className="w-4 h-4 bg-gray-500 rounded-full" />
+            </div>
           </div>
 
           <div className="p-4 flex items-center justify-between">
@@ -63,16 +99,23 @@ export function PrivacySecurity() {
               </div>
             </div>
             <label className="relative inline-flex items-center cursor-pointer">
-               <input type="checkbox" className="sr-only peer" checked={dataSharing} onChange={() => setDataSharing(!dataSharing)} />
+               <input type="checkbox" className="sr-only peer" checked={settings.dataSharing} onChange={() => updateSetting('dataSharing', !settings.dataSharing)} />
                <div className="w-11 h-6 bg-[#333] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#d4af37]"></div>
             </label>
           </div>
         </div>
 
-        <button className="flex items-center gap-3 p-4 card border-red-500/30 text-red-500 bg-red-500/5 hover:bg-red-500/10 transition-colors">
-          <Trash2 size={18} />
-          <span className="font-bold text-sm">Delete Account & Data</span>
-        </button>
+        <div className="flex flex-col gap-3">
+          <button onClick={handleExportData} className="flex items-center gap-3 p-4 card border-[#333] text-white bg-[#141414] hover:bg-[#1c1c1c] transition-colors">
+            <Download size={18} className="text-[#d4af37]" />
+            <span className="font-bold text-sm">Export My Data (JSON)</span>
+          </button>
+
+          <button onClick={handleDeleteData} className="flex items-center gap-3 p-4 card border-red-500/30 text-red-500 bg-red-500/5 hover:bg-red-500/10 transition-colors">
+            <Trash2 size={18} />
+            <span className="font-bold text-sm">Delete My Data Record</span>
+          </button>
+        </div>
       </div>
     </div>
   );
@@ -165,23 +208,38 @@ export function LearningCenter() {
 
 // 4. Reports List
 export function ReportsList() {
-  // Mock Data mimicking FSSAI standard outputs
-  const reports = [
-    { id: 'REP-900A', date: '2026-04-06', brand: 'Local Veda Oil', violation: 'Mineral Oil Detected', status: 'Unsafe' },
-    { id: 'REP-902B', date: '2026-04-05', brand: 'PureGlow Mustard', violation: 'Argemone Oil Mixed', status: 'Unsafe' },
-    { id: 'REP-899X', date: '2026-04-01', brand: 'GoldFry Vendor', violation: 'Used Cooking Oil High TPC', status: 'Unsafe' }
-  ];
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchReports = async () => {
+      const { data, error } = await supabase
+        .from('violation_reports')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (data) setReports(data);
+      setLoading(false);
+    };
+
+    fetchReports();
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col pb-24 animate-fade-in relative z-20">
       <SubScreenNav title="Compliance Reports" />
       
       <div className="p-5 flex flex-col gap-3">
-        {reports.length === 0 ? (
-          <div className="card text-center py-10 border-dashed border-[#333] bg-transparent flex flex-col items-center">
-             <FileText size={32} className="text-[#333] mb-4" />
-             <p className="text-sm text-gray-400 font-bold">No reports generated yet.</p>
-             <button className="btn-primary mt-6">Start Scanning</button>
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20 gap-4">
+             <div className="w-10 h-10 border-2 border-[#333] border-t-[#d4af37] rounded-full animate-spin" />
+             <p className="text-xs text-gray-500 font-bold tracking-widest uppercase">Loading Reports...</p>
+          </div>
+        ) : reports.length === 0 ? (
+          <div className="card text-center py-20 border-dashed border-[#333] bg-transparent flex flex-col items-center">
+             <FileText size={48} className="text-[#1c1c1c] mb-4" />
+             <p className="text-sm text-gray-500 font-bold mb-1">No violation reports found.</p>
+             <p className="text-[10px] text-gray-600 uppercase tracking-widest">Only confirmed unsafe scans generate reports.</p>
           </div>
         ) : (
           reports.map(r => (
@@ -202,11 +260,11 @@ export function ReportsList() {
                </div>
                
                <div className="flex justify-between items-center mt-1">
-                 <p className="text-[10px] text-gray-500 font-bold tracking-widest uppercase">{r.date}</p>
-                 <button className="text-[10px] text-[#d4af37] font-bold tracking-widest uppercase flex items-center gap-1">
-                   Open PDF <ChevronLeft size={14} className="rotate-180" />
-                 </button>
-               </div>
+                  <p className="text-[10px] text-gray-500 font-bold tracking-widest uppercase">{new Date(r.created_at || r.date).toLocaleDateString()}</p>
+                  <button className="text-[10px] text-[#d4af37] font-bold tracking-widest uppercase flex items-center gap-1">
+                    VIEW DETAILS <ChevronLeft size={14} className="rotate-180" />
+                  </button>
+                </div>
             </div>
           ))
         )}

@@ -1,11 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Sparkles, ChevronRight, AlertTriangle, CheckCircle, Droplets, Flag, X, MapPin, Camera, FileBarChart } from 'lucide-react';
+import { Bell, Sparkles, ChevronRight, AlertTriangle, CheckCircle, Droplets, Flag, X, MapPin, Camera, FileBarChart, WifiOff } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useApp } from '../context/AppContext';
+import { useTranslation } from 'react-i18next';
 import AiChatbot from '../components/AiChatbot';
+import DeviceStatus from '../components/DeviceStatus';
 
 export default function Home() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
+  const { deviceStatus } = useApp();
   const [readings, setReadings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showReport, setShowReport] = useState(false);
@@ -13,6 +18,8 @@ export default function Home() {
   const [reportForm, setReportForm] = useState({ shopName: '', address: '', oilType: '', description: '', attachedReadingId: '' });
   const [proofPhoto, setProofPhoto] = useState(null);
   const [submitting, setSubmitting] = useState(false);
+
+  const isConnected = deviceStatus === 'online';
 
   useEffect(() => {
     supabase.from('analysis_results').select('*').order('timestamp', { ascending: false }).limit(5)
@@ -30,7 +37,7 @@ export default function Home() {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  const totalScans = readings.length; // usually would be a count query, but mock for now
+  const totalScans = readings.length; 
   const safeScans = readings.filter(r => r.quality !== 'Unsafe').length;
   const unsafeScans = readings.filter(r => r.quality === 'Unsafe').length;
 
@@ -38,15 +45,13 @@ export default function Home() {
     e.preventDefault();
     setSubmitting(true);
     
-    // Simulate getting geolocation for the shop (randomizing slightly around a center point for demo map)
+    // Simulate getting geolocation for the shop
     const lat = 22.9734 + (Math.random() - 0.5) * 5;
     const lng = 78.6569 + (Math.random() - 0.5) * 5;
 
     try {
-      // 1. Insert Shop as 'adulterated'
       const { data: shopData, error: shopErr } = await supabase.from('shops').insert([{
         name: reportForm.shopName,
-        address: reportForm.address, // Added loosely, schema has latitude/longitude/name/oil_type/status
         latitude: lat,
         longitude: lng,
         oil_type: reportForm.oilType,
@@ -55,7 +60,6 @@ export default function Home() {
       }]).select().single();
 
       if (shopData) {
-        // 2. Insert Complaint
         await supabase.from('complaints').insert([{
           shop_id: shopData.id,
           description: `Reading ID: ${reportForm.attachedReadingId}\n${reportForm.description}`,
@@ -82,7 +86,7 @@ export default function Home() {
     <div className="px-5 pt-6 pb-6 flex flex-col gap-6 animate-fade-in">
       {/* Top Bar */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-white tracking-tight">Hey, Inspector 👋</h1>
+        <h1 className="text-xl font-bold text-white tracking-tight">{t('home.greeting')} 👋</h1>
         <div className="flex items-center gap-3">
           <button className="w-10 h-10 rounded-full bg-[#1c1c1c] border border-[#333] flex items-center justify-center text-gray-400 hover:text-white transition-colors relative">
             <Bell size={18} />
@@ -90,7 +94,7 @@ export default function Home() {
           </button>
           <button onClick={() => setShowAiChat(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-[#d4af37]/10 text-[#d4af37] border border-[#d4af37]/30 text-xs font-bold uppercase tracking-widest hover:bg-[#d4af37]/20 transition-colors shadow-glow-gold text-nowrap">
             <Sparkles size={14} fill="currentColor" />
-            ASK AI
+            {t('home.ask_ai')}
           </button>
         </div>
       </div>
@@ -101,36 +105,56 @@ export default function Home() {
         <div className="absolute top-0 right-0 w-64 h-64 bg-[#d4af37] opacity-10 rounded-full blur-[60px] translate-x-1/3 -translate-y-1/3 pointer-events-none" />
         
         <div className="relative z-10">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#d4af37]/10 border border-[#d4af37]/20 text-[10px] font-bold text-[#d4af37] uppercase tracking-widest mb-4">
-            <Sparkles size={10} />
-            AI Powered
+          <div className="flex justify-between items-start mb-4">
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#d4af37]/10 border border-[#d4af37]/20 text-[10px] font-bold text-[#d4af37] uppercase tracking-widest">
+              <Sparkles size={10} />
+              {t('home.ai_powered')}
+            </div>
+            <DeviceStatus />
           </div>
-          <h2 className="text-3xl font-black text-white mb-2 leading-tight">Test Your Oil</h2>
+          
+          <h2 className="text-3xl font-black text-white mb-2 leading-tight">{t('home.test_oil')}</h2>
           <p className="text-gray-400 text-sm mb-6 max-w-[200px] leading-relaxed">
-            Detect adulterants instantly with your ESP32 sensor.
+            {t('home.hero_desc')}
           </p>
-          <button 
-            onClick={() => navigate('/scan')}
-            className="btn-primary w-fit pr-4"
-          >
-            <span>START SCAN</span>
-            <ChevronRight size={18} />
-          </button>
+          
+          {isConnected ? (
+            <button 
+              onClick={() => navigate('/scan')}
+              className="btn-primary w-fit pr-4"
+            >
+              <span>{t('home.start_scan')}</span>
+              <ChevronRight size={18} />
+            </button>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <button 
+                disabled
+                className="btn-primary w-fit pr-4 opacity-50 cursor-not-allowed grayscale"
+              >
+                <span>{t('home.device_offline')}</span>
+                <WifiOff size={18} />
+              </button>
+              <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest pl-1 animate-pulse">
+                {t('home.connect_esp')}
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Stats Row */}
       <div className="grid grid-cols-3 gap-3">
         <div className="card flex flex-col items-center justify-center py-4 px-2 hover:bg-[#1c1c1c] transition-colors border-[#333]">
-          <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1">Total Scans</p>
+          <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1">{t('home.total_scans')}</p>
           <p className="text-2xl font-black text-white">{loading ? '-' : totalScans}</p>
         </div>
         <div className="card flex flex-col items-center justify-center py-4 px-2 hover:bg-[#1c1c1c] transition-colors border-[#d4af37]/20">
-          <p className="text-[9px] font-bold text-[#d4af37] uppercase tracking-widest mb-1">Safe</p>
+          <p className="text-[9px] font-bold text-[#d4af37] uppercase tracking-widest mb-1">{t('home.safe_oils')}</p>
           <p className="text-2xl font-black text-white">{loading ? '-' : safeScans}</p>
         </div>
         <div className="card flex flex-col items-center justify-center py-4 px-2 hover:bg-[#1c1c1c] transition-colors border-red-500/20">
-          <p className="text-[9px] font-bold text-red-500 uppercase tracking-widest mb-1">Unsafe</p>
+          <p className="text-[9px] font-bold text-red-500 uppercase tracking-widest mb-1">{t('home.unsafe_oils')}</p>
           <p className="text-2xl font-black text-white">{loading ? '-' : unsafeScans}</p>
         </div>
       </div>
@@ -141,18 +165,18 @@ export default function Home() {
         className="w-full flex items-center justify-center gap-2 py-4 bg-red-500/10 text-red-500 border border-red-500/30 rounded-2xl font-bold uppercase tracking-widest text-sm hover:bg-red-500 hover:text-white transition-colors shadow-sm"
       >
         <Flag size={18} />
-        Report Adulterated Oil
+        {t('home.report_oil')}
       </button>
 
       {/* Recent Scans */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-bold text-white tracking-wide">Recent Scans</h3>
+          <h3 className="text-sm font-bold text-white tracking-wide">{t('home.recent_scans')}</h3>
           <button 
             onClick={() => navigate('/history')}
             className="text-[10px] font-bold uppercase tracking-widest text-[#d4af37] hover:text-[#f5c842]"
           >
-            View All
+            {t('home.view_all')}
           </button>
         </div>
 
@@ -162,8 +186,8 @@ export default function Home() {
           ) : readings.length === 0 ? (
             <div className="card border-dashed border-[#333] bg-transparent flex flex-col items-center justify-center py-8">
               <Droplets size={32} className="text-gray-700 mb-3" />
-              <p className="text-sm text-gray-500 font-medium">No scans yet.</p>
-              <button onClick={() => navigate('/scan')} className="text-[#d4af37] text-xs font-bold uppercase mt-2">Tap Start Scan to begin</button>
+              <p className="text-sm text-gray-500 font-medium">{t('home.no_scans')}</p>
+              <button onClick={() => navigate('/scan')} className="text-[#d4af37] text-xs font-bold uppercase mt-2">{t('home.tap_to_begin')}</button>
             </div>
           ) : (
             readings.map(scan => {

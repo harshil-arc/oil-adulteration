@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const supabase = require('../supabaseClient');
+const { validateUserSession } = require('../middleware/auth');
 
 // GET /api/shops – Fetch all shops and their statuses
-router.get('/', async (req, res) => {
+router.get('/', validateUserSession, async (req, res) => {
   try {
     const { data: shops, error } = await supabase
       .from('shops')

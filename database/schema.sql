@@ -27,15 +27,18 @@ CREATE POLICY "Allow all on devices" ON public.devices FOR ALL USING (true) WITH
 -- 2. OIL_READINGS TABLE
 -- ============================================================
 CREATE TABLE IF NOT EXISTS public.oil_readings (
-  id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  device_id    TEXT NOT NULL REFERENCES public.devices(device_id) ON DELETE CASCADE,
-  oil_type     TEXT NOT NULL,
-  ir_value     NUMERIC NOT NULL,
-  uv_value     NUMERIC NOT NULL,
-  density      NUMERIC NOT NULL,
-  temperature  NUMERIC NOT NULL,
-  timestamp    TIMESTAMPTZ DEFAULT NOW(),
-  created_at   TIMESTAMPTZ DEFAULT NOW()
+  id                UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  device_id         TEXT NOT NULL REFERENCES public.devices(device_id) ON DELETE CASCADE,
+  oil_type          TEXT NOT NULL,
+  tds_ppm           NUMERIC NOT NULL,
+  turbidity_ntu     NUMERIC NOT NULL,
+  ph                NUMERIC NOT NULL,
+  density_gcm3      NUMERIC NOT NULL,
+  temperature_c     NUMERIC NOT NULL,
+  viscosity_cp      NUMERIC NOT NULL,
+  refractive_index  NUMERIC NOT NULL,
+  timestamp         TIMESTAMPTZ DEFAULT NOW(),
+  created_at        TIMESTAMPTZ DEFAULT NOW()
 );
 
 ALTER TABLE public.oil_readings ENABLE ROW LEVEL SECURITY;
@@ -162,3 +165,37 @@ INSERT INTO public.shops (id, name, latitude, longitude, oil_type, last_purity, 
   (uuid_generate_v4(), 'Ahmedabad Gold Refineries', 23.0225, 72.5714, 'Olive Oil', 45, 'adulterated'),
   (uuid_generate_v4(), 'Hyderabad Deep Fry Oils', 17.3850, 78.4867, 'Mustard Oil', 96, 'safe')
 ON CONFLICT DO NOTHING;
+
+-- ============================================================
+-- 7. PROFILES TABLE (RBAC)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.profiles (
+  id           UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  role         TEXT NOT NULL DEFAULT 'inspector' CHECK (role IN ('admin','inspector','user')),
+  full_name    TEXT,
+  badge_id     TEXT,
+  created_at   TIMESTAMPTZ DEFAULT NOW(),
+  updated_at   TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users can view own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Admins can view all profiles" ON public.profiles FOR SELECT USING (
+  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+);
+CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+
+-- Function and Trigger to automatically create a profile for new users
+CREATE OR REPLACE FUNCTION public.handle_new_user() 
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.profiles (id, full_name, role)
+  VALUES (new.id, new.raw_user_meta_data->>'full_name', 'inspector');
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();

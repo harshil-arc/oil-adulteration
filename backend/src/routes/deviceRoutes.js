@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const supabase = require('../supabaseClient');
+const { validateUserSession } = require('../middleware/auth');
 
 // GET /api/devices – list all devices
-router.get('/', async (req, res) => {
+router.get('/', validateUserSession, async (req, res) => {
   try {
     const { data, error } = await supabase.from('devices').select('*').order('last_seen', { ascending: false });
     if (error) throw error;
@@ -14,7 +15,7 @@ router.get('/', async (req, res) => {
 });
 
 // PATCH /api/devices/:device_id/status
-router.patch('/:device_id/status', async (req, res) => {
+router.patch('/:device_id/status', validateUserSession, async (req, res) => {
   try {
     const { status } = req.body;
     const { data, error } = await supabase

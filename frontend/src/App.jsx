@@ -9,6 +9,8 @@ import MapPage from './pages/MapPage';
 import Profile from './pages/Profile';
 import { AppProvider } from './context/AppContext';
 import { PrivacySecurity, AboutApp, LearningCenter, ReportsList } from './pages/ProfileSubScreens';
+import AuthLock from './components/AuthLock';
+import ProtectedRoute from './components/ProtectedRoute';
 import './index.css';
 
 export default function App() {
@@ -22,20 +24,24 @@ export default function App() {
         
         {/* Main App Routes (with Bottom Nav Layout) */}
         <Route path="/*" element={
-          <Layout>
-            <Routes>
-              <Route path="/" element={<Navigate to="/onboarding" replace />} />
-              <Route path="/home" element={<Home />} />
-              <Route path="/scan" element={<ScanFlow />} />
-              <Route path="/history" element={<History />} />
-              <Route path="/map" element={<MapPage />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/privacy" element={<PrivacySecurity />} />
-              <Route path="/about" element={<AboutApp />} />
-              <Route path="/learning" element={<LearningCenter />} />
-              <Route path="/reports" element={<ReportsList />} />
-            </Routes>
-          </Layout>
+          <ProtectedRoute>
+            <AuthLock>
+              <Layout>
+                <Routes>
+                  <Route path="/" element={<Navigate to="/home" replace />} />
+                  <Route path="/home" element={<Home />} />
+                  <Route path="/scan" element={<ScanFlow />} />
+                  <Route path="/history" element={<History />} />
+                  <Route path="/map" element={<MapPage />} />
+                  <Route path="/profile" element={<Profile />} />
+                  <Route path="/privacy" element={<PrivacySecurity />} />
+                  <Route path="/about" element={<AboutApp />} />
+                  <Route path="/learning" element={<LearningCenter />} />
+                  <Route path="/reports" element={<ReportsList />} />
+                </Routes>
+              </Layout>
+            </AuthLock>
+          </ProtectedRoute>
         } />
       </Routes>
     </BrowserRouter>

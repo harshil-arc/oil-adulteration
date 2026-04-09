@@ -6,10 +6,12 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useApp } from '../context/AppContext';
+import { useTranslation } from 'react-i18next';
 
 export default function Profile() {
   const navigate = useNavigate();
-  const { profile, updateProfile, settings, updateSetting } = useApp();
+  const { t } = useTranslation();
+  const { profile, updateProfile, settings, updateSetting, logout } = useApp();
   const [stats, setStats] = useState({ total: 0, safe: 0, unsafe: 0 });
   const [reportsCount, setReportsCount] = useState(0);
   
@@ -37,10 +39,9 @@ export default function Profile() {
       });
   }, []);
 
-  const handleSignOut = () => {
-    // Clear session/local state logic here if needed
-    localStorage.removeItem('pureoil_profile'); // Optional clear
-    navigate('/login');
+  const handleSignOut = async () => {
+    localStorage.removeItem('pureoil_profile');
+    await logout();
   };
 
   const saveProfile = (e) => {
@@ -54,13 +55,13 @@ export default function Profile() {
   };
 
   return (
-    <div className={`flex flex-col min-h-screen ${settings.darkMode ? 'bg-[#0a0a0a] text-white' : 'bg-gray-100 text-gray-900'} animate-fade-in relative z-20 pb-10 transition-colors`}>
+    <div className={`flex flex-col min-h-screen animate-fade-in relative z-20 pb-10 transition-colors`}>
        {/* Background Glow */}
        {settings.darkMode && <div className="absolute top-0 right-0 w-64 h-64 bg-[#F5A623] opacity-10 rounded-full blur-[80px] pointer-events-none translate-x-1/3 -translate-y-1/3" />}
 
        {/* Header */}
        <div className="px-5 pt-8 pb-4 relative z-10">
-         <h1 className="text-2xl font-black tracking-tight">My Profile</h1>
+         <h1 className="text-2xl font-black tracking-tight">{t('profile.title')}</h1>
        </div>
 
        <div className="flex-1 px-5 flex flex-col gap-6 relative z-10">
@@ -134,7 +135,7 @@ export default function Profile() {
                 <div className="flex items-center justify-between p-4">
                    <div className="flex items-center gap-3">
                       <Bell size={18} className="text-[#F5A623]" />
-                      <span className="text-sm font-medium">Notifications</span>
+                      <span className="text-sm font-medium">{t('profile.notifications')}</span>
                    </div>
                    <label className="relative inline-flex items-center cursor-pointer">
                      <input type="checkbox" className="sr-only peer" checked={settings.notifications} onChange={() => updateSetting('notifications', !settings.notifications)} />
@@ -143,47 +144,47 @@ export default function Profile() {
                 </div>
 
                 {/* Language */}
-                <div onClick={() => setShowLanguage(true)} className="flex items-center justify-between p-4 cursor-pointer hover:bg-black/5 transition-colors">
-                   <div className="flex items-center gap-3">
-                      <Globe size={18} className="text-[#F5A623]" />
-                      <span className="text-sm font-medium">Language</span>
-                   </div>
-                   <div className="flex items-center gap-2 text-gray-500">
-                      <span className="text-xs uppercase font-bold tracking-widest">{settings.language}</span>
-                      <ChevronRight size={16} />
-                   </div>
-                </div>
+                 <div onClick={() => setShowLanguage(true)} className="flex items-center justify-between p-4 cursor-pointer hover:bg-black/5 transition-colors">
+                    <div className="flex items-center gap-3">
+                       <Globe size={18} className="text-[#F5A623]" />
+                       <span className="text-sm font-medium">{t('profile.language')}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-500">
+                       <span className="text-xs uppercase font-bold tracking-widest">{settings.language === 'en' ? 'English' : 'Hindi'}</span>
+                       <ChevronRight size={16} />
+                    </div>
+                 </div>
 
                 {/* Connection Method */}
-                <div onClick={() => setShowConnection(true)} className="flex items-center justify-between p-4 cursor-pointer hover:bg-black/5 transition-colors">
-                   <div className="flex items-center gap-3">
-                      <Wifi size={18} className="text-[#F5A623]" />
-                      <span className="text-sm font-medium">Hardware Connection</span>
-                   </div>
-                   <div className="flex items-center gap-2 text-gray-500">
-                      <span className="text-xs uppercase font-bold tracking-widest">{settings.connectionMethod}</span>
-                      <ChevronRight size={16} />
-                   </div>
-                </div>
+                 <div onClick={() => setShowConnection(true)} className="flex items-center justify-between p-4 cursor-pointer hover:bg-black/5 transition-colors">
+                    <div className="flex items-center gap-3">
+                       <Wifi size={18} className="text-[#F5A623]" />
+                       <span className="text-sm font-medium">{t('profile.hw_connection')}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-gray-500">
+                       <span className="text-xs uppercase font-bold tracking-widest">{settings.connectionMethod}</span>
+                       <ChevronRight size={16} />
+                    </div>
+                 </div>
 
                 {/* Dark Mode Toggle */}
-                <div className="flex items-center justify-between p-4">
-                   <div className="flex items-center gap-3">
-                      <Moon size={18} className="text-[#F5A623]" />
-                      <span className="text-sm font-medium">AMOLED Dark Mode</span>
-                   </div>
-                   <label className="relative inline-flex items-center cursor-pointer">
-                     <input type="checkbox" className="sr-only peer" checked={settings.darkMode} onChange={() => updateSetting('darkMode', !settings.darkMode)} />
-                     <div className={`w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all ${settings.darkMode ? 'bg-[#F5A623]' : ''}`}></div>
-                   </label>
-                </div>
+                 <div className="flex items-center justify-between p-4">
+                    <div className="flex items-center gap-3">
+                       <Moon size={18} className="text-[#F5A623]" />
+                       <span className="text-sm font-medium">{t('profile.dark_mode')}</span>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input type="checkbox" className="sr-only peer" checked={settings.darkMode} onChange={() => updateSetting('darkMode', !settings.darkMode)} />
+                      <div className={`w-11 h-6 bg-gray-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all ${settings.darkMode ? 'bg-[#F5A623]' : ''}`}></div>
+                    </label>
+                 </div>
 
                 {/* Navigation Links */}
-                {[
-                  { icon: Shield, title: 'Privacy & Security', path: '/privacy' },
-                  { icon: Info, title: 'About PureOil', path: '/about' },
-                  { icon: BookOpen, title: 'Learning Center', path: '/learning' },
-                ].map((item, idx) => (
+                 {[
+                   { icon: Shield, title: t('profile.privacy'), path: '/privacy' },
+                   { icon: Info, title: t('profile.about'), path: '/about' },
+                   { icon: BookOpen, title: t('profile.learning'), path: '/learning' },
+                 ].map((item, idx) => (
                   <div key={idx} onClick={() => navigate(item.path)} className="flex items-center justify-between p-4 cursor-pointer hover:bg-black/5 transition-colors">
                      <div className="flex items-center gap-3">
                         <item.icon size={18} className="text-[#F5A623]" />
@@ -209,9 +210,9 @@ export default function Profile() {
             onClick={() => setShowLogout(true)}
             className={`mt-4 w-full py-4 flex items-center justify-center gap-2 border border-red-500 rounded-[20px] text-red-500 font-bold hover:bg-red-500 hover:text-white transition-all bg-red-500/5 mb-8`}
           >
-             <LogOut size={18} />
-             SIGN OUT
-          </button>
+              <LogOut size={18} />
+              {t('profile.logout')}
+           </button>
        </div>
 
        {/* --- MODALS & BOTTOM SHEETS --- */}
@@ -257,14 +258,28 @@ export default function Profile() {
          <div className="fixed inset-0 bg-black/60 z-[100] flex items-end animate-fade-in backdrop-blur-sm" onClick={() => setShowLanguage(false)}>
             <div className={`w-full ${settings.darkMode ? 'bg-[#0a0a0a] border-[#333]' : 'bg-white border-gray-200'} border-t rounded-t-[2.5rem] p-6 pb-safe animate-slide-up`} onClick={e=>e.stopPropagation()}>
                <h2 className="text-xl font-bold mb-6">Select Language</h2>
-               <div className="flex flex-col gap-2 mb-6">
-                 {['English', 'Hindi', 'Tamil', 'Telugu', 'Marathi'].map(lang => (
-                   <button key={lang} onClick={() => { updateSetting('language', lang); setShowLanguage(false); }} className={`p-4 rounded-2xl font-bold flex justify-between items-center ${settings.language === lang ? 'bg-[#F5A623]/10 text-[#F5A623] border border-[#F5A623]/30' : settings.darkMode ? 'bg-[#1c1c1c] text-white border border-[#333]' : 'bg-gray-50 text-black border border-gray-200'}`}>
-                     {lang}
-                     {settings.language === lang && <div className="w-2 h-2 rounded-full bg-[#F5A623]" />}
-                   </button>
-                 ))}
-               </div>
+                <div className="flex flex-col gap-2 mb-6">
+                  {[
+                    { label: 'English', code: 'en' },
+                    { label: 'Hindi', code: 'hi' },
+                    { label: 'Tamil', code: 'ta', disabled: true },
+                    { label: 'Telugu', code: 'te', disabled: true },
+                    { label: 'Marathi', code: 'mr', disabled: true }
+                  ].map(lang => (
+                    <button 
+                      key={lang.code} 
+                      disabled={lang.disabled}
+                      onClick={() => { updateSetting('language', lang.code); setShowLanguage(false); }} 
+                      className={`p-4 rounded-2xl font-bold flex justify-between items-center ${settings.language === lang.code ? 'bg-[#F5A623]/10 text-[#F5A623] border border-[#F5A623]/30' : 'bg-[#1c1c1c] text-white border border-[#333]'} ${lang.disabled ? 'opacity-40 grayscale cursor-not-allowed' : ''}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        {lang.label}
+                        {lang.disabled && <span className="text-[8px] font-black bg-[#333] text-gray-500 px-1.5 py-0.5 rounded uppercase tracking-widest">Coming Soon</span>}
+                      </div>
+                      {settings.language === lang.code && <div className="w-2 h-2 rounded-full bg-[#F5A623]" />}
+                    </button>
+                  ))}
+                </div>
             </div>
          </div>
        )}

@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const supabase = require('../supabaseClient');
+const { validateUserSession } = require('../middleware/auth');
 
 // GET /api/alerts – Fetch alerts
-router.get('/', async (req, res) => {
+router.get('/', validateUserSession, async (req, res) => {
   try {
     const { acknowledged, limit = 20 } = req.query;
 
@@ -24,7 +25,7 @@ router.get('/', async (req, res) => {
 });
 
 // PATCH /api/alerts/:id/acknowledge
-router.patch('/:id/acknowledge', async (req, res) => {
+router.patch('/:id/acknowledge', validateUserSession, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('alerts')

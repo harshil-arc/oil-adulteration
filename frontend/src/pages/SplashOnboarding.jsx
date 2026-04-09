@@ -1,16 +1,22 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Droplets, Zap, CheckCircle2, ChevronRight } from 'lucide-react';
+import { useApp } from '../context/AppContext';
 
 export default function SplashOnboarding() {
   const navigate = useNavigate();
+  const { session } = useApp();
   const [showSplash, setShowSplash] = useState(true);
   const [currentSlide, setCurrentSlide] = useState(0);
 
   useEffect(() => {
+    if (session) {
+      navigate('/home');
+      return;
+    }
     const timer = setTimeout(() => setShowSplash(false), 2000);
     return () => clearTimeout(timer);
-  }, []);
+  }, [session, navigate]);
 
   const slides = [
     {

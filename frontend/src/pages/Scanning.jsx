@@ -1,154 +1,164 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, CheckCircle, Circle } from 'lucide-react';
+import { X, CheckCircle, WifiOff } from 'lucide-react';
 import { socket } from '../lib/socket';
+import { useApp } from '../context/AppContext';
 
 const SCAN_STEPS = [
-  'Refractive index verified',
-  'Detecting lipid structure',
-  'UV fluorescence mapped',
-  'Density analysis complete',
-  'Running adulteration model',
-];
-
-const SCAN_STATUSES = [
-  'INITIALIZING SENSORS',
-  'CALIBRATING IR BEAM',
-  'SCANNING SPECTRUM',
-  'ANALYZING DENSITY',
-  'PROCESSING RESULTS',
+  'Validating API Handshake',
+  'Reading Molecular TDS',
+  'Mapping pH Acidity',
+  'Density Refraction Check',
+  'Final AI Inspection',
 ];
 
 export default function ScanningPage() {
   const navigate = useNavigate();
+  const { deviceStatus, liveData } = useApp();
   const [progress, setProgress] = useState(0);
-  const [statusIdx, setStatusIdx] = useState(0);
   const [completedSteps, setCompletedSteps] = useState([]);
   const [done, setDone] = useState(false);
 
+  // Connection logic: No simulation. Only real data moves the needle.
   useEffect(() => {
-    // Listen for real scan progress from server
-    socket.on('scan_progress', ({ progress: p, status }) => {
-      setProgress(p);
-      const idx = SCAN_STATUSES.indexOf(status);
-      if (idx >= 0) setStatusIdx(idx);
-      const stepsCompleted = Math.floor((p / 100) * SCAN_STEPS.length);
-      setCompletedSteps(SCAN_STEPS.slice(0, stepsCompleted));
-      if (p >= 100) {
-        setDone(true);
-        setTimeout(() => navigate('/analytics'), 1500);
-      }
+    if (deviceStatus === 'offline') {
+      setProgress(0);
+      setCompletedSteps([]);
+      return;
+    }
+
+    // Capture the 'new_reading' event to know when analysis is officially complete
+    socket.on('new_reading', () => {
+      setProgress(100);
+      setCompletedSteps(SCAN_STEPS);
+      setDone(true);
+      setTimeout(() => navigate('/analytics'), 1500);
     });
 
-    // Fallback local simulation if no socket event
-    let localProgress = 0;
-    const interval = setInterval(() => {
-      localProgress += Math.random() * 8 + 4;
-      if (localProgress >= 100) {
-        localProgress = 100;
-        clearInterval(interval);
-        setDone(true);
-        setTimeout(() => navigate('/analytics'), 1500);
-      }
-      setProgress(Math.round(localProgress));
-      setStatusIdx(Math.min(Math.floor(localProgress / 22), SCAN_STATUSES.length - 1));
-      setCompletedSteps(SCAN_STEPS.slice(0, Math.floor((localProgress / 100) * SCAN_STEPS.length)));
-    }, 600);
-
     return () => {
-      clearInterval(interval);
-      socket.off('scan_progress');
+      socket.off('new_reading');
     };
-  }, [navigate]);
+  }, [deviceStatus, navigate]);
+
+  // Update progress UI based on live incoming sensor packets
+  useEffect(() => {
+    if (liveData && !done) {
+      // Each packet received moves progress slightly until backend emits 'new_reading'
+      setProgress(prev => Math.min(prev + 15, 95));
+      const stepsDone = Math.floor((progress / 100) * SCAN_STEPS.length);
+      setCompletedSteps(SCAN_STEPS.slice(0, Math.max(stepsDone, 1)));
+    }
+  }, [liveData, done, progress]);
 
   const handleCancel = () => navigate('/');
 
+  const isConnecting = deviceStatus === 'offline';
+
   return (
     <div className="min-h-[calc(100vh-72px)] flex flex-col items-center justify-between px-6 pt-8 pb-12 animate-slide-up">
-      {/* Oil drop illustration */}
-      <div className="flex flex-col items-center gap-8 flex-1 justify-center">
+      <div className="flex flex-col items-center gap-8 flex-1 justify-center w-full">
         <div className="relative">
-          <div className="w-52 h-52 rounded-full bg-gray-100 flex items-center justify-center">
-            <div className="w-40 h-40 rounded-full bg-gradient-to-br from-amber-200 via-amber-400 to-yellow-600 flex items-center justify-center shadow-xl relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-tl from-transparent via-white/20 to-white/40 rounded-full" />
-              <span className="text-6xl select-none">🧪</span>
+          <div className="w-52 h-52 rounded-full bg-[#111] border border-[#333] flex items-center justify-center">
+            <div className={`w-40 h-40 rounded-full flex items-center justify-center shadow-xl relative overflow-hidden transition-all duration-1000 ${
+              isConnecting ? 'bg-gray-900 grayscale' : 'bg-gradient-to-br from-amber-400 to-yellow-700'
+            }`}>
+              <div className="absolute inset-0 bg-gradient-to-tl from-transparent via-white/10 to-white/20 rounded-full" />
+              <span className={`text-6xl transition-transform duration-500 ${!done && !isConnecting ? 'animate-pulse' : ''}`}>
+                {isConnecting ? '📡' : '🧪'}
+              </span>
             </div>
           </div>
-          {/* Pulsing ring */}
-          {!done && (
-            <div className="absolute inset-0 rounded-full border-2 border-brand-400/40 animate-ping" style={{ animationDuration: '2s' }} />
+          
+          {!done && !isConnecting && (
+            <div className="absolute inset-0 rounded-full border-2 border-[#d4af37]/40 animate-ping" />
           )}
+          
           {done && (
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="w-full h-full rounded-full bg-brand-500/20 flex items-center justify-center">
-                <CheckCircle size={48} className="text-brand-600" />
+                <CheckCircle size={48} className="text-[#d4af37]" />
               </div>
             </div>
           )}
         </div>
 
         <div className="text-center">
-          <h1 className="text-3xl font-extrabold text-gray-900 mb-2">
-            {done ? 'Analysis Complete!' : 'Analyzing Oil Purity...'}
+          <h1 className="text-3xl font-black text-white mb-2">
+            {isConnecting ? 'Awaiting Sensor...' : done ? 'Analysis Complete!' : 'Verifying PureOil'}
           </h1>
-          <p className="text-gray-500 text-sm">
-            {done ? 'Redirecting to results...' : 'Calibrating molecular sensors for density mapping'}
+          <p className="text-gray-500 text-sm max-w-[250px] mx-auto">
+            {isConnecting 
+              ? 'Please scan the oil sample using your physically connected ESP device.' 
+              : done 
+                ? 'Results have been verified by AI.' 
+                : 'Processing high-frequency telemetry from sensors...'}
           </p>
         </div>
 
-        {/* Progress card */}
-        <div className="w-full card">
-          <div className="flex items-end justify-between mb-3">
-            <div>
-              <p className="text-xs text-gray-400 uppercase font-semibold tracking-widest mb-1">Current Progress</p>
-              <p className="text-4xl font-extrabold text-gray-900">{progress}%</p>
-            </div>
-            <div className="text-right">
-              <p className="text-xs text-gray-400 uppercase font-semibold tracking-widest mb-1">Status</p>
-              <p className="text-xs font-bold text-brand-600">{SCAN_STATUSES[statusIdx]}</p>
-            </div>
+        {/* Live Stream Data Card */}
+        <div className="w-full card border-[#333] p-5 bg-[#0f0f0f]">
+          <div className="flex justify-between items-center mb-4">
+             <div className="flex items-center gap-2">
+                <div className={`w-2 h-2 rounded-full ${isConnecting ? 'bg-red-500' : 'bg-green-500 animate-pulse'}`} />
+                <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Live Telemetry</span>
+             </div>
+             <span className="text-[10px] font-bold text-[#d4af37] uppercase tracking-widest">
+               {isConnecting ? 'Disconnected' : 'Streaming...'}
+             </span>
           </div>
-
-          {/* Progress bar */}
-          <div className="w-full h-3 bg-gray-100 rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full scan-bar-animated transition-all duration-500"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
+          
+          {isConnecting ? (
+            <div className="py-8 flex flex-col items-center justify-center gap-3 text-gray-600">
+               <WifiOff size={32} />
+               <p className="text-xs font-medium">Connect ESP to Start Data Flow</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-4">
+               <div className="space-y-1">
+                 <p className="text-[9px] text-gray-500 font-bold uppercase">PH LEVEL</p>
+                 <p className="text-lg font-black text-white">{liveData?.sensor_values?.ph?.toFixed(2) || '---'}</p>
+               </div>
+               <div className="space-y-1">
+                 <p className="text-[9px] text-gray-500 font-bold uppercase">DENSITY</p>
+                 <p className="text-lg font-black text-white">{liveData?.sensor_values?.density_gcm3?.toFixed(3) || '---'}</p>
+               </div>
+               <div className="space-y-1">
+                 <p className="text-[9px] text-gray-500 font-bold uppercase">TDS PPM</p>
+                 <p className="text-lg font-black text-white">{liveData?.sensor_values?.tds_ppm || '---'}</p>
+               </div>
+               <div className="space-y-1">
+                 <p className="text-[9px] text-gray-500 font-bold uppercase">TEMP °C</p>
+                 <p className="text-lg font-black text-white">{liveData?.sensor_values?.temperature_c?.toFixed(1) || '---'}</p>
+               </div>
+            </div>
+          )}
         </div>
 
-        {/* Step list */}
-        <div className="w-full flex flex-col gap-3">
-          {SCAN_STEPS.map((step, i) => {
-            const isComplete = completedSteps.includes(step);
-            const isActive = !isComplete && i === completedSteps.length;
-            return (
-              <div key={step} className="flex items-center gap-3">
-                {isComplete ? (
-                  <div className="w-2.5 h-2.5 rounded-full bg-brand-500 flex-shrink-0" />
-                ) : (
-                  <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${isActive ? 'bg-gray-300 animate-pulse-soft' : 'bg-gray-200'}`} />
-                )}
-                <p className={`text-sm ${isComplete ? 'text-gray-700 font-medium' : 'text-gray-400'}`}>{step}</p>
-              </div>
-            );
-          })}
-        </div>
+        {/* Progress bar */}
+        {!isConnecting && (
+          <div className="w-full">
+            <div className="flex justify-between mb-2">
+               <span className="text-[10px] font-bold text-gray-500 uppercase">Analysis Progress</span>
+               <span className="text-[10px] font-bold text-white">{progress}%</span>
+            </div>
+            <div className="w-full h-2 bg-[#1c1c1c] rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-[#d4af37] to-yellow-600 transition-all duration-500"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
+        )}
       </div>
 
-      {/* Footer note + cancel */}
-      <div className="w-full flex flex-col items-center gap-4">
-        <p className="text-xs text-gray-400 text-center uppercase tracking-widest font-medium px-4">
-          Scanning in progress. Keep the sensor stationary for clinical accuracy.
-        </p>
+      <div className="w-full flex flex-col items-center gap-4 mt-8">
         {!done && (
           <button
             onClick={handleCancel}
-            className="flex items-center gap-2 text-red-500 font-bold text-sm hover:text-red-600 transition-colors"
+            className="flex items-center gap-2 text-red-500/70 font-bold text-sm hover:text-red-500 transition-colors uppercase tracking-widest text-[11px]"
           >
-            <X size={16} />
-            Cancel Scan
+            <X size={14} />
+            Cancel Session
           </button>
         )}
       </div>

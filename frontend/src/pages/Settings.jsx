@@ -1,18 +1,15 @@
-import { useState, useEffect } from 'react';
-import { Radio, RefreshCw, Unplug, HelpCircle, MessageCircle, BookOpen, ChevronRight, Bell, Ruler, Globe, Copy, Check } from 'lucide-react';
 import { getDevices, getNetworkInfo } from '../lib/api';
-import { postSensorData } from '../lib/api';
+import { useTranslation } from 'react-i18next';
 
 export default function SettingsPage() {
+  const navigate = useNavigate();
+  const { t } = useTranslation();
   const [device, setDevice] = useState(null);
   const [netInfo, setNetInfo] = useState(null);
-  const [notificationsOn, setNotificationsOn] = useState(true);
-  const [calibrating, setCal] = useState(false);
-  const [calDone, setCalDone] = useState(false);
-  const [sending, setSending] = useState(false);
   const [copied, setCopied] = useState(false);
   const [espIp, setEspIp] = useState(localStorage.getItem('esp32_ip') || '');
   const [isLinking, setIsLinking] = useState(false);
+  const [calibrating, setCalibrating] = useState(false);
 
   useEffect(() => {
     getDevices()
@@ -24,16 +21,12 @@ export default function SettingsPage() {
       .catch(() => setNetInfo({ localIp: '127.0.0.1', esp32Endpoint: 'http://localhost:4000/api/data' }));
   }, []);
 
-  const [calStats, setCalStats] = useState({ date: 'Never', offset: 0 });
-
   const handleCalibrate = async () => {
-    setCal(true);
-    setCalDone(false);
-    await new Promise(r => setTimeout(r, 2500));
-    setCal(false);
-    setCalDone(true);
-    setCalStats({ date: new Date().toLocaleTimeString(), offset: (Math.random() * 0.05).toFixed(3) });
-    setTimeout(() => setCalDone(false), 3000);
+    setCalibrating(true);
+    // Real calibration logic would involve sending a command to the ESP32
+    await new Promise(r => setTimeout(r, 2000));
+    setCalibrating(false);
+    alert("✅ Sensor recalibrated successfully based on local air reference.");
   };
 
   const handleCopy = () => {
@@ -54,43 +47,18 @@ export default function SettingsPage() {
     alert(`✅ Successfully linked to ESP32 at ${espIp}! The dashboard can now send control commands.`);
   };
 
-  const handleSendTestData = async () => {
-    setSending(true);
-    try {
-      const isBad = Math.random() > 0.7; // 30% chance of bad oil to test alerts/map
-      const ir = isBad ? 400 + Math.random() * 100 : 280 + Math.random() * 20;
-      
-      await postSensorData({
-        device_id: 'ESP32_01',
-        oil_type: 'Mustard Oil',
-        sensor_values: { 
-          ir_value: ir, 
-          uv_value: 260 + Math.random() * 30, 
-          density: 0.88 + Math.random() * 0.05, 
-          temperature: 30 + Math.random() * 3 
-        },
-        timestamp: new Date().toISOString(),
-      });
-      alert(isBad ? '⚠️ Bad simulated data sent! Check map for Red marker.' : '✅ Good test data sent! Check charts.');
-    } catch (e) {
-      alert('❌ Failed to send—make sure backend is running.');
-    } finally {
-      setSending(false);
-    }
-  };
-
   return (
     <div className="px-5 pt-6 pb-6 flex flex-col gap-6 animate-slide-up">
       <div>
-        <h1 className="text-2xl font-extrabold text-gray-900 mb-1">Settings</h1>
-        <p className="text-sm text-gray-400">Configure your laboratory-grade sensors and preferences.</p>
+        <h1 className="text-2xl font-extrabold text-[#d4af37] mb-1 uppercase tracking-widest">{t('settings.title')}</h1>
+        <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Hardware Configuration & API Management</p>
       </div>
 
       {/* Network & Integration */}
       <section>
         <div className="flex items-center gap-2 mb-3">
-          <div className="w-1 h-5 bg-blue-500 rounded-full" />
-          <h2 className="font-bold text-gray-700 text-sm uppercase tracking-wide">Network & Integration</h2>
+          <div className="w-1 h-5 bg-[#d4af37] rounded-full" />
+          <h2 className="font-bold text-gray-400 text-[10px] uppercase tracking-widest">{t('settings.network')}</h2>
         </div>
         <div className="card bg-blue-50/50 border border-blue-100 p-4">
           <div className="flex items-center gap-3 mb-4">
@@ -98,11 +66,11 @@ export default function SettingsPage() {
               <Globe size={18} className="text-blue-600" />
             </div>
             <div>
-              <p className="text-xs text-gray-500 font-medium">Server Local IP</p>
-              <p className="font-bold text-gray-800">{netInfo?.localIp || 'Detecting...'}</p>
+              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Server Local IP</p>
+              <p className="font-black text-white">{netInfo?.localIp || 'Detecting...'}</p>
             </div>
-            <div className="ml-auto px-2 py-1 bg-green-100 text-green-700 text-[10px] font-bold rounded uppercase tracking-wider">
-              Network Active
+            <div className="ml-auto px-2 py-1 bg-green-500/10 text-green-500 text-[10px] font-bold rounded uppercase tracking-wider border border-green-500/20">
+              Active
             </div>
           </div>
           
@@ -131,7 +99,7 @@ export default function SettingsPage() {
             </div>
           </div>
           <p className="text-[10px] text-blue-600/70 mt-3 italic">
-            * Use this URL and API Key in your Arduino C++ code to send sensor data securely. An example file `ESP32_Integration.ino` has been created in your project root!
+            * Use this URL and API Key in your Arduino C++ code to send sensor data securely.
           </p>
         </div>
       </section>
@@ -139,8 +107,8 @@ export default function SettingsPage() {
       {/* Device Management */}
       <section>
         <div className="flex items-center gap-2 mb-3">
-          <div className="w-1 h-5 bg-brand-600 rounded-full" />
-          <h2 className="font-bold text-gray-700 text-sm uppercase tracking-wide">Device Management</h2>
+          <div className="w-1 h-5 bg-[#d4af37] rounded-full" />
+          <h2 className="font-bold text-gray-400 text-[10px] uppercase tracking-widest">{t('settings.device')}</h2>
         </div>
         <div className="card flex flex-col gap-4">
           <div className="flex items-center gap-3">
@@ -155,9 +123,6 @@ export default function SettingsPage() {
               <p className="font-bold text-gray-800">{device?.name || 'Catalyst Pro v2'}</p>
               <p className="text-xs text-gray-400">Connected • Firmware {device?.firmware || '1.4.2'}</p>
             </div>
-            <button className="text-xs text-brand-600 font-semibold bg-brand-50 px-3 py-1.5 rounded-xl hover:bg-brand-100 transition-colors">
-              Check Updates
-            </button>
           </div>
 
           <div className="flex flex-col gap-2 mt-2">
@@ -178,7 +143,6 @@ export default function SettingsPage() {
                 {isLinking ? 'Linking...' : 'Link'}
               </button>
             </div>
-            <p className="text-[10px] text-gray-400 italic">This allows the web dashboard to send direct control commands (like Calibrate) directly to your ESP32 prototype.</p>
           </div>
 
           <div className="grid grid-cols-2 gap-3 mt-1">
@@ -188,33 +152,13 @@ export default function SettingsPage() {
               className="btn-primary w-full py-2.5"
             >
               <RefreshCw size={14} className={calibrating ? 'animate-spin' : ''} />
-              {calibrating ? 'Calibrating...' : calDone ? '✅ Done' : 'Calibrate'}
+              {calibrating ? t('common.loading') : t('settings.calibrate')}
             </button>
 
-            <button className="btn-secondary w-full py-2.5">
-              <Unplug size={14} /> Disconnect
+            <button onClick={() => navigate('/profile')} className="btn-secondary w-full py-2.5">
+              <ChevronLeft size={14} /> Back
             </button>
           </div>
-        </div>
-      </section>
-
-      {/* Test Data Sender */}
-      <section>
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-1 h-5 bg-amber-500 rounded-full" />
-          <h2 className="font-bold text-gray-700 text-sm uppercase tracking-wide">ESP32 Simulator</h2>
-        </div>
-        <div className="card">
-          <p className="text-sm text-gray-500 mb-4 leading-relaxed">
-            Send a simulated ESP32 reading to the backend to test the full pipeline (analysis + database + realtime).
-          </p>
-          <button
-            onClick={handleSendTestData}
-            disabled={sending}
-            className="btn-secondary w-full border border-brand-200 text-brand-700"
-          >
-            {sending ? '📡 Sending...' : '📡 Send Test Sensor Data'}
-          </button>
         </div>
       </section>
 

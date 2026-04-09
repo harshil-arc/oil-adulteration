@@ -1,9 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const supabase = require('../supabaseClient');
+const { validateUserSession } = require('../middleware/auth');
 
 // GET /api/history – Fetch past analysis results with filters
-router.get('/', async (req, res) => {
+router.get('/', validateUserSession, async (req, res) => {
   try {
     const { oil_type, date_from, date_to, limit = 50, offset = 0, quality } = req.query;
 
@@ -32,7 +33,7 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/history/:id – Get individual reading detail
-router.get('/:id', async (req, res) => {
+router.get('/:id', validateUserSession, async (req, res) => {
   try {
     const { data, error } = await supabase
       .from('analysis_results')

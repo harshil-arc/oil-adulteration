@@ -8,117 +8,46 @@
  * Reference sensor ranges for pure oils.
  * Values represent: { ir: [min,max], uv: [min,max], density: [min,max] }
  */
+/**
+ * Reference sensor ranges for pure oils.
+ * Values represent: { tds: [min,max], turbidity: [min,max], ph: [min,max], density: [min,max], viscosity: [min,max], refractive: [min,max] }
+ */
 const OIL_PROFILES = {
   'Mustard Oil': {
-    ir: [300, 380], uv: [190, 250], density: [0.905, 0.925],
+    tds: [80, 120], turbidity: [8, 12], ph: [6.2, 6.6], density: [0.905, 0.910], 
+    viscosity: [70, 78], refractive: [1.465, 1.468],
     icon: '🌿',
-    adulterants: {
-      low_ir: 'Kerosene',
-      high_uv: 'Mineral Oil',
-      low_density: 'Hexane',
-      high_density: 'Palm Oil',
-    },
     healthNote: 'Mineral-adulterated mustard oil can lead to digestive and metabolic issues.',
   },
   'Olive Oil': {
-    ir: [350, 430], uv: [180, 240], density: [0.910, 0.920],
+    tds: [40, 70], turbidity: [2, 6], ph: [5.8, 6.4], density: [0.910, 0.915], 
+    viscosity: [80, 85], refractive: [1.467, 1.470],
     icon: '🫒',
-    adulterants: {
-      low_ir: 'Sunflower Oil',
-      high_uv: 'Mineral Oil',
-      low_density: 'Canola Oil',
-      high_density: 'Palm Oil',
-    },
     healthNote: 'Adulterated olive oil loses antioxidant polyphenols critical for heart health.',
   },
   'Sunflower Oil': {
-    ir: [280, 360], uv: [170, 230], density: [0.918, 0.928],
+    tds: [100, 150], turbidity: [4, 8], ph: [6.0, 6.5], density: [0.918, 0.923], 
+    viscosity: [60, 68], refractive: [1.472, 1.475],
     icon: '🌻',
-    adulterants: {
-      low_ir: 'Soybean Oil',
-      high_uv: 'Cottonseed Oil',
-      low_density: 'Hexane',
-      high_density: 'Palm Oil',
-    },
     healthNote: 'Adulterated sunflower oil may increase trans-fat content causing cardiovascular risk.',
   },
   'Coconut Oil': {
-    ir: [410, 490], uv: [150, 210], density: [0.900, 0.915],
+    tds: [30, 60], turbidity: [1, 5], ph: [5.5, 6.2], density: [0.903, 0.910], 
+    viscosity: [40, 50], refractive: [1.448, 1.450],
     icon: '🥥',
-    adulterants: {
-      low_ir: 'Palm Kernel Oil',
-      high_uv: 'Mineral Oil',
-      low_density: 'Vegetable Oil',
-      high_density: 'Palm Oil',
-    },
     healthNote: 'Adulterated coconut oil may be rancid and promote inflammation.',
   },
   'Groundnut Oil': {
-    ir: [310, 390], uv: [165, 225], density: [0.912, 0.920],
+    tds: [60, 100], turbidity: [6, 10], ph: [6.3, 6.8], density: [0.912, 0.918], 
+    viscosity: [75, 82], refractive: [1.467, 1.470],
     icon: '🥜',
-    adulterants: {
-      low_ir: 'Cottonseed Oil',
-      high_uv: 'Mineral Oil',
-      low_density: 'Soybean Oil',
-      high_density: 'Palm Oil',
-    },
     healthNote: 'Adulterated groundnut oil may trigger severe allergic reactions.',
-  },
-  'Palm Oil': {
-    ir: [370, 450], uv: [200, 260], density: [0.924, 0.935],
-    icon: '🌴',
-    adulterants: {
-      low_ir: 'Soybean Oil',
-      high_uv: 'Mineral Oil',
-      low_density: 'Vegetable Oil',
-      high_density: 'Lard',
-    },
-    healthNote: 'Adulterated palm oil may contain carcinogenic compounds.',
-  },
-  // Petroleum / Industrial oils
-  'Engine Oil (SAE 10W-30)': {
-    ir: [600, 720], uv: [400, 500], density: [0.860, 0.890],
-    icon: '⚙️',
-    adulterants: {
-      low_ir: 'Water Contamination',
-      high_uv: 'Coolant Leakage',
-      low_density: 'Fuel Dilution',
-      high_density: 'Sludge Buildup',
-    },
-    healthNote: 'Engine oil contamination can cause bearing failure and engine seizure.',
-  },
-  'Diesel': {
-    ir: [520, 640], uv: [350, 450], density: [0.820, 0.845],
-    icon: '⛽',
-    adulterants: {
-      low_ir: 'Kerosene Blending',
-      high_uv: 'Water Content',
-      low_density: 'Naphtha',
-      high_density: 'Heavy Oil Mixing',
-    },
-    healthNote: 'Adulterated diesel causes fuel injector clogging and excessive emissions.',
-  },
-  'Kerosene': {
-    ir: [490, 610], uv: [320, 420], density: [0.780, 0.820],
-    icon: '🛢️',
-    adulterants: {
-      low_ir: 'Naphtha',
-      high_uv: 'Dye Mixing',
-      low_density: 'Gasoline',
-      high_density: 'Diesel Blending',
-    },
-    healthNote: 'Adulterated kerosene is a fire hazard and produces toxic fumes.',
   },
 };
 
 const DEFAULT_PROFILE = {
-  ir: [300, 400], uv: [180, 250], density: [0.900, 0.930],
-  adulterants: {
-    low_ir: 'Unknown Solvent',
-    high_uv: 'Mineral Oil',
-    low_density: 'Light Hydrocarbon',
-    high_density: 'Heavy Oil',
-  },
+  tds: [50, 150], turbidity: [5, 15], ph: [6.0, 7.0], density: [0.900, 0.930],
+  viscosity: [50, 90], refractive: [1.450, 1.480],
   healthNote: 'Avoid consumption until further testing.',
 };
 
@@ -134,84 +63,65 @@ function clamp(val, min, max) {
  */
 function deviationScore(value, min, max) {
   if (value >= min && value <= max) return 0;
-  const range = max - min;
-  if (value < min) return Math.min((min - value) / range, 1);
-  return Math.min((value - max) / range, 1);
+  const range = (max - min) || 1;
+  if (value < min) return Math.min((min - value) / (min * 0.2), 1);
+  return Math.min((value - max) / (max * 0.2), 1);
 }
 
 /**
  * Main analysis function
- * @param {Object} sensorValues - { ir_value, uv_value, density, temperature }
+ * @param {Object} v - sensor values
  * @param {string} oilType
  * @returns {Object} analysis result
  */
-function analyzeOil(sensorValues, oilType) {
-  const { ir_value, uv_value, density, temperature } = sensorValues;
+function analyzeOil(v, oilType) {
   const profile = OIL_PROFILES[oilType] || DEFAULT_PROFILE;
 
   // Calculate deviation for each sensor
-  const irDev = deviationScore(ir_value, profile.ir[0], profile.ir[1]);
-  const uvDev = deviationScore(uv_value, profile.uv[0], profile.uv[1]);
-  const densDev = deviationScore(density, profile.density[0], profile.density[1]);
+  const d_tds = deviationScore(v.tds_ppm, profile.tds[0], profile.tds[1]);
+  const d_turb = deviationScore(v.turbidity_ntu, profile.turbidity[0], profile.turbidity[1]);
+  const d_ph = deviationScore(v.ph, profile.ph[0], profile.ph[1]);
+  const d_dens = deviationScore(v.density_gcm3, profile.density[0], profile.density[1]);
+  const d_visc = deviationScore(v.viscosity_cp, profile.viscosity[0], profile.viscosity[1]);
+  const d_refr = deviationScore(v.refractive_index, profile.refractive[0], profile.refractive[1]);
 
-  // Temperature compensation – slight adjustment
-  const tempFactor = temperature > 40 ? 0.97 : temperature < 15 ? 0.98 : 1.0;
-
-  // Weighted average deviation (IR most important, then density, then UV)
-  const weightedDev = (irDev * 0.45 + densDev * 0.35 + uvDev * 0.20) * tempFactor;
+  // Weighted average deviation
+  const weightedDev = (
+    d_tds * 0.15 + 
+    d_turb * 0.15 + 
+    d_ph * 0.10 + 
+    d_dens * 0.25 + 
+    d_visc * 0.15 + 
+    d_refr * 0.20
+  );
 
   // Adulteration increases non-linearly
   const adulterationRaw = clamp(weightedDev * 100, 0, 100);
   const adulteration = Math.round(adulterationRaw * 10) / 10;
   const purity = Math.round((100 - adulteration) * 10) / 10;
 
-  // Identify specific likely adulterants
+  // Identify issues
   const likely_adulterants = [];
   const contaminants = [];
 
-  if (irDev > 0.05) {
-    const adulterantName = ir_value < profile.ir[0]
-      ? profile.adulterants.low_ir
-      : profile.adulterants.high_ir || 'Unknown IR Compound';
-    likely_adulterants.push(adulterantName);
-    contaminants.push({
-      name: adulterantName,
-      percentage: Math.round(irDev * 25 * 10) / 10,
-      source: 'IR Spectrum',
-    });
+  if (d_dens > 0.05) {
+    const issue = v.density_gcm3 < profile.density[0] ? 'Light Hydrocarbons/Solvents' : 'Heavy Oils/Lard';
+    likely_adulterants.push(issue);
+    contaminants.push({ name: issue, percentage: Math.round(d_dens * 30), source: 'Density' });
   }
-
-  if (densDev > 0.05) {
-    const adulterantName = density < profile.density[0]
-      ? profile.adulterants.low_density
-      : profile.adulterants.high_density;
-    if (!likely_adulterants.includes(adulterantName)) {
-      likely_adulterants.push(adulterantName);
-      contaminants.push({
-        name: adulterantName,
-        percentage: Math.round(densDev * 20 * 10) / 10,
-        source: 'Density Sensor',
-      });
-    }
+  if (d_refr > 0.05) {
+    const issue = 'Synthetic Additives/Refractive Modifiers';
+    if (!likely_adulterants.includes(issue)) likely_adulterants.push(issue);
+    contaminants.push({ name: issue, percentage: Math.round(d_refr * 25), source: 'Refractive Index' });
   }
-
-  if (uvDev > 0.08) {
-    const adulterantName = uv_value > profile.uv[1]
-      ? profile.adulterants.high_uv
-      : 'Synthetic Additives';
-    if (!likely_adulterants.includes(adulterantName)) {
-      likely_adulterants.push(adulterantName);
-      contaminants.push({
-        name: adulterantName,
-        percentage: Math.round(uvDev * 15 * 10) / 10,
-        source: 'UV Fluorescence',
-      });
-    }
+  if (d_ph > 0.1) {
+    likely_adulterants.push('Chemical Neutralizers');
+    contaminants.push({ name: 'Chemical Residue', percentage: Math.round(d_ph * 20), source: 'pH Sensor' });
   }
 
   // Quality classification
   let quality, qualityLabel;
-  if (adulteration <= 10) {
+  if (adulteration <= 8) {
     quality = 'Safe';
     qualityLabel = 'Certified Pure';
   } else if (adulteration <= 25) {
@@ -230,7 +140,7 @@ function analyzeOil(sensorValues, oilType) {
     likely_adulterants,
     contaminants,
     health_advisory: adulteration > 10 ? profile.healthNote : null,
-    sensor_snapshot: { ir_value, uv_value, density, temperature },
+    sensor_snapshot: v,
   };
 }
 
