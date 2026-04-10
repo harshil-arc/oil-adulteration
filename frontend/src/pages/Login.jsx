@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Droplets, Eye, EyeOff, Mail, Lock, User, Phone, AlertCircle } from 'lucide-react';
+import { Droplets, Eye, EyeOff, Mail, Lock, User, Phone, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 export default function Login() {
@@ -63,7 +63,7 @@ export default function Login() {
     if (error) {
       setErrorMsg(error.message);
     } else {
-      setSuccessMsg("Account created! You can now log in.");
+      setSuccessMsg("Account created! PLEASE CHECK YOUR EMAIL to verify your account before logging in (or disable 'Confirm email' in Supabase Settings).");
       setActiveTab('login');
       setPassword('');
       setConfirmPassword('');

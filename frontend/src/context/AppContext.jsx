@@ -78,6 +78,12 @@ export function AppProvider({ children }) {
       if (session) {
         setSession(session);
         setUser(session.user);
+        
+        // Sync email and name from Supabase user metadata
+        updateProfile({
+          email: session.user.email,
+          name: session.user.user_metadata?.full_name || session.user.email.split('@')[0]
+        });
       }
       setLoadingSession(false);
     };
@@ -87,6 +93,13 @@ export function AppProvider({ children }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setUser(session?.user || null);
+      
+      if (session?.user) {
+        updateProfile({
+          email: session.user.email,
+          name: session.user.user_metadata?.full_name || session.user.email.split('@')[0]
+        });
+      }
     });
 
     return () => {
