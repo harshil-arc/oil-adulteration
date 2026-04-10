@@ -82,7 +82,7 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex flex-col pt-safe relative overflow-y-auto">
+    <div className="min-h-screen theme-bg flex flex-col pt-safe relative overflow-y-auto">
       {/* Background Glow */}
       <div className="absolute top-10 left-1/2 -translate-x-1/2 w-80 h-80 bg-[#d4af37] opacity-10 rounded-full blur-[100px] pointer-events-none" />
 
@@ -91,14 +91,14 @@ export default function Login() {
         <div className="w-16 h-16 bg-gradient-to-br from-[#f5c842] to-[#d4af37] text-[#0a0a0a] rounded-2xl flex items-center justify-center shadow-glow-gold mb-4 rotate-12">
           <Droplets size={32} fill="currentColor" strokeWidth={1} className="-rotate-12" />
         </div>
-        <h1 className="text-3xl font-black tracking-tight text-white">Pure<span className="text-[#d4af37]">Oil</span></h1>
+        <h1 className="text-3xl font-black tracking-tight theme-text">Pure<span className="text-[#d4af37]">Oil</span></h1>
       </div>
 
       {/* Main Card */}
       <div className="flex-1 card rounded-t-[2.5rem] rounded-b-none border-t border-[#d4af37]/20 border-l-0 border-r-0 border-b-0 px-6 py-8 flex flex-col z-10">
         
         {/* Tabs */}
-        <div className="flex w-full border-b border-[#333] mb-8 relative">
+        <div className="flex w-full border-b border-[var(--border-color)] mb-8 relative">
           <button 
             onClick={() => setActiveTab('login')}
             className={`flex-1 pb-4 text-sm font-bold tracking-widest uppercase transition-colors ${activeTab === 'login' ? 'text-[#d4af37]' : 'text-gray-500 hover:text-gray-400'}`}
@@ -145,7 +145,7 @@ export default function Login() {
                   placeholder="Email Address" 
                   required
                   disabled={isLoading}
-                  className="w-full bg-[#1c1c1c] border border-[#333] focus:border-[#d4af37] text-white rounded-2xl py-4 pl-12 pr-4 outline-none transition-colors disabled:opacity-50"
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[#d4af37] theme-text rounded-2xl py-4 pl-12 pr-4 outline-none transition-colors disabled:opacity-50"
                 />
               </div>
 
@@ -161,7 +161,7 @@ export default function Login() {
                   required
                   minLength={6}
                   disabled={isLoading}
-                  className="w-full bg-[#1c1c1c] border border-[#333] focus:border-[#d4af37] text-white rounded-2xl py-4 pl-12 pr-12 outline-none transition-colors disabled:opacity-50"
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[#d4af37] theme-text rounded-2xl py-4 pl-12 pr-12 outline-none transition-colors disabled:opacity-50"
                 />
                 <button 
                   type="button"
@@ -183,12 +183,12 @@ export default function Login() {
               </button>
 
               <div className="flex items-center gap-4 my-4">
-                <div className="flex-1 h-px bg-[#333]" />
+                <div className="flex-1 h-px bg-[var(--border-color)]" />
                 <span className="text-gray-500 text-xs font-bold uppercase tracking-widest">or continue with</span>
-                <div className="flex-1 h-px bg-[#333]" />
+                <div className="flex-1 h-px bg-[var(--border-color)]" />
               </div>
 
-              <button type="button" onClick={handleGoogleAuth} disabled={isLoading} className="w-full btn-secondary text-white border-[#333] hover:bg-[#1c1c1c] disabled:opacity-50">
+              <button type="button" onClick={handleGoogleAuth} disabled={isLoading} className="w-full btn-secondary theme-text border-[var(--border-color)] hover:bg-[var(--bg-elevated)] disabled:opacity-50">
                 <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="Google" />
                 Google
               </button>
@@ -201,7 +201,7 @@ export default function Login() {
                 </div>
                 <input 
                   type="text" placeholder="Full Name" required value={fullName} onChange={e=>setFullName(e.target.value)} disabled={isLoading}
-                  className="w-full bg-[#1c1c1c] border border-[#333] focus:border-[#d4af37] text-white rounded-2xl py-3.5 pl-11 pr-4 outline-none transition-colors text-sm disabled:opacity-50"
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[#d4af37] theme-text rounded-2xl py-3.5 pl-11 pr-4 outline-none transition-colors text-sm disabled:opacity-50"
                 />
               </div>
 
@@ -231,7 +231,7 @@ export default function Login() {
                 </div>
                 <input 
                   type={showPassword ? "text" : "password"} placeholder="Password" required minLength={6} value={password} onChange={e=>setPassword(e.target.value)} disabled={isLoading}
-                  className="w-full bg-[#1c1c1c] border border-[#333] focus:border-[#d4af37] text-white rounded-2xl py-3.5 pl-11 pr-11 outline-none transition-colors text-sm disabled:opacity-50"
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[#d4af37] theme-text rounded-2xl py-3.5 pl-11 pr-11 outline-none transition-colors text-sm disabled:opacity-50"
                 />
                 <button 
                   type="button" onClick={() => setShowPassword(!showPassword)}

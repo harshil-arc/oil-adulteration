@@ -86,9 +86,9 @@ export default function Home() {
     <div className="px-5 pt-6 pb-6 flex flex-col gap-6 animate-fade-in">
       {/* Top Bar */}
       <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-white tracking-tight">{t('home.greeting')} 👋</h1>
+        <h1 className="text-xl font-bold theme-text tracking-tight">{t('home.greeting')} 👋</h1>
         <div className="flex items-center gap-3">
-          <button className="w-10 h-10 rounded-full bg-[#1c1c1c] border border-[#333] flex items-center justify-center text-gray-400 hover:text-white transition-colors relative">
+          <button className="w-10 h-10 rounded-full bg-[var(--bg-elevated)] border border-[var(--border-color)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors relative">
             <Bell size={18} />
             <div className="absolute top-2 right-2.5 w-2 h-2 bg-[#d4af37] rounded-full shadow-glow-gold" />
           </button>
@@ -100,7 +100,7 @@ export default function Home() {
       </div>
 
       {/* Hero Card */}
-      <div className="relative overflow-hidden rounded-[20px] p-6 shadow-glow-gold border border-[#d4af37]/30 bg-[#141414]">
+      <div className="relative overflow-hidden rounded-[20px] p-6 shadow-glow-gold border border-[#d4af37]/30 bg-[var(--bg-card)]">
         {/* Glow */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-[#d4af37] opacity-10 rounded-full blur-[60px] translate-x-1/3 -translate-y-1/3 pointer-events-none" />
         
@@ -113,8 +113,8 @@ export default function Home() {
             <DeviceStatus />
           </div>
           
-          <h2 className="text-3xl font-black text-white mb-2 leading-tight">{t('home.test_oil')}</h2>
-          <p className="text-gray-400 text-sm mb-6 max-w-[200px] leading-relaxed">
+          <h2 className="text-3xl font-black theme-text mb-2 leading-tight">{t('home.test_oil')}</h2>
+          <p className="text-[var(--text-secondary)] text-sm mb-6 max-w-[200px] leading-relaxed">
             {t('home.hero_desc')}
           </p>
           
@@ -145,17 +145,17 @@ export default function Home() {
 
       {/* Stats Row */}
       <div className="grid grid-cols-3 gap-3">
-        <div className="card flex flex-col items-center justify-center py-4 px-2 hover:bg-[#1c1c1c] transition-colors border-[#333]">
-          <p className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-1">{t('home.total_scans')}</p>
-          <p className="text-2xl font-black text-white">{loading ? '-' : totalScans}</p>
+        <div className="card flex flex-col items-center justify-center py-4 px-2 theme-hover transition-colors">
+          <p className="text-[9px] font-bold text-[var(--text-muted)] uppercase tracking-widest mb-1">{t('home.total_scans')}</p>
+          <p className="text-2xl font-black theme-text">{loading ? '-' : totalScans}</p>
         </div>
-        <div className="card flex flex-col items-center justify-center py-4 px-2 hover:bg-[#1c1c1c] transition-colors border-[#d4af37]/20">
+        <div className="card flex flex-col items-center justify-center py-4 px-2 theme-hover transition-colors border-[#d4af37]/20">
           <p className="text-[9px] font-bold text-[#d4af37] uppercase tracking-widest mb-1">{t('home.safe_oils')}</p>
-          <p className="text-2xl font-black text-white">{loading ? '-' : safeScans}</p>
+          <p className="text-2xl font-black theme-text">{loading ? '-' : safeScans}</p>
         </div>
-        <div className="card flex flex-col items-center justify-center py-4 px-2 hover:bg-[#1c1c1c] transition-colors border-red-500/20">
+        <div className="card flex flex-col items-center justify-center py-4 px-2 theme-hover transition-colors border-red-500/20">
           <p className="text-[9px] font-bold text-red-500 uppercase tracking-widest mb-1">{t('home.unsafe_oils')}</p>
-          <p className="text-2xl font-black text-white">{loading ? '-' : unsafeScans}</p>
+          <p className="text-2xl font-black theme-text">{loading ? '-' : unsafeScans}</p>
         </div>
       </div>
 
@@ -171,7 +171,7 @@ export default function Home() {
       {/* Recent Scans */}
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-bold text-white tracking-wide">{t('home.recent_scans')}</h3>
+          <h3 className="text-sm font-bold theme-text tracking-wide">{t('home.recent_scans')}</h3>
           <button 
             onClick={() => navigate('/history')}
             className="text-[10px] font-bold uppercase tracking-widest text-[#d4af37] hover:text-[#f5c842]"
@@ -182,11 +182,11 @@ export default function Home() {
 
         <div className="flex flex-col gap-3">
           {loading ? (
-             <div className="flex justify-center p-8"><div className="w-8 h-8 border-2 border-[#333] border-t-[#d4af37] rounded-full animate-spin"/></div>
+             <div className="flex justify-center p-8"><div className="w-8 h-8 border-2 border-[var(--border-color)] border-t-[#d4af37] rounded-full animate-spin"/></div>
           ) : readings.length === 0 ? (
-            <div className="card border-dashed border-[#333] bg-transparent flex flex-col items-center justify-center py-8">
-              <Droplets size={32} className="text-gray-700 mb-3" />
-              <p className="text-sm text-gray-500 font-medium">{t('home.no_scans')}</p>
+            <div className="card border-dashed flex flex-col items-center justify-center py-8">
+              <Droplets size={32} className="text-[var(--text-muted)] mb-3" />
+              <p className="text-sm text-[var(--text-secondary)] font-medium">{t('home.no_scans')}</p>
               <button onClick={() => navigate('/scan')} className="text-[#d4af37] text-xs font-bold uppercase mt-2">{t('home.tap_to_begin')}</button>
             </div>
           ) : (
@@ -196,14 +196,14 @@ export default function Home() {
               const StatusIcon = isSafe ? CheckCircle : AlertTriangle;
 
               return (
-                <div key={scan.id} className="card border-[#333] p-4 flex items-center justify-between hover:bg-[#1c1c1c] transition-colors shadow-none cursor-pointer">
+                <div key={scan.id} className="card p-4 flex items-center justify-between theme-hover transition-colors shadow-none cursor-pointer">
                   <div className="flex items-center gap-3">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isSafe ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
                       <StatusIcon size={18} />
                     </div>
                     <div>
-                      <h4 className="font-bold text-sm text-white">{scan.oil_type || 'Unknown Sample'}</h4>
-                      <p className="text-[10px] text-gray-400 mt-0.5">{new Date(scan.timestamp).toLocaleDateString()} • {scan.vendor || 'Unknown Vendor'}</p>
+                      <h4 className="font-bold text-sm theme-text">{scan.oil_type || 'Unknown Sample'}</h4>
+                      <p className="text-[10px] text-[var(--text-muted)] mt-0.5">{new Date(scan.timestamp).toLocaleDateString()} • {scan.vendor || 'Unknown Vendor'}</p>
                     </div>
                   </div>
                   <div className={`text-[10px] ${badgeClass}`}>
@@ -219,57 +219,57 @@ export default function Home() {
       {/* Report Modal / Bottom Sheet */}
       {showReport && (
         <div className="fixed inset-0 bg-black/80 z-[100] flex items-end animate-fade-in backdrop-blur-sm px-0 pb-0" onClick={() => setShowReport(false)}>
-           <div className="w-full max-w-md mx-auto bg-[#0a0a0a] border-t border-red-500/30 rounded-t-[2.5rem] p-6 pb-safe animate-slide-up relative" onClick={e => e.stopPropagation()}>
+           <div className="w-full max-w-md mx-auto bg-[var(--bg-page)] border-t border-red-500/30 rounded-t-[2.5rem] p-6 pb-safe animate-slide-up relative" onClick={e => e.stopPropagation()}>
               <div className="flex justify-between items-center mb-6">
                  <div>
-                   <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                   <h2 className="text-xl font-bold theme-text flex items-center gap-2">
                      <AlertTriangle className="text-red-500" size={24} /> 
                      File Report
                    </h2>
-                   <p className="text-gray-400 text-xs mt-1">Submit vendor details for FSSAI verification</p>
+                   <p className="text-[var(--text-secondary)] text-xs mt-1">Submit vendor details for FSSAI verification</p>
                  </div>
-                 <button onClick={() => setShowReport(false)} className="p-2 bg-[#1c1c1c] rounded-full text-gray-400 hover:text-white">
+                 <button onClick={() => setShowReport(false)} className="p-2 bg-[var(--bg-elevated)] rounded-full text-[var(--text-muted)] hover:text-[var(--text-primary)]">
                    <X size={20} />
                  </button>
               </div>
 
               <form onSubmit={submitReport} className="flex flex-col gap-4">
                  <div>
-                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-2 mb-1 block">Shop / Vendor Name</label>
-                   <input required value={reportForm.shopName} onChange={e=>setReportForm({...reportForm, shopName: e.target.value})} placeholder="e.g. Raju Oil Store" className="w-full bg-[#1c1c1c] border border-[#333] text-white focus:border-[#d4af37] rounded-2xl py-3 px-4 outline-none text-sm placeholder:text-gray-600" />
+                   <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest pl-2 mb-1 block">Shop / Vendor Name</label>
+                   <input required value={reportForm.shopName} onChange={e=>setReportForm({...reportForm, shopName: e.target.value})} placeholder="e.g. Raju Oil Store" className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] theme-text focus:border-[#d4af37] rounded-2xl py-3 px-4 outline-none text-sm placeholder:text-[var(--text-muted)]" />
                  </div>
                  <div>
-                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-2 mb-1 block">Location / Address</label>
+                   <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest pl-2 mb-1 block">Location / Address</label>
                    <div className="relative">
-                     <MapPin size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                     <input required value={reportForm.address} onChange={e=>setReportForm({...reportForm, address: e.target.value})} placeholder="Area or exact address" className="w-full bg-[#1c1c1c] border border-[#333] text-white focus:border-[#d4af37] rounded-2xl py-3 pl-10 pr-4 outline-none text-sm placeholder:text-gray-600" />
+                     <MapPin size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
+                     <input required value={reportForm.address} onChange={e=>setReportForm({...reportForm, address: e.target.value})} placeholder="Area or exact address" className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] theme-text focus:border-[#d4af37] rounded-2xl py-3 pl-10 pr-4 outline-none text-sm placeholder:text-[var(--text-muted)]" />
                    </div>
                  </div>
                  <div>
-                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-2 mb-1 block">Oil Type</label>
-                   <input required value={reportForm.oilType} onChange={e=>setReportForm({...reportForm, oilType: e.target.value})} placeholder="e.g. Mustard, Palm, Ghee" className="w-full bg-[#1c1c1c] border border-[#333] text-white focus:border-[#d4af37] rounded-2xl py-3 px-4 outline-none text-sm placeholder:text-gray-600" />
+                   <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest pl-2 mb-1 block">Oil Type</label>
+                   <input required value={reportForm.oilType} onChange={e=>setReportForm({...reportForm, oilType: e.target.value})} placeholder="e.g. Mustard, Palm, Ghee" className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] theme-text focus:border-[#d4af37] rounded-2xl py-3 px-4 outline-none text-sm placeholder:text-[var(--text-muted)]" />
                  </div>
                  <div className="mb-2">
-                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-2 mb-1 block">Complaint Description</label>
-                   <textarea required value={reportForm.description} onChange={e=>setReportForm({...reportForm, description: e.target.value})} rows="2" placeholder="What is the issue? Visual adulteration, smell, failed test?" className="w-full bg-[#1c1c1c] border border-[#333] text-white focus:border-[#d4af37] rounded-2xl py-3 px-4 outline-none text-sm placeholder:text-gray-600 resize-none"></textarea>
+                   <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest pl-2 mb-1 block">Complaint Description</label>
+                   <textarea required value={reportForm.description} onChange={e=>setReportForm({...reportForm, description: e.target.value})} rows="2" placeholder="What is the issue? Visual adulteration, smell, failed test?" className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] theme-text focus:border-[#d4af37] rounded-2xl py-3 px-4 outline-none text-sm placeholder:text-[var(--text-muted)] resize-none"></textarea>
                  </div>
 
                  {/* Photo Proof Upload */}
                  <div>
-                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-2 mb-1 block">Photo Evidence (Optional)</label>
-                   <div className="w-full bg-[#1c1c1c] border border-[#333] border-dashed rounded-2xl py-4 flex flex-col items-center justify-center relative hover:border-[#d4af37] transition-colors cursor-pointer">
-                     <Camera size={24} className="text-gray-500 mb-2" />
-                     <p className="text-xs text-gray-400 font-bold tracking-wide">{proofPhoto ? proofPhoto.name : 'Tap to capture or upload'}</p>
+                   <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest pl-2 mb-1 block">Photo Evidence (Optional)</label>
+                   <div className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] border-dashed rounded-2xl py-4 flex flex-col items-center justify-center relative hover:border-[#d4af37] transition-colors cursor-pointer">
+                     <Camera size={24} className="text-[var(--text-muted)] mb-2" />
+                     <p className="text-xs text-[var(--text-secondary)] font-bold tracking-wide">{proofPhoto ? proofPhoto.name : 'Tap to capture or upload'}</p>
                      <input type="file" accept="image/*" onChange={(e) => setProofPhoto(e.target.files[0])} className="absolute inset-0 opacity-0 cursor-pointer" />
                    </div>
                  </div>
 
                  {/* Attach Reading */}
                  <div className="mb-2">
-                   <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest pl-2 mb-1 block">Attach Sensor Reading (Optional)</label>
+                   <label className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-widest pl-2 mb-1 block">Attach Sensor Reading (Optional)</label>
                    <div className="relative">
-                     <FileBarChart size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                     <select value={reportForm.attachedReadingId} onChange={e=>setReportForm({...reportForm, attachedReadingId: e.target.value})} className="w-full bg-[#1c1c1c] border border-[#333] text-white focus:border-[#d4af37] rounded-2xl py-3 pl-10 pr-4 outline-none text-sm appearance-none">
+                     <FileBarChart size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
+                     <select value={reportForm.attachedReadingId} onChange={e=>setReportForm({...reportForm, attachedReadingId: e.target.value})} className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] theme-text focus:border-[#d4af37] rounded-2xl py-3 pl-10 pr-4 outline-none text-sm appearance-none">
                        <option value="">-- No reading attached --</option>
                        {readings.filter(r => r.quality === 'Unsafe').map(r => (
                          <option key={r.id} value={r.id}>
@@ -277,7 +277,7 @@ export default function Home() {
                          </option>
                        ))}
                      </select>
-                     <ChevronRight size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 pointer-events-none rotate-90" />
+                     <ChevronRight size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none rotate-90" />
                    </div>
                  </div>
 

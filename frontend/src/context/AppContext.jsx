@@ -10,7 +10,7 @@ const defaultSettings = {
   notifications: true,
   language: 'en',
   connectionMethod: 'Bluetooth',
-  darkMode: true,
+  darkMode: false,
   appPin: null, // null means no lock
   dataSharing: false,
 };
@@ -109,14 +109,13 @@ export function AppProvider({ children }) {
 
   // Sync Theme & Language with Root
   useEffect(() => {
-    // 1. AMOLED Dark Mode
+    // 1. Theme Mode
     if (settings.darkMode) {
       document.documentElement.classList.add('dark');
-      document.documentElement.style.backgroundColor = '#000000';
     } else {
       document.documentElement.classList.remove('dark');
-      document.documentElement.style.backgroundColor = '#f3f4f6';
     }
+    // CSS variables handle all color switching automatically
 
     // 2. Multilingual Switch
     if (settings.language) {

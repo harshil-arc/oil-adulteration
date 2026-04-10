@@ -99,16 +99,16 @@ export default function ScanFlow() {
   // ================= RENDERERS =================
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex flex-col relative z-20">
+    <div className="min-h-screen flex flex-col relative z-20 theme-bg">
       
       {/* Dynamic Header */}
       {step < 3 && (
-        <div className="flex items-center gap-3 p-5 border-b border-[#333]">
-          <button onClick={() => { step === 0 ? navigate('/home') : setStep(0) }} className="p-2 rounded-full bg-[#1c1c1c] text-white">
+        <div className="flex items-center gap-3 p-5 border-b border-[var(--border-color)]">
+          <button onClick={() => { step === 0 ? navigate('/home') : setStep(0) }} className="p-2 rounded-full bg-[var(--bg-elevated)] theme-text">
             <ChevronLeft size={20} />
           </button>
           <div className="flex flex-col">
-            <h1 className="text-white font-bold tracking-widest uppercase text-[10px]">
+            <h1 className="theme-text font-bold tracking-widest uppercase text-[10px]">
               {step === 0 ? 'Connection Hub' : step === 2 ? 'Verification' : 'Device Bridge'}
             </h1>
             <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">
@@ -124,11 +124,11 @@ export default function ScanFlow() {
         {step === 0 && (
           <div className="animate-fade-in flex flex-col gap-4">
             <div className="mb-4">
-               <h2 className="text-2xl font-black text-white mb-1">Pair Sensor</h2>
+               <h2 className="text-2xl font-black theme-text mb-1">Pair Sensor</h2>
                <p className="text-gray-500 text-sm">Select your hardware communication protocol.</p>
             </div>
             
-            <div onClick={() => handleSelectMethod('wifi')} className="card border-[#333] hover:border-[#d4af37]/50 cursor-pointer transition-all active:scale-[0.98] group overflow-hidden relative">
+            <div onClick={() => handleSelectMethod('wifi')} className="card hover:border-[#d4af37]/50 cursor-pointer transition-all active:scale-[0.98] group overflow-hidden relative">
               <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 transition-opacity">
                  <Globe size={120} strokeWidth={1} />
               </div>
@@ -137,13 +137,13 @@ export default function ScanFlow() {
                   <Wifi size={24} />
                 </div>
                 <div>
-                  <h3 className="text-white font-bold text-lg">Local Area Network</h3>
+                  <h3 className="theme-text font-bold text-lg">Local Area Network</h3>
                   <p className="text-gray-400 text-xs mt-1">Direct IP or Local Router sync. Most stable for long sessions.</p>
                 </div>
               </div>
             </div>
 
-            <div onClick={() => handleSelectMethod('ble')} className="card border-[#333] hover:border-blue-500/50 cursor-pointer transition-all active:scale-[0.98] group overflow-hidden relative">
+            <div onClick={() => handleSelectMethod('ble')} className="card hover:border-blue-500/50 cursor-pointer transition-all active:scale-[0.98] group overflow-hidden relative">
               <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 transition-opacity">
                  <Bluetooth size={120} strokeWidth={1} />
               </div>
@@ -152,13 +152,13 @@ export default function ScanFlow() {
                   <Bluetooth size={24} />
                 </div>
                 <div>
-                  <h3 className="text-white font-bold text-lg">Web Bluetooth</h3>
+                  <h3 className="theme-text font-bold text-lg">Web Bluetooth</h3>
                   <p className="text-gray-400 text-xs mt-1">Wire-free pairing via GATT. Best for portable field tests.</p>
                 </div>
               </div>
             </div>
 
-            <div onClick={() => handleSelectMethod('usb')} className="card border-[#333] hover:border-purple-500/50 cursor-pointer transition-all active:scale-[0.98] group overflow-hidden relative">
+            <div onClick={() => handleSelectMethod('usb')} className="card hover:border-purple-500/50 cursor-pointer transition-all active:scale-[0.98] group overflow-hidden relative">
               <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 transition-opacity">
                  <Usb size={120} strokeWidth={1} />
               </div>
@@ -167,7 +167,7 @@ export default function ScanFlow() {
                   <Usb size={24} />
                 </div>
                 <div>
-                  <h3 className="text-white font-bold text-lg">USB Serial Bridge</h3>
+                  <h3 className="theme-text font-bold text-lg">USB Serial Bridge</h3>
                   <p className="text-gray-400 text-xs mt-1">High-speed reliable link via OTG cable. No lag or interference.</p>
                 </div>
               </div>
@@ -195,9 +195,9 @@ export default function ScanFlow() {
         {/* STEP 1B: WIFI */}
         {step === '1b' && (
           <div className="flex flex-col flex-1 animate-fade-in">
-             <div className="flex w-full border border-[#333] bg-[#141414] rounded-full p-1 mb-6">
-                <button onClick={() => setWifiTab('same')} className={`flex-1 py-2 text-xs font-bold rounded-full transition-colors ${wifiTab === 'same' ? 'bg-[#333] text-white' : 'text-gray-500'}`}>Local Router</button>
-                <button onClick={() => setWifiTab('ap')} className={`flex-1 py-2 text-xs font-bold rounded-full transition-colors ${wifiTab === 'ap' ? 'bg-[#333] text-white' : 'text-gray-500'}`}>Direct Hotspot</button>
+             <div className="flex w-full border border-[var(--border-color)] bg-[var(--bg-card)] rounded-full p-1 mb-6">
+                <button onClick={() => setWifiTab('same')} className={`flex-1 py-2 text-xs font-bold rounded-full transition-colors ${wifiTab === 'same' ? 'bg-[var(--bg-elevated)] theme-text' : 'text-gray-500'}`}>Local Router</button>
+                <button onClick={() => setWifiTab('ap')} className={`flex-1 py-2 text-xs font-bold rounded-full transition-colors ${wifiTab === 'ap' ? 'bg-[var(--bg-elevated)] theme-text' : 'text-gray-500'}`}>Direct Hotspot</button>
              </div>
 
              {wifiTab === 'same' ? (
@@ -209,7 +209,7 @@ export default function ScanFlow() {
                       value={wifiIp} 
                       onChange={e=>setWifiIp(e.target.value)} 
                       placeholder="192.168.1.10"
-                      className="w-full bg-[#1c1c1c] border border-[#333] focus:border-[#d4af37] rounded-2xl px-4 py-4 text-white outline-none font-mono text-lg transition-all" 
+                      className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[#d4af37] rounded-2xl px-4 py-4 theme-text outline-none font-mono text-lg transition-all" 
                     />
                   </div>
                   
@@ -222,8 +222,8 @@ export default function ScanFlow() {
                   </button>
                 </div>
              ) : (
-                <div className="card border-[#333] flex flex-col gap-4 p-5">
-                  <h3 className="text-white font-bold text-sm">Direct Hotspot Mode:</h3>
+                <div className="card flex flex-col gap-4 p-5">
+                  <h3 className="theme-text font-bold text-sm">Direct Hotspot Mode:</h3>
                   <ol className="text-xs text-gray-500 flex flex-col gap-4 font-medium">
                     <li className="flex gap-3 items-start"><span className="w-5 h-5 rounded-full bg-[#d4af37]/10 text-[#d4af37] flex-shrink-0 flex items-center justify-center font-bold">1</span> Power on the handheld sensor unit</li>
                     <li className="flex gap-3 items-start"><span className="w-5 h-5 rounded-full bg-[#d4af37]/10 text-[#d4af37] flex-shrink-0 flex items-center justify-center font-bold">2</span> Connect your phone to: <span className="text-white font-mono bg-[#1c1c1c] px-2 rounded border border-[#333]">PureOil-Sensor</span></li>
@@ -268,11 +268,11 @@ export default function ScanFlow() {
                <div className="w-20 h-20 bg-green-500/10 text-green-500 rounded-full flex items-center justify-center mb-4 border border-green-500/30 relative z-10 shadow-glow-green">
                  <ShieldCheck size={40} />
                </div>
-               <h2 className="text-white font-black text-2xl">Device verified!</h2>
+               <h2 className="theme-text font-black text-2xl">Device verified!</h2>
                <p className="text-green-500 text-[10px] uppercase tracking-widest font-black mt-2 bg-green-500/10 px-3 py-1 rounded-full">Secure Link Established</p>
              </div>
 
-             <div className="card border-[#333] flex flex-col gap-4 mb-8">
+             <div className="card flex flex-col gap-4 mb-8">
                 <div className="flex justify-between border-b border-[#333] pb-4">
                   <span className="text-gray-500 text-[10px] uppercase font-bold tracking-widest">Bridge Protocol</span>
                   <span className="text-white font-black text-sm">{deviceInfo?.method}</span>
@@ -301,7 +301,7 @@ export default function ScanFlow() {
 
         {/* STEP 3: SCANNING (Fullscreen) */}
         {step === 3 && (
-          <div className="absolute inset-0 bg-[#0a0a0a] z-[100] flex flex-col items-center justify-between p-6 pb-20 animate-fade-in">
+          <div className="absolute inset-0 theme-bg z-[100] flex flex-col items-center justify-between p-6 pb-20 animate-fade-in">
              <div className="w-full flex justify-between items-center mb-8">
                 <div className="flex items-center gap-2">
                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
@@ -376,7 +376,7 @@ export default function ScanFlow() {
                      <div className="w-24 h-24 bg-green-500/10 text-green-500 rounded-full flex items-center justify-center mb-6 shadow-glow-green border border-green-500/30">
                         <CheckCircle2 size={48} />
                      </div>
-                     <h2 className="text-3xl font-black text-white mb-1">Purity Confirmed</h2>
+                     <h2 className="text-3xl font-black theme-text mb-1">Purity Confirmed</h2>
                      <p className="text-green-500 font-bold uppercase tracking-[0.2em] text-[10px] bg-green-500/5 px-4 py-1.5 rounded-full border border-green-500/10">Standard Compliant</p>
                    </>
                  ) : (
@@ -384,13 +384,13 @@ export default function ScanFlow() {
                      <div className="w-24 h-24 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mb-6 shadow-glow-red border border-red-500/30">
                         <AlertTriangle size={48} />
                      </div>
-                     <h2 className="text-3xl font-black text-white mb-1">Contamination!</h2>
+                     <h2 className="text-3xl font-black theme-text mb-1">Contamination!</h2>
                      <p className="text-red-500 font-bold uppercase tracking-[0.2em] text-[10px] bg-red-500/5 px-4 py-1.5 rounded-full border border-red-500/10">Adulterants Detected</p>
                    </>
                  )}
               </div>
 
-              <div className="card bg-[#141414] border-[#333] flex flex-col gap-5 mb-8 p-6">
+              <div className="card flex flex-col gap-5 mb-8 p-6">
                  <div className="flex justify-between items-center pb-3 border-b border-[#333]">
                    <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Sensor Analysis Wrap</h3>
                    <span className="text-[9px] text-[#d4af37] font-bold">SHA-256 Verified</span>

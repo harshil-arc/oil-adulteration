@@ -7,7 +7,38 @@
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ============================================================
--- 1. DEVICES TABLE
+-- 1. SHOPS TABLE (MAP MONITORING)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.shops (
+  id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  name         TEXT NOT NULL,
+  latitude     NUMERIC NOT NULL,
+  longitude    NUMERIC NOT NULL,
+  oil_type     TEXT NOT NULL,
+  last_purity  NUMERIC,
+  status       TEXT DEFAULT 'safe' CHECK (status IN ('safe','moderate','adulterated')),
+  created_at   TIMESTAMPTZ DEFAULT NOW(),
+  updated_at   TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.shops ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all on shops" ON public.shops FOR ALL USING (true) WITH CHECK (true);
+
+-- ============================================================
+-- SEED: Insert Mock Indian Shops
+-- ============================================================
+INSERT INTO public.shops (id, name, latitude, longitude, oil_type, last_purity, status) VALUES
+  (uuid_generate_v4(), 'Delhi Pure Oils Traders', 28.6139, 77.2090, 'Mustard Oil', 98, 'safe'),
+  (uuid_generate_v4(), 'Mumbai Mill Foods', 19.0760, 72.8777, 'Sunflower Oil', 85, 'moderate'),
+  (uuid_generate_v4(), 'Bangalore Fresh Edibles', 12.9716, 77.5946, 'Coconut Oil', 60, 'adulterated'),
+  (uuid_generate_v4(), 'Kolkata Engine & Lube', 22.5726, 88.3639, 'Engine Oil (SAE 10W-30)', 92, 'safe'),
+  (uuid_generate_v4(), 'Chennai Spice Oils', 13.0827, 80.2707, 'Groundnut Oil', 78, 'moderate'),
+  (uuid_generate_v4(), 'Ahmedabad Gold Refineries', 23.0225, 72.5714, 'Olive Oil', 45, 'adulterated'),
+  (uuid_generate_v4(), 'Hyderabad Deep Fry Oils', 17.3850, 78.4867, 'Mustard Oil', 96, 'safe')
+ON CONFLICT DO NOTHING;
+
+-- ============================================================
+-- 2. DEVICES TABLE
 -- ============================================================
 CREATE TABLE IF NOT EXISTS public.devices (
   id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -110,23 +141,7 @@ INSERT INTO public.devices (device_id, name, status, firmware)
 VALUES ('ESP32_01', 'Catalyst-Probe v2.0', 'online', '1.4.2')
 ON CONFLICT (device_id) DO NOTHING;
 
--- ============================================================
--- 5. SHOPS TABLE (MAP MONITORING)
--- ============================================================
-CREATE TABLE IF NOT EXISTS public.shops (
-  id           UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  name         TEXT NOT NULL,
-  latitude     NUMERIC NOT NULL,
-  longitude    NUMERIC NOT NULL,
-  oil_type     TEXT NOT NULL,
-  last_purity  NUMERIC,
-  status       TEXT DEFAULT 'safe' CHECK (status IN ('safe','moderate','adulterated')),
-  created_at   TIMESTAMPTZ DEFAULT NOW(),
-  updated_at   TIMESTAMPTZ DEFAULT NOW()
-);
-
-ALTER TABLE public.shops ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Allow all on shops" ON public.shops FOR ALL USING (true) WITH CHECK (true);
+-- Note: Shops are already declared in Step 1
 
 -- ============================================================
 -- 6. COMPLAINTS TABLE
@@ -154,23 +169,11 @@ ALTER PUBLICATION supabase_realtime ADD TABLE public.shops;
 ALTER PUBLICATION supabase_realtime ADD TABLE public.complaints;
 
 -- ============================================================
--- SEED: Insert Mock Indian Shops
--- ============================================================
-INSERT INTO public.shops (id, name, latitude, longitude, oil_type, last_purity, status) VALUES
-  (uuid_generate_v4(), 'Delhi Pure Oils Traders', 28.6139, 77.2090, 'Mustard Oil', 98, 'safe'),
-  (uuid_generate_v4(), 'Mumbai Mill Foods', 19.0760, 72.8777, 'Sunflower Oil', 85, 'moderate'),
-  (uuid_generate_v4(), 'Bangalore Fresh Edibles', 12.9716, 77.5946, 'Coconut Oil', 60, 'adulterated'),
-  (uuid_generate_v4(), 'Kolkata Engine & Lube', 22.5726, 88.3639, 'Engine Oil (SAE 10W-30)', 92, 'safe'),
-  (uuid_generate_v4(), 'Chennai Spice Oils', 13.0827, 80.2707, 'Groundnut Oil', 78, 'moderate'),
-  (uuid_generate_v4(), 'Ahmedabad Gold Refineries', 23.0225, 72.5714, 'Olive Oil', 45, 'adulterated'),
-  (uuid_generate_v4(), 'Hyderabad Deep Fry Oils', 17.3850, 78.4867, 'Mustard Oil', 96, 'safe')
-ON CONFLICT DO NOTHING;
-
--- ============================================================
 -- 7. PROFILES TABLE (RBAC)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS public.profiles (
   id           UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  email        TEXT,
   role         TEXT NOT NULL DEFAULT 'inspector' CHECK (role IN ('admin','inspector','user')),
   full_name    TEXT,
   badge_id     TEXT,
@@ -189,8 +192,8 @@ CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING
 CREATE OR REPLACE FUNCTION public.handle_new_user() 
 RETURNS TRIGGER AS $$
 BEGIN
-  INSERT INTO public.profiles (id, full_name, role)
-  VALUES (new.id, new.raw_user_meta_data->>'full_name', 'inspector');
+  INSERT INTO public.profiles (id, email, full_name, role)
+  VALUES (new.id, new.email, new.raw_user_meta_data->>'full_name', 'inspector');
   RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
