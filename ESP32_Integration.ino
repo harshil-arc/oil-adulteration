@@ -1,6 +1,12 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 #include <ArduinoJson.h> // Ensure you have installed 'ArduinoJson' by Benoit Blanchon
+#include <WebServer.h>
+
+WebServer server(80);
+String deviceId;
+String deviceName;
+
 
 // ── Configuration ───────────────────────────────────
 const char* ssid = "YOUR_WIFI_SSID";
@@ -20,9 +26,38 @@ void setup() {
   Serial.begin(115200);
   WiFi.mode(WIFI_STA);
   connectToWiFi();
+  
+  // Set Device IDs based on MAC address
+  String mac = WiFi.macAddress();
+  mac.replace(":", "");
+  deviceId = "ESP32_" + mac.substring(mac.length() - 6);
+  deviceName = "ESP_OIL_" + mac.substring(mac.length() - 4);
+  
+  // Setup WebServer endpoints
+  server.on("/status", HTTP_GET, handleStatus);
+  server.on("/sensor", HTTP_GET, handleSensor);
+  server.on("/connect", HTTP_GET, handleConnect);
+  
+  // CORS Headers for all routes
+  server.onNotFound([]() {
+    if (server.method() == HTTP_OPTIONS) {
+      server.sendHeader("Access-Control-Allow-Origin", "*");
+      server.sendHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+      server.sendHeader("Access-Control-Allow-Headers", "*");
+      server.send(204);
+    } else {
+      server.send(404, "application/json", "{\"error\":\"Not found\"}");
+    }
+  });
+
+  server.begin();
+  Serial.println("✅ WebServer started on port 80");
 }
 
+
 void loop() {
+  server.handleClient(); // Handle incoming HTTP requests without blocking
+
   if (WiFi.status() != WL_CONNECTED) {
     connectToWiFi();
   }
@@ -32,6 +67,7 @@ void loop() {
     lastTime = millis();
   }
 }
+
 
 void connectToWiFi() {
   Serial.print("Connecting to WiFi: ");
@@ -51,7 +87,7 @@ void sendSensorData() {
   http.addHeader("x-device-api-key", api_key); // STRICT SECURITY HEADER
 
   StaticJsonDocument<512> doc;
-  doc["device_id"] = "ESP32_01";
+  doc["device_id"] = deviceId;
   doc["oil_type"] = "Mustard Oil";
   doc["timestamp"] = "2024-04-08T18:00:00Z"; // In production, use NTP to get real time
 
@@ -81,3 +117,52 @@ void sendSensorData() {
   
   http.end();
 }
+
+// ── WebServer Handlers ──────────────────────────────
+void sendCorsHeaders() {
+  server.sendHeader("Access-Control-Allow-Origin", "*");
+  server.sendHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  server.sendHeader("Access-Control-Allow-Headers", "*");
+}
+
+void handleStatus() {
+  sendCorsHeaders();
+  StaticJsonDocument<256> doc;
+  doc["deviceId"] = deviceId;
+  doc["name"] = deviceName;
+  doc["rssi"] = WiFi.RSSI();
+  doc["ip"] = WiFi.localIP().toString();
+  doc["status"] = "ok";
+  
+  String response;
+  serializeJson(doc, response);
+  server.send(200, "application/json", response);
+}
+
+void handleSensor() {
+  sendCorsHeaders();
+  StaticJsonDocument<512> doc;
+  
+  // These are the same variables collected in sendSensorData
+  doc["adcValue"] = analogRead(32); // Example ADC
+  doc["voltage"] = 3.3; // Example Voltage
+  doc["tds"] = 95;
+  doc["temperature"] = 27.5;
+  doc["timestamp"] = "2024-04-08T18:00:00Z";
+  
+  String response;
+  serializeJson(doc, response);
+  server.send(200, "application/json", response);
+}
+
+void handleConnect() {
+  sendCorsHeaders();
+  StaticJsonDocument<256> doc;
+  doc["status"] = "ok";
+  doc["deviceId"] = deviceId;
+  
+  String response;
+  serializeJson(doc, response);
+  server.send(200, "application/json", response);
+}
+

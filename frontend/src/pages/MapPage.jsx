@@ -3,6 +3,7 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { Filter, Search, ShieldAlert, ArrowRight, CheckCircle2, AlertTriangle, ShieldCheck } from 'lucide-react';
 import { getShops } from '../lib/api';
+import { useApp } from '../context/AppContext';
 import 'leaflet/dist/leaflet.css';
 
 // Fix for default Leaflet markers in React
@@ -43,6 +44,7 @@ function ChangeView({ center, zoom }) {
 }
 
 export default function MapPage() {
+  const { settings } = useApp();
   const [vendors, setVendors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
@@ -108,16 +110,16 @@ export default function MapPage() {
       </div>
 
       {/* Map Content */}
-      <div className="flex-1 w-full bg-[#141414] relative z-0">
-        <MapContainer 
-          center={mapCenter} 
-          zoom={5} 
-          scrollWheelZoom={true} 
+      <div className={`flex-1 w-full relative z-0 ${settings.darkMode ? 'bg-[#141414]' : 'bg-[#f5f5f5]'}`}>
+        <MapContainer
+          center={mapCenter}
+          zoom={5}
+          scrollWheelZoom={true}
           className="w-full h-full"
           zoomControl={false}
         >
           <TileLayer
-             url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+             url={settings.darkMode ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png' : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'}
              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
           />
           {filtered.map(vendor => (

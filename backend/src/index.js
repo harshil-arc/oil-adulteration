@@ -76,6 +76,82 @@ app.get('/api/network', (req, res) => {
   });
 });
 
+// ── LAN Scanner: Discover Devices ─────────────────────────
+app.get('/api/network/scan', async (req, res) => {
+  const interfaces = os.networkInterfaces();
+  let baseIp = '';
+  
+  // Find subnet (e.g. 192.168.1)
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        const parts = iface.address.split('.');
+        parts.pop();
+        baseIp = parts.join('.');
+        break;
+      }
+    }
+    if (baseIp) break;
+  }
+
+  if (!baseIp) {
+    return res.json({ devices: [], message: 'No local network interface found' });
+  }
+
+  console.log(`[LAN Scan] Initiating sweep on subnet ${baseIp}.x`);
+  
+  const pingDevice = (ip) => {
+    return new Promise((resolve, reject) => {
+      const req = http.get(`http://${ip}/status`, { timeout: 300 }, (response) => {
+        if (response.statusCode !== 200) {
+          req.destroy();
+          return reject(new Error('Non-200'));
+        }
+        let data = '';
+        response.on('data', chunk => data += chunk);
+        response.on('end', () => {
+          try {
+            const json = JSON.parse(data);
+            if (json.status === 'ok') {
+              resolve(json);
+            } else {
+              reject(new Error('Invalid format'));
+            }
+          } catch(e) {
+            reject(e);
+          }
+        });
+      });
+      req.on('error', (e) => reject(e));
+      req.on('timeout', () => {
+        req.destroy();
+        reject(new Error('Timeout'));
+      });
+    });
+  };
+
+  const promises = [];
+  for (let i = 1; i <= 254; i++) {
+    const targetIp = `${baseIp}.${i}`;
+    promises.push(
+      pingDevice(targetIp).then(device => ({ ...device, ip: targetIp }))
+    );
+  }
+
+  // Await all parallel requests (takes ~300-500ms max due to timeout)
+  const results = await Promise.allSettled(promises);
+  
+  const discovered = results
+    .filter(r => r.status === 'fulfilled')
+    .map(r => r.value);
+
+  if (discovered.length > 0) {
+    res.json({ devices: discovered, message: `Found ${discovered.length} devices` });
+  } else {
+    res.json({ devices: [], message: 'No ESP devices found' });
+  }
+});
+
 // ── Health check ──────────────────────────────────────────
 app.get('/api/health', (req, res) => {
   res.json({

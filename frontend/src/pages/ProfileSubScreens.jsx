@@ -1,8 +1,10 @@
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
-import { useEffect } from 'react';
-import { Download } from 'lucide-react';
-
+import { useEffect, useState } from 'react';
+import { Download, ChevronLeft, Lock, Fingerprint, EyeOff, Shield, ExternalLink, PlayCircle, BookOpen, AlertCircle, FileText, Trash2, Server, RefreshCw } from 'lucide-react';
+import { getConfig, updateConfig } from '../lib/config';
+import { getSensorData } from '../lib/sensorApi';
 // Reusable Top Nav for Sub Screens
 const SubScreenNav = ({ title }) => {
   const navigate = useNavigate();
@@ -21,14 +23,14 @@ const SubScreenNav = ({ title }) => {
 // 1. Privacy & Security Screen
 export function PrivacySecurity() {
   const { settings, updateSetting, profile } = useApp();
-  
+
   const handleExportData = async () => {
     const { data, error } = await supabase
       .from('oil_readings')
       .select('*');
-    
+
     if (error) return alert("Failed to export data.");
-    
+
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -39,11 +41,11 @@ export function PrivacySecurity() {
 
   const handleDeleteData = async () => {
     if (!confirm("⚠️ CAUTION: This will permanently delete all your specific sensor readings and analysis results from the database. This cannot be undone. Proceed?")) return;
-    
+
     try {
-      // Note: Real implementation would target user_id or specific device_id
-      const { error } = await supabase.from('oil_readings').delete().neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
-      if (error) throw error;
+      await supabase.from('oil_readings').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('analysis_results').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+      await supabase.from('violation_reports').delete().neq('id', '00000000-0000-0000-0000-000000000000');
       alert("✅ All your sensor data has been purged successfully.");
     } catch (e) {
       alert("Error purging data: " + e.message);
@@ -268,6 +270,136 @@ export function ReportsList() {
             </div>
           ))
         )}
+      </div>
+    </div>
+  );
+}
+
+// 5. Developer Tools & Simulator Settings
+export function DeveloperTools() {
+  const [config, setConfig] = useState(getConfig());
+  const [status, setStatus] = useState('Not Connected');
+  const [lastFetched, setLastFetched] = useState(null);
+  const [errorMsg, setErrorMsg] = useState(null);
+  const [sensorData, setSensorData] = useState(null);
+  const [autoRefresh, setAutoRefresh] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    let interval;
+    if (autoRefresh) {
+      interval = setInterval(handleFetchData, 3000);
+    }
+    return () => clearInterval(interval);
+  }, [autoRefresh, config]);
+
+  const handleToggleSimulator = () => {
+    const newVal = !config.USE_SIMULATOR;
+    updateConfig('USE_SIMULATOR', newVal);
+    setConfig(getConfig());
+    setSensorData(null);
+    setStatus('Not Connected');
+  };
+
+  const handleUpdateUrl = (key, val) => {
+    updateConfig(key, val);
+    setConfig(getConfig());
+  };
+
+  const handleFetchData = async () => {
+    setLoading(true);
+    setErrorMsg(null);
+    try {
+      const data = await getSensorData();
+      setSensorData(data);
+      setStatus('Connected');
+      setLastFetched(new Date().toLocaleTimeString());
+    } catch (e) {
+      setStatus('Not Connected');
+      setErrorMsg(e.message);
+      setSensorData(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col pb-24 animate-fade-in relative z-20">
+      <SubScreenNav title="Developer Tools" />
+      <div className="p-5 flex flex-col gap-6">
+        
+        {/* Toggle & Config */}
+        <div className="card p-4 border-[#333] flex flex-col gap-4">
+           <div className="flex items-center justify-between">
+             <div className="flex items-center gap-3">
+               <Server size={18} className="text-[#d4af37]" />
+               <span className="font-bold text-sm tracking-wider">Use Simulator Mode</span>
+             </div>
+             <label className="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" className="sr-only peer" checked={config.USE_SIMULATOR} onChange={handleToggleSimulator} />
+                <div className={`w-11 h-6 bg-[#333] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all ${config.USE_SIMULATOR ? 'bg-[#d4af37]' : ''}`}></div>
+             </label>
+           </div>
+           
+           <div className="text-[10px] text-gray-500 font-bold uppercase tracking-widest text-center mt-1">
+              Current Target: <span className={config.USE_SIMULATOR ? "text-[#d4af37]" : "text-blue-500"}>{config.USE_SIMULATOR ? "Simulator Server" : "Real Hardware"}</span>
+           </div>
+
+           <div className="flex flex-col gap-2 mt-2">
+             <label className="text-[10px] text-gray-400 font-bold uppercase tracking-widest pl-1">Simulator Node.js Target IP</label>
+             <input type="text" value={config.SIMULATOR_URL} onChange={e => handleUpdateUrl('SIMULATOR_URL', e.target.value)} className="w-full bg-[#1c1c1c] border border-[#333] text-white focus:border-[#d4af37] rounded-xl py-3 px-3 outline-none text-xs font-mono" />
+           </div>
+
+           <div className="flex flex-col gap-2">
+             <label className="text-[10px] text-gray-400 font-bold uppercase tracking-widest pl-1">ESP32 Access Point Target</label>
+             <input type="text" value={config.ESP_URL} onChange={e => handleUpdateUrl('ESP_URL', e.target.value)} className="w-full bg-[#1c1c1c] border border-[#333] text-white focus:border-[#d4af37] rounded-xl py-3 px-3 outline-none text-xs font-mono" />
+           </div>
+        </div>
+
+        {/* Status & Test */}
+        <div className="card p-4 border-[#333] flex flex-col gap-4">
+           <div className="flex justify-between items-center border-b border-[#333] pb-3">
+             <span className="text-[10px] text-gray-500 font-bold uppercase tracking-widest">Link Status</span>
+             <span className={`font-bold text-xs uppercase tracking-widest ${status === 'Connected' ? 'text-green-500' : 'text-red-500'}`}>{status}</span>
+           </div>
+
+           {errorMsg && (
+             <div className="bg-red-500/10 border border-red-500/30 p-3 rounded-xl flex items-start gap-2">
+               <AlertCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
+               <p className="text-red-400 text-[10px] font-bold">{errorMsg}</p>
+             </div>
+           )}
+
+           {sensorData && (
+             <div className="grid grid-cols-3 gap-2 py-2">
+               <div className="bg-[#1c1c1c] border border-[#333] rounded-xl p-3 flex flex-col items-center gap-1">
+                 <span className="text-[9px] text-gray-500 font-bold uppercase tracking-widest text-center">Temp</span>
+                 <span className="font-mono text-[#d4af37] font-black">{sensorData.temperature}</span>
+               </div>
+               <div className="bg-[#1c1c1c] border border-[#333] rounded-xl p-3 flex flex-col items-center gap-1">
+                 <span className="text-[9px] text-gray-500 font-bold uppercase tracking-widest text-center">Density</span>
+                 <span className="font-mono text-[#d4af37] font-black">{sensorData.density}</span>
+               </div>
+               <div className="bg-[#1c1c1c] border border-[#333] rounded-xl p-3 flex flex-col items-center gap-1">
+                 <span className="text-[9px] text-gray-500 font-bold uppercase tracking-widest text-center">Wave</span>
+                 <span className="font-mono text-[#d4af37] font-black">{sensorData.wavelength}</span>
+               </div>
+             </div>
+           )}
+
+           {lastFetched ? <p className="text-center text-[10px] text-gray-500 tracking-widest uppercase font-bold">Last ping: {lastFetched}</p> : <p className="text-center text-[10px] text-gray-500 tracking-widest uppercase font-bold">Awaiting first ping</p>}
+
+           <div className="flex gap-3 mt-2">
+             <button onClick={handleFetchData} disabled={loading || autoRefresh} className="flex-1 bg-gradient-to-br from-[#f5c842] to-[#d4af37] text-black font-black uppercase tracking-widest py-3 rounded-xl shadow-glow-gold disabled:opacity-50 text-xs">
+               {loading ? 'Pinging...' : 'Fetch Data'}
+             </button>
+             <button onClick={() => setAutoRefresh(!autoRefresh)} className={`flex-1 font-bold uppercase tracking-widest py-3 rounded-xl border flex justify-center items-center gap-2 text-xs transition-colors ${autoRefresh ? 'bg-green-500/10 text-green-500 border-green-500/30 shadow-glow-green' : 'bg-[#1c1c1c] text-white border-[#333] hover:bg-[#333]'}`}>
+               <RefreshCw size={14} className={autoRefresh ? 'animate-spin' : ''} />
+               {autoRefresh ? 'Auto Pinging' : 'Auto Refresh'}
+             </button>
+           </div>
+        </div>
+
       </div>
     </div>
   );

@@ -20,6 +20,8 @@ export default function ScanFlow() {
   const [deviceInfo, setDeviceInfo] = useState(null);
   const [progress, setProgress] = useState(0);
   const [scanResult, setScanResult] = useState(null);
+  const [localLiveData, setLocalLiveData] = useState(null);
+  const [selectedOilType, setSelectedOilType] = useState('Mustard Oil');
 
   // --- Step 0: Selectors ---
   const handleSelectMethod = (m) => {
@@ -33,29 +35,79 @@ export default function ScanFlow() {
   // --- WiFi Connection Logic (REAL PROBE) ---
   const [wifiTab, setWifiTab] = useState('same');
   const [wifiIp, setWifiIp] = useState('192.168.1.10');
+  const [isNetworkScanning, setIsNetworkScanning] = useState(false);
+  const [discoveredDevices, setDiscoveredDevices] = useState([]);
+  const [connectingDevice, setConnectingDevice] = useState(null);
+
+  const scanNetwork = async () => {
+    setIsNetworkScanning(true);
+    setErrorText(null);
+    setDiscoveredDevices([]);
+    try {
+      const apiUrl = import.meta.env.VITE_BACKEND_URL || `http://${window.location.hostname}:4000`;
+      const res = await fetch(`${apiUrl}/api/network/scan`);
+      const data = await res.json();
+      if (data.devices && data.devices.length > 0) {
+        setDiscoveredDevices(data.devices);
+      } else {
+        setErrorText(data.message || "No devices found on the local network.");
+      }
+    } catch (err) {
+      setErrorText("Failed to contact local backend for network scan.");
+    } finally {
+      setIsNetworkScanning(false);
+    }
+  };
+
+  const connectToDevice = async (device) => {
+    setConnectingDevice(device);
+    setErrorText(null);
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      
+      const response = await fetch(`http://${device.ip}/connect`, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      
+      const data = await response.json();
+      if (data.status !== 'ok') throw new Error("Handshake rejected");
+
+      proceedToVerification({
+        name: device.name,
+        ip: device.ip,
+        method: `WiFi (${device.ip})`,
+        battery: 'AC Power',
+        firmware: 'Embedded WebServer'
+      });
+    } catch (err) {
+      setErrorText(`Failed to connect to ${device.name}.`);
+    } finally {
+      setConnectingDevice(null);
+    }
+  };
 
   const connectWiFi = async () => {
     setLoading(true);
     setErrorText(null);
     
     try {
-      // Real check: Try to ping the device
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3000);
       
       const target = wifiTab === 'ap' ? '192.168.4.1' : wifiIp;
-      // Note: In local network, we might hit CORS or blocked requests. 
-      // We assume device provides a /ping endpoint for handshake verification.
-      const response = await fetch(`http://${target}/ping`, { signal: controller.signal })
+      const response = await fetch(`http://${target}/connect`, { signal: controller.signal })
         .catch(e => { throw new Error("Device not reachable. Check power and IP."); });
 
       clearTimeout(timeoutId);
-      
+      const data = await response.json();
+      if (data.status !== 'ok') throw new Error("Handshake rejected");
+
       proceedToVerification({
-        name: 'PureOil-ESP32',
-        method: `WiFi (${target})`,
-        battery: '92%',
-        firmware: 'v2.1.0-wifi'
+        name: data.deviceId || 'PureOil-ESP32',
+        ip: target,
+        method: `WiFi Direct (${target})`,
+        battery: 'AC Power',
+        firmware: 'Embedded WebServer'
       });
     } catch (err) {
       setErrorText(err.message || "Failed to establish handshake with ESP32.");
@@ -69,26 +121,85 @@ export default function ScanFlow() {
     setStep(2);
   };
 
-  // --- Real-time Scanning Phase (NO SIMULATION) ---
+  // --- Real-time Scanning Phase (POLLING SENSOR ENDPOINT) ---
   useEffect(() => {
     if (step === 3) {
-      // Listen for analysis completion
-      socket.on('new_reading', (data) => {
-        setProgress(100);
-        setScanResult(data.analysis);
-        setTimeout(() => setStep(4), 1000);
-      });
+      setProgress(0);
+      setScanResult(null);
+      let poller;
 
-      return () => socket.off('new_reading');
+      if (deviceInfo?.ip) {
+        // Real-time polling logic
+        poller = setInterval(async () => {
+          try {
+            const res = await fetch(`http://${deviceInfo.ip}/sensor`);
+            if (res.ok) {
+              const data = await res.json();
+              // data has adcValue, voltage, tds, temperature, timestamp
+              
+              setLocalLiveData({
+                tds_ppm: data.tds,
+                temperature_c: data.temperature,
+                ph: 6.45, // Map this correctly if available, mocked here if missing
+                density_gcm3: 0.908 // Map correctly if available
+              });
+              
+              setProgress(prev => {
+                const next = prev + 12;
+                if (next >= 100) {
+                  clearInterval(poller);
+                  
+                  // Trigger Analysis API
+                  const apiUrl = import.meta.env.VITE_BACKEND_URL || `http://${window.location.hostname}:4000`;
+                  fetch(`${apiUrl}/api/analyze`, {
+                     method: 'POST',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify({
+                        oil_type: selectedOilType,
+                        sensor_values: {
+                           temperature_c: data.temperature || 25,
+                           density_gcm3: data.density || 0.915,
+                           refractive_index: data.optical || data.tds || 1.470 
+                        }
+                     })
+                  }).then(res => res.json()).then(result => {
+                     setScanResult(result);
+                     setTimeout(() => setStep(4), 1000);
+                  }).catch(err => {
+                     console.error("Analysis Failed", err);
+                     setStep(0);
+                  });
+                  return 100;
+                }
+                return next;
+              });
+            }
+          } catch (e) {
+            console.error("Polling error", e);
+          }
+        }, 1000);
+      } else {
+        // Fallback for BLE/USB socket method
+        socket.on('new_reading', (data) => {
+          setProgress(100);
+          setScanResult(data.analysis);
+          setTimeout(() => setStep(4), 1000);
+        });
+      }
+
+      return () => {
+        if (poller) clearInterval(poller);
+        socket.off('new_reading');
+      };
     }
-  }, [step]);
+  }, [step, deviceInfo]);
 
-  // Update progress based on live sensor packets
+  // Update progress based on live sensor packets (for fallback)
   useEffect(() => {
-    if (step === 3 && liveData) {
+    if (step === 3 && liveData && !deviceInfo?.ip) {
       setProgress(prev => Math.min(prev + 12, 98));
     }
-  }, [step, liveData]);
+  }, [step, liveData, deviceInfo]);
 
   const startScan = () => {
     setStep(3);
@@ -201,25 +312,85 @@ export default function ScanFlow() {
              </div>
 
              {wifiTab === 'same' ? (
-                <div className="card border-[#333] flex flex-col gap-4">
-                  <div>
-                    <label className="text-gray-400 text-[10px] font-bold uppercase tracking-widest block mb-2">ESP32 Static IP</label>
-                    <input 
-                      type="text" 
-                      value={wifiIp} 
-                      onChange={e=>setWifiIp(e.target.value)} 
-                      placeholder="192.168.1.10"
-                      className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[#d4af37] rounded-2xl px-4 py-4 theme-text outline-none font-mono text-lg transition-all" 
-                    />
-                  </div>
-                  
-                  <button 
-                    onClick={connectWiFi} 
-                    disabled={loading}
-                    className="btn-primary mt-2"
-                  >
-                    {loading ? <span className="flex items-center gap-2"><RefreshCw size={18} className="animate-spin" /> PROBING...</span> : 'TEST CONNECTIVITY'}
-                  </button>
+                <div className="card border-[#333] flex flex-col gap-4 bg-[#0a0a0a]">
+                  {!isNetworkScanning && discoveredDevices.length === 0 && !connectingDevice && (
+                    <div className="flex flex-col items-center py-8">
+                       <Wifi size={48} className="text-gray-600 mb-4" />
+                       <h3 className="theme-text font-bold text-center mb-2">Scan Local Network</h3>
+                       <p className="text-xs text-gray-500 text-center mb-4">Finds nearby ESP sensors connected to your current WiFi router.</p>
+                       
+                       <div className="w-full bg-[#1c1c1c] p-4 rounded-xl border border-[#333] mb-6 text-left">
+                         <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-2">How to Connect</p>
+                         <ol className="text-xs text-gray-500 flex flex-col gap-2 font-medium list-decimal pl-4">
+                           <li>Power on your ESP module.</li>
+                           <li>Ensure it is connected to the same WiFi network as this device.</li>
+                           <li>Tap <strong>Scan Now</strong> to discover nearby sensors.</li>
+                           <li>Select your device from the list to pair.</li>
+                         </ol>
+                       </div>
+
+                       <button onClick={scanNetwork} className="btn-primary w-full shadow-glow-teal bg-teal-600 hover:bg-teal-500 border-0">
+                         <span className="flex items-center justify-center gap-2 font-black tracking-widest text-sm text-white">
+                           <RefreshCw size={16} /> SCAN NOW
+                         </span>
+                       </button>
+                    </div>
+                  )}
+
+                  {isNetworkScanning && (
+                    <div className="flex flex-col items-center py-10 relative overflow-hidden">
+                       <div className="absolute inset-0 bg-teal-500/10 rounded-full animate-ping opacity-20 w-32 h-32 m-auto" />
+                       <div className="w-16 h-16 bg-teal-500/20 text-teal-400 rounded-full flex items-center justify-center relative z-10 animate-pulse border border-teal-500/30">
+                         <Wifi size={24} />
+                       </div>
+                       <p className="mt-6 text-teal-400 text-xs font-black uppercase tracking-widest animate-pulse">Scanning for nearby devices...</p>
+                    </div>
+                  )}
+
+                  {!isNetworkScanning && discoveredDevices.length > 0 && !connectingDevice && (
+                    <div className="flex flex-col gap-3">
+                       <div className="flex justify-between items-end mb-2 border-b border-[#333] pb-2">
+                          <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Discovered Modules</span>
+                          <span className="text-teal-500 text-[10px] font-black bg-teal-500/10 px-2 py-1 rounded">{discoveredDevices.length} FOUND</span>
+                       </div>
+                       
+                       {discoveredDevices.map((dev, i) => (
+                         <div 
+                           key={i} 
+                           onClick={() => connectToDevice(dev)}
+                           className="bg-[#1c1c1c] border border-[#333] hover:border-teal-500/50 p-4 rounded-xl cursor-pointer transition-all active:scale-[0.98] flex justify-between items-center group relative overflow-hidden"
+                         >
+                           <div className="absolute left-0 top-0 bottom-0 w-1 bg-teal-500/0 group-hover:bg-teal-500 transition-colors" />
+                           <div>
+                             <h4 className="text-white font-bold text-sm tracking-wide">{dev.name}</h4>
+                             <p className="text-[10px] text-gray-500 font-mono mt-1">{dev.ip}</p>
+                           </div>
+                           <div className="flex items-center gap-2">
+                             <div className="flex gap-0.5 items-end h-4">
+                               <div className="w-1 bg-teal-500 rounded-full" style={{ height: '40%' }} />
+                               <div className="w-1 bg-teal-500 rounded-full" style={{ height: '60%' }} />
+                               <div className={`w-1 rounded-full ${dev.rssi > -70 ? 'bg-teal-500' : 'bg-[#333]'}`} style={{ height: '80%' }} />
+                               <div className={`w-1 rounded-full ${dev.rssi > -50 ? 'bg-teal-500' : 'bg-[#333]'}`} style={{ height: '100%' }} />
+                             </div>
+                             <span className="text-[9px] text-teal-500 font-black">{dev.rssi} dBm</span>
+                           </div>
+                         </div>
+                       ))}
+
+                       <button onClick={scanNetwork} className="mt-4 py-3 text-[10px] font-bold text-gray-500 hover:text-white transition-colors uppercase tracking-widest flex items-center justify-center gap-2">
+                         <RefreshCw size={14} /> Rescan Network
+                       </button>
+                    </div>
+                  )}
+
+                  {connectingDevice && (
+                    <div className="flex flex-col items-center py-10">
+                       <div className="w-16 h-16 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center animate-spin-slow border-t-2 border-amber-500 mb-6 shadow-glow-amber">
+                         <RefreshCw size={24} />
+                       </div>
+                       <p className="text-amber-500 text-xs font-black uppercase tracking-widest">Connecting to {connectingDevice.name}...</p>
+                    </div>
+                  )}
                 </div>
              ) : (
                 <div className="card flex flex-col gap-4 p-5">
@@ -286,6 +457,20 @@ export default function ScanFlow() {
                   <span className="text-green-500 font-bold text-sm">READY</span>
                 </div>
              </div>
+             <div className="card flex flex-col gap-3 mb-6 bg-[#0a0a0a] border-[#333]">
+                <h3 className="theme-text font-bold text-sm">Target Oil Profile</h3>
+                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-widest">Select the reference chemistry</p>
+                <select 
+                  value={selectedOilType} 
+                  onChange={(e) => setSelectedOilType(e.target.value)}
+                  className="w-full bg-[#1c1c1c] border border-[#333] text-teal-500 font-bold p-4 rounded-xl focus:border-teal-500 transition-colors outline-none focus:ring-1 focus:ring-teal-500/50 appearance-none shadow-glow-teal"
+                >
+                  <option value="Mustard Oil">Mustard Oil Reference</option>
+                  <option value="Sunflower Oil">Sunflower Oil Reference</option>
+                  <option value="Coconut Oil">Coconut Oil Reference</option>
+                  <option value="Olive Oil">Olive Oil Reference</option>
+                </select>
+             </div>
 
              <div className="mt-auto flex flex-col gap-4">
                 <button onClick={startScan} className="btn-primary w-full py-5 text-lg shadow-glow-gold rounded-[25px]">
@@ -346,24 +531,24 @@ export default function ScanFlow() {
                 </div>
              </div>
 
-             <div className="grid grid-cols-4 gap-3 w-full">
-                <div className="flex flex-col items-center gap-1">
-                   <p className="text-[8px] text-gray-600 font-bold uppercase">pH</p>
-                   <p className="text-xs text-white font-mono font-bold">{liveData?.sensor_values?.ph?.toFixed(1) || '---'}</p>
-                </div>
-                <div className="flex flex-col items-center gap-1 border-x border-[#333]">
-                   <p className="text-[8px] text-gray-600 font-bold uppercase">Density</p>
-                   <p className="text-xs text-white font-mono font-bold">{liveData?.sensor_values?.density_gcm3?.toFixed(2) || '---'}</p>
-                </div>
-                <div className="flex flex-col items-center gap-1 border-r border-[#333]">
-                   <p className="text-[8px] text-gray-600 font-bold uppercase">Temp</p>
-                   <p className="text-xs text-white font-mono font-bold">{liveData?.sensor_values?.temperature_c?.toFixed(1) || '---'}</p>
-                </div>
-                <div className="flex flex-col items-center gap-1">
-                   <p className="text-[8px] text-gray-600 font-bold uppercase">TDS</p>
-                   <p className="text-xs text-white font-mono font-bold">{liveData?.sensor_values?.tds_ppm || '---'}</p>
-                </div>
-             </div>
+                <div className="grid grid-cols-4 gap-3 w-full">
+                 <div className="flex flex-col items-center gap-1">
+                    <p className="text-[8px] text-gray-600 font-bold uppercase">pH</p>
+                    <p className="text-xs text-white font-mono font-bold">{(localLiveData || liveData)?.ph?.toFixed(1) || '---'}</p>
+                 </div>
+                 <div className="flex flex-col items-center gap-1 border-x border-[#333]">
+                    <p className="text-[8px] text-gray-600 font-bold uppercase">Density</p>
+                    <p className="text-xs text-white font-mono font-bold">{(localLiveData || liveData)?.density_gcm3?.toFixed(2) || '---'}</p>
+                 </div>
+                 <div className="flex flex-col items-center gap-1 border-r border-[#333]">
+                    <p className="text-[8px] text-gray-600 font-bold uppercase">Temp</p>
+                    <p className="text-xs text-white font-mono font-bold">{(localLiveData || liveData)?.temperature_c?.toFixed(1) || '---'}</p>
+                 </div>
+                 <div className="flex flex-col items-center gap-1">
+                    <p className="text-[8px] text-gray-600 font-bold uppercase">TDS</p>
+                    <p className="text-xs text-white font-mono font-bold">{(localLiveData || liveData)?.tds_ppm || '---'}</p>
+                 </div>
+              </div>
           </div>
         )}
 

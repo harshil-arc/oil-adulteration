@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { Search, Filter, Hourglass, ChevronRight, CheckCircle, AlertTriangle } from 'lucide-react';
 
 export default function History() {
+  const navigate = useNavigate();
   const [dbData, setDbData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -89,7 +91,7 @@ export default function History() {
            filteredScans.map(scan => {
              const isSafe = scan.quality !== 'Unsafe';
              return (
-               <div key={scan.id} className="card p-4 flex items-center justify-between hover:border-[#d4af37]/30 transition-colors cursor-pointer group">
+               <div key={scan.id} onClick={() => navigate(`/scan/${scan.id}`)} className="card p-4 flex items-center justify-between hover:border-[#d4af37]/30 transition-colors cursor-pointer group">
                   <div className="flex items-center gap-3">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center ${isSafe ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'} border ${isSafe ? 'border-green-500/20' : 'border-red-500/20'}`}>
                       {isSafe ? <CheckCircle size={18} /> : <AlertTriangle size={18} />}

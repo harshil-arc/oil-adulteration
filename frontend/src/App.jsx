@@ -8,7 +8,8 @@ import History from './pages/History';
 import MapPage from './pages/MapPage';
 import Profile from './pages/Profile';
 import { AppProvider } from './context/AppContext';
-import { PrivacySecurity, AboutApp, LearningCenter, ReportsList } from './pages/ProfileSubScreens';
+import { PrivacySecurity, AboutApp, LearningCenter, ReportsList, DeveloperTools } from './pages/ProfileSubScreens';
+import ScanDetail from './pages/ScanDetail';
 import AuthLock from './components/AuthLock';
 import ProtectedRoute from './components/ProtectedRoute';
 import './index.css';
@@ -32,12 +33,14 @@ export default function App() {
                   <Route path="/home" element={<Home />} />
                   <Route path="/scan" element={<ScanFlow />} />
                   <Route path="/history" element={<History />} />
+                  <Route path="/scan/:id" element={<ScanDetail />} />
                   <Route path="/map" element={<MapPage />} />
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/privacy" element={<PrivacySecurity />} />
                   <Route path="/about" element={<AboutApp />} />
                   <Route path="/learning" element={<LearningCenter />} />
                   <Route path="/reports" element={<ReportsList />} />
+                  <Route path="/developer" element={<DeveloperTools />} />
                 </Routes>
               </Layout>
             </AuthLock>

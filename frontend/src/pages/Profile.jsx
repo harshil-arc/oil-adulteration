@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Bell, Globe, Wifi, Moon, Shield, Info, FileText, 
-  BookOpen, LogOut, ChevronRight, Edit3, X
+  BookOpen, LogOut, ChevronRight, Edit3, X, Server
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useApp } from '../context/AppContext';
@@ -184,6 +184,7 @@ export default function Profile() {
                    { icon: Shield, title: t('profile.privacy'), path: '/privacy' },
                    { icon: Info, title: t('profile.about'), path: '/about' },
                    { icon: BookOpen, title: t('profile.learning'), path: '/learning' },
+                   { icon: Server, title: "Developer Tools", path: '/developer' },
                  ].map((item, idx) => (
                   <div key={idx} onClick={() => navigate(item.path)} className="flex items-center justify-between p-4 cursor-pointer theme-hover transition-colors">
                      <div className="flex items-center gap-3">
