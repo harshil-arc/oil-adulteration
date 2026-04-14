@@ -59,8 +59,8 @@ export default function ProtocolSelector() {
 
           {/* Card 2 — Local Network (DEV ONLY) */}
           <div
-            onClick={() => !isHttps && navigate('/scan/local')}
-            className={`card transition-all group overflow-hidden relative ${isHttps ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:border-[#C8952A]/50 active:scale-[0.98]'}`}
+            onClick={() => navigate('/scan/local')}
+            className="card transition-all group overflow-hidden relative cursor-pointer hover:border-[#C8952A]/50 active:scale-[0.98]"
           >
             <div className="flex items-start gap-4 relative z-10 w-full">
               <div className="p-3 bg-[#C8952A]/10 rounded-2xl text-[#C8952A] transition-colors">
@@ -74,12 +74,6 @@ export default function ProtocolSelector() {
                 <p className="text-gray-400 text-xs mt-1">Direct IP or router scan. Most stable for long sessions & real-time data.</p>
               </div>
             </div>
-            {isHttps && (
-              <div className="mt-3 bg-red-500/10 text-red-400 border border-red-500/20 px-3 py-2 rounded-lg text-[10px] font-bold flex gap-2 items-start">
-                <AlertTriangle size={14} className="shrink-0 mt-0.5" />
-                <span>Local ESP connection blocked by browser security (HTTPS). Use Bluetooth instead.</span>
-              </div>
-            )}
           </div>
 
           {/* Card 3 — Cloud Sync (FALLBACK) */}
