@@ -9,12 +9,7 @@ export default function LocalRouter() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // Block this page on HTTPS — redirect back to /scan
-  useEffect(() => {
-    if (window.location.protocol === 'https:') {
-      navigate('/scan');
-    }
-  }, [navigate]);
+
 
   const handleConnect = async () => {
     setLoading(true);
