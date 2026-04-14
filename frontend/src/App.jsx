@@ -3,7 +3,15 @@ import Layout from './components/Layout';
 import SplashOnboarding from './pages/SplashOnboarding';
 import Login from './pages/Login';
 import Home from './pages/Home';
-import ScanFlow from './pages/ScanFlow';
+import ScanFlow from './pages/ScanFlow'; // Kept as backup or delete
+import ProtocolSelector from './pages/scan/ProtocolSelector';
+import BluetoothScan from './pages/scan/Bluetooth';
+import LocalRouter from './pages/scan/LocalRouter';
+import CloudSync from './pages/scan/CloudSync';
+import Readings from './pages/scan/Readings';
+import SelectOil from './pages/scan/SelectOil';
+import Analysis from './pages/scan/Analysis';
+import Calibrate from './pages/scan/Calibrate';
 import History from './pages/History';
 import MapPage from './pages/MapPage';
 import Profile from './pages/Profile';
@@ -31,7 +39,14 @@ export default function App() {
                 <Routes>
                   <Route path="/" element={<Navigate to="/home" replace />} />
                   <Route path="/home" element={<Home />} />
-                  <Route path="/scan" element={<ScanFlow />} />
+                  <Route path="/scan" element={<ProtocolSelector />} />
+                  <Route path="/scan/bluetooth" element={<BluetoothScan />} />
+                  <Route path="/scan/local" element={<LocalRouter />} />
+                  <Route path="/scan/cloud" element={<CloudSync />} />
+                  <Route path="/scan/readings" element={<Readings />} />
+                  <Route path="/scan/readings/calibrate" element={<Calibrate />} />
+                  <Route path="/scan/readings/select-oil" element={<SelectOil />} />
+                  <Route path="/scan/readings/analysis" element={<Analysis />} />
                   <Route path="/history" element={<History />} />
                   <Route path="/scan/:id" element={<ScanDetail />} />
                   <Route path="/map" element={<MapPage />} />

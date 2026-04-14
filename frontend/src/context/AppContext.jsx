@@ -131,12 +131,24 @@ export function AppProvider({ children }) {
     });
   };
 
-  const updateProfile = (data) => {
+  const updateProfile = async (data) => {
+    let nextProfile;
     setProfile(prev => {
-      const next = { ...prev, ...data };
-      localStorage.setItem(PROFILE_KEY, JSON.stringify(next));
-      return next;
+      nextProfile = { ...prev, ...data };
+      localStorage.setItem(PROFILE_KEY, JSON.stringify(nextProfile));
+      return nextProfile;
     });
+    
+    // Sync to Supabase auth metadata if user is logged in
+    if (user) {
+      await supabase.auth.updateUser({
+        data: {
+          full_name: nextProfile.name,
+          phone: nextProfile.phone,
+          badgeId: nextProfile.badgeId
+        }
+      });
+    }
   };
 
   const login = async (email, password) => {

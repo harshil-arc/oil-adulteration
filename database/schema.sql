@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS public.shops (
 );
 
 ALTER TABLE public.shops ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on shops" ON public.shops;
 CREATE POLICY "Allow all on shops" ON public.shops FOR ALL USING (true) WITH CHECK (true);
 
 -- ============================================================
@@ -52,6 +53,7 @@ CREATE TABLE IF NOT EXISTS public.devices (
 );
 
 ALTER TABLE public.devices ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on devices" ON public.devices;
 CREATE POLICY "Allow all on devices" ON public.devices FOR ALL USING (true) WITH CHECK (true);
 
 -- ============================================================
@@ -73,6 +75,7 @@ CREATE TABLE IF NOT EXISTS public.oil_readings (
 );
 
 ALTER TABLE public.oil_readings ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on oil_readings" ON public.oil_readings;
 CREATE POLICY "Allow all on oil_readings" ON public.oil_readings FOR ALL USING (true) WITH CHECK (true);
 
 CREATE INDEX IF NOT EXISTS idx_oil_readings_device ON public.oil_readings(device_id);
@@ -98,6 +101,7 @@ CREATE TABLE IF NOT EXISTS public.analysis_results (
 );
 
 ALTER TABLE public.analysis_results ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on analysis_results" ON public.analysis_results;
 CREATE POLICY "Allow all on analysis_results" ON public.analysis_results FOR ALL USING (true) WITH CHECK (true);
 
 CREATE INDEX IF NOT EXISTS idx_analysis_device ON public.analysis_results(device_id);
@@ -120,6 +124,7 @@ CREATE TABLE IF NOT EXISTS public.alerts (
 );
 
 ALTER TABLE public.alerts ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on alerts" ON public.alerts;
 CREATE POLICY "Allow all on alerts" ON public.alerts FOR ALL USING (true) WITH CHECK (true);
 
 CREATE INDEX IF NOT EXISTS idx_alerts_device ON public.alerts(device_id);
@@ -129,10 +134,21 @@ CREATE INDEX IF NOT EXISTS idx_alerts_ack ON public.alerts(acknowledged);
 -- ============================================================
 -- REALTIME: Enable realtime on all tables
 -- ============================================================
-ALTER PUBLICATION supabase_realtime ADD TABLE public.devices;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.oil_readings;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.analysis_results;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.alerts;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'devices') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.devices;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'oil_readings') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.oil_readings;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'analysis_results') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.analysis_results;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'alerts') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.alerts;
+  END IF;
+END $$;
 
 -- ============================================================
 -- SEED: Insert default device
@@ -160,13 +176,21 @@ CREATE TABLE IF NOT EXISTS public.complaints (
 );
 
 ALTER TABLE public.complaints ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow all on complaints" ON public.complaints;
 CREATE POLICY "Allow all on complaints" ON public.complaints FOR ALL USING (true) WITH CHECK (true);
 
 -- ============================================================
 -- REALTIME: Enable realtime on new tables
 -- ============================================================
-ALTER PUBLICATION supabase_realtime ADD TABLE public.shops;
-ALTER PUBLICATION supabase_realtime ADD TABLE public.complaints;
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'shops') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.shops;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'complaints') THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE public.complaints;
+  END IF;
+END $$;
 
 -- ============================================================
 -- 7. PROFILES TABLE (RBAC)
@@ -182,10 +206,16 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 );
 
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
 CREATE POLICY "Users can view own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
+
+DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles;
 CREATE POLICY "Admins can view all profiles" ON public.profiles FOR SELECT USING (
   EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
 );
+
+DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can update own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
 
 -- Function and Trigger to automatically create a profile for new users

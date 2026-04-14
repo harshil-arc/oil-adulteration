@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, Sparkles, ChevronRight, AlertTriangle, CheckCircle, Droplets, Flag, X, MapPin, Camera, FileBarChart, WifiOff } from 'lucide-react';
+import { Bell, Sparkles, ChevronRight, AlertTriangle, CheckCircle, Droplets, Flag, X, MapPin, Camera, FileBarChart, WifiOff, ScanSearch, FlaskConical, Map as MapIcon, Compass } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useApp } from '../context/AppContext';
 import { useTranslation } from 'react-i18next';
 import AiChatbot from '../components/AiChatbot';
 import DeviceStatus from '../components/DeviceStatus';
+import NotificationsCenter from '../components/NotificationsCenter';
 
 export default function Home() {
   const navigate = useNavigate();
@@ -15,6 +16,7 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [showReport, setShowReport] = useState(false);
   const [showAiChat, setShowAiChat] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [reportForm, setReportForm] = useState({ shopName: '', address: '', oilType: '', description: '', attachedReadingId: '' });
   const [proofPhoto, setProofPhoto] = useState(null);
   const [submitting, setSubmitting] = useState(false);
@@ -59,8 +61,10 @@ export default function Home() {
         trust_score: 20
       }]).select().single();
 
+      if (shopErr) throw new Error("Table 'shops': " + shopErr.message);
+
       if (shopData) {
-        await supabase.from('complaints').insert([{
+        const { error: compErr } = await supabase.from('complaints').insert([{
           shop_id: shopData.id,
           description: `Reading ID: ${reportForm.attachedReadingId}\n${reportForm.description}`,
           status: 'pending',
@@ -68,6 +72,7 @@ export default function Home() {
           lng: lng,
           image_url: proofPhoto ? 'uploaded_proof.jpg' : null
         }]);
+        if (compErr) throw new Error("Table 'complaints': " + compErr.message);
       }
       
       setShowReport(false);
@@ -76,7 +81,7 @@ export default function Home() {
       alert("Report submitted successfully! The shop has been flagged for FSSAI verification.");
     } catch (e) {
       console.error(e);
-      alert("Failed to submit report.");
+      alert("Database Error! Please ensure 'shops' and 'complaints' tables exist in Supabase.\nDetails: " + e.message);
     } finally {
       setSubmitting(false);
     }
@@ -88,9 +93,12 @@ export default function Home() {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold theme-text tracking-tight">{t('home.greeting')} 👋</h1>
         <div className="flex items-center gap-3">
-          <button className="w-10 h-10 rounded-full bg-[var(--bg-elevated)] border border-[var(--border-color)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors relative">
+          <button 
+            onClick={() => setShowNotifications(true)}
+            className="w-10 h-10 rounded-full bg-[var(--bg-elevated)] border border-[var(--border-color)] flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors relative"
+          >
             <Bell size={18} />
-            <div className="absolute top-2 right-2.5 w-2 h-2 bg-[#d4af37] rounded-full shadow-glow-gold" />
+            <div className="absolute top-2 right-2.5 w-2 h-2 bg-[#d4af37] rounded-full shadow-glow-gold animate-pulse" />
           </button>
           <button onClick={() => setShowAiChat(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-full bg-[#d4af37]/10 text-[#d4af37] border border-[#d4af37]/30 text-xs font-bold uppercase tracking-widest hover:bg-[#d4af37]/20 transition-colors shadow-glow-gold text-nowrap">
             <Sparkles size={14} fill="currentColor" />
@@ -113,34 +121,57 @@ export default function Home() {
             <DeviceStatus />
           </div>
           
-          <h2 className="text-3xl font-black theme-text mb-2 leading-tight">{t('home.test_oil')}</h2>
-          <p className="text-[var(--text-secondary)] text-sm mb-6 max-w-[200px] leading-relaxed">
-            {t('home.hero_desc')}
+          <h2 className="text-3xl font-black theme-text mb-2 leading-tight">Check Oil<br/>Purity Live</h2>
+          <p className="text-[var(--text-secondary)] text-sm mb-6 max-w-[220px] leading-relaxed">
+            Detect harmful adulterants instantly using our 4-point AI sensor analysis.
           </p>
           
-          {isConnected ? (
-            <button 
-              onClick={() => navigate('/scan')}
-              className="btn-primary w-fit pr-4"
-            >
-              <span>{t('home.start_scan')}</span>
-              <ChevronRight size={18} />
-            </button>
-          ) : (
-            <div className="flex flex-col gap-2">
-              <button 
-                disabled
-                className="btn-primary w-fit pr-4 opacity-50 cursor-not-allowed grayscale"
-              >
-                <span>{t('home.device_offline')}</span>
-                <WifiOff size={18} />
-              </button>
-              <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest pl-1 animate-pulse">
-                {t('home.connect_esp')}
-              </p>
+          <button 
+            onClick={() => navigate('/scan')}
+            className="w-full sm:w-fit flex items-center justify-between gap-4 py-4 px-6 bg-gradient-to-r from-[#f5c842] to-[#d4af37] text-black rounded-[18px] font-black uppercase tracking-widest shadow-[0_8px_30px_rgba(212,175,55,0.4)] active:scale-95 transition-all group"
+          >
+            <div className="flex items-center gap-2">
+              <ScanSearch size={22} className="animate-pulse" />
+              <span className="text-sm">Initiate Scan</span>
             </div>
-          )}
+            <div className="w-8 h-8 rounded-full bg-black/10 flex items-center justify-center group-hover:translate-x-1 transition-transform">
+              <ChevronRight size={18} />
+            </div>
+          </button>
         </div>
+      </div>
+
+      {/* Quick Actions Grid */}
+      <div className="grid grid-cols-2 gap-3">
+        <button 
+          onClick={() => {
+             // If connected, go straight to readings calibration, else guide to connect via /scan
+             if (isConnected) navigate('/scan/readings/calibrate');
+             else navigate('/scan');
+          }}
+          className="card p-4 flex flex-col gap-3 group border border-[#d4af37]/10 hover:border-[#d4af37]/50 transition-colors text-left"
+        >
+          <div className="w-10 h-10 rounded-full bg-[#d4af37]/10 flex items-center justify-center">
+            <FlaskConical size={18} className="text-[#d4af37]" />
+          </div>
+          <div>
+            <h3 className="font-bold text-sm theme-text mb-0.5 group-hover:text-[#d4af37] transition-colors">Calibrate</h3>
+            <p className="text-[10px] text-[var(--text-muted)] line-clamp-1">Custom pure baseline</p>
+          </div>
+        </button>
+        
+        <button 
+          onClick={() => navigate('/map')}
+          className="card p-4 flex flex-col gap-3 group border border-purple-500/10 hover:border-purple-500/50 transition-colors text-left"
+        >
+          <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center">
+            <MapIcon size={18} className="text-purple-400" />
+          </div>
+          <div>
+            <h3 className="font-bold text-sm theme-text mb-0.5 group-hover:text-purple-400 transition-colors">Purity Map</h3>
+            <p className="text-[10px] text-[var(--text-muted)] line-clamp-1">View flagged hotspots</p>
+          </div>
+        </button>
       </div>
 
       {/* Stats Row */}
@@ -292,6 +323,9 @@ export default function Home() {
 
       {/* AI Chatbot Overlay */}
       {showAiChat && <AiChatbot onClose={() => setShowAiChat(false)} />}
+
+      {/* Notifications Overlay */}
+      {showNotifications && <NotificationsCenter onClose={() => setShowNotifications(false)} />}
     </div>
   );
 }

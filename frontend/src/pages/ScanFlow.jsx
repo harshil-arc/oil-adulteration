@@ -7,6 +7,7 @@ import { socket } from '../lib/socket';
 import ErrorBoundary from '../components/ErrorBoundary';
 import BLEConnection from '../components/BLEConnection';
 import USBConnection from '../components/USBConnection';
+import { safeLocalFetch } from '../lib/sensorApi';
 
 export default function ScanFlow() {
   const navigate = useNavigate();
@@ -66,7 +67,7 @@ export default function ScanFlow() {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 3000);
       
-      const response = await fetch(`http://${device.ip}/connect`, { signal: controller.signal });
+      const response = await safeLocalFetch(`http://${device.ip}/connect`, { signal: controller.signal });
       clearTimeout(timeoutId);
       
       const data = await response.json();
@@ -95,8 +96,8 @@ export default function ScanFlow() {
       const timeoutId = setTimeout(() => controller.abort(), 3000);
       
       const target = wifiTab === 'ap' ? '192.168.4.1' : wifiIp;
-      const response = await fetch(`http://${target}/connect`, { signal: controller.signal })
-        .catch(e => { throw new Error("Device not reachable. Check power and IP."); });
+      const response = await safeLocalFetch(`http://${target}/connect`, { signal: controller.signal })
+        .catch(e => { throw new Error(e.message || "Device not reachable. Check power and IP."); });
 
       clearTimeout(timeoutId);
       const data = await response.json();
@@ -132,7 +133,7 @@ export default function ScanFlow() {
         // Real-time polling logic
         poller = setInterval(async () => {
           try {
-            const res = await fetch(`http://${deviceInfo.ip}/sensor`);
+            const res = await safeLocalFetch(`http://${deviceInfo.ip}/sensor`);
             if (res.ok) {
               const data = await res.json();
               // data has adcValue, voltage, tds, temperature, timestamp

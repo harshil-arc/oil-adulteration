@@ -24,7 +24,10 @@ export default function Layout({ children }) {
       <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-50 glass border-t px-4 py-3 pb-safe theme-border">
         <div className="flex items-center justify-between px-2">
           {navItems.map(({ path, label, Icon }) => {
-            const isActive = location.pathname === path;
+            const isActive = path === '/scan' 
+                ? location.pathname.startsWith('/scan') 
+                : location.pathname === path;
+                
             return (
               <button
                 key={path}
