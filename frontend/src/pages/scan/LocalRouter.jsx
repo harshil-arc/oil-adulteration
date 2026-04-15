@@ -8,6 +8,7 @@ export default function LocalRouter() {
   const [ip, setIp] = useState('192.168.1.');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const isHttps = window.location.protocol === 'https:';
 
 
 
@@ -16,23 +17,33 @@ export default function LocalRouter() {
     setError(null);
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      const timeoutId = setTimeout(() => controller.abort(), 4000);
 
-      const res = await fetch(`http://${ip}/data`, { signal: controller.signal });
+      // Construct URL safely
+      const targetUrl = ip.startsWith('http') ? ip : `http://${ip}`;
+      const res = await fetch(`${targetUrl}/data`, { signal: controller.signal });
       clearTimeout(timeoutId);
 
-      if (!res.ok) throw new Error('HTTP error');
+      if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
       const json = await res.json();
 
-      if (json.device !== 'PureOil-Sensor') {
-        throw new Error('Not a PureOil device');
+      if (json.device !== 'PureOil-Sensor' && !ip.includes('localhost')) {
+         // We allow localhost to bypass strict device check for easier debugging
+         throw new Error('Device identity mismatch. Ensure you are connecting to a PureOil sensor.');
       }
 
-      setActiveConnection({ mode: 'LOCAL', ip });
+      setActiveConnection({ mode: 'LOCAL', ip: targetUrl.replace('http://', '') });
       navigate('/scan/readings');
     } catch (err) {
-      console.error(err);
-      setError('Could not reach that IP. Check the address and try again.');
+      console.error('[Connection Error]', err);
+      
+      if (err.name === 'AbortError') {
+        setError('Connection timed out. Is the device on and in range?');
+      } else if (err.name === 'TypeError' && isHttps) {
+        setError('SECURITY BLOCK: Your browser blocked this connection because of HTTPS. Click the "Shield" icon in your URL bar to "Allow Insecure Content" or use the Simulator.');
+      } else {
+        setError(err.message || 'Could not reach that IP. Check the address and try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -79,13 +90,22 @@ export default function LocalRouter() {
               placeholder="192.168.1.___"
               className="w-full bg-[#0a0a0a] text-white font-mono text-center text-xl tracking-[0.1em] py-4 rounded-xl border border-[#333] focus:border-[#C8952A] outline-none transition-colors"
             />
-            <button
-              onClick={handleConnect}
-              disabled={loading || ip.length < 8}
-              className="btn-primary w-full rounded-xl mt-4 shrink-0 transition-opacity disabled:opacity-50 border-0"
-            >
-              {loading ? <RefreshCw size={20} className="animate-spin mx-auto" /> : 'Connect'}
-            </button>
+            
+            <div className="grid grid-cols-2 gap-3 mt-4">
+              <button
+                onClick={() => setIp('localhost:3000')}
+                className="py-3 px-4 rounded-xl border border-[#333] text-[10px] font-bold text-gray-400 hover:bg-white/5 uppercase"
+              >
+                Use Simulator
+              </button>
+              <button
+                onClick={handleConnect}
+                disabled={loading || ip.length < 3}
+                className="bg-[#C8952A] text-black font-bold py-3 px-4 rounded-xl flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {loading ? <RefreshCw size={16} className="animate-spin" /> : 'Connect'}
+              </button>
+            </div>
           </div>
         </div>
 

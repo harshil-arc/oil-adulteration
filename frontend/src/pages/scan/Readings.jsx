@@ -96,7 +96,6 @@ export default function Readings() {
           const { data: row, error } = await supabase
             .from('readings')
             .select('*')
-            .eq('device', 'PureOil-Sensor')
             .order('created_at', { ascending: false })
             .limit(1)
             .single();

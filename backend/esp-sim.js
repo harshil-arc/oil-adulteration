@@ -21,6 +21,7 @@ app.get('/data', (req, res) => {
   console.log(`[${new Date().toISOString()}] GET /data from ${req.ip}`);
 
   res.json({
+    device:             "PureOil-Sensor",
     temperature:        parseFloat((Math.random() * 10 + 25).toFixed(2)),   // 25–35 °C
     wavelength:         Math.floor(Math.random() * 50 + 430),               // 430–480 nm
     density:            parseFloat((Math.random() * 0.08 + 0.88).toFixed(4)), // 0.88–0.96 g/cm³

@@ -72,6 +72,8 @@ export default function ProtocolSelector() {
                   <span className="bg-gray-700 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-full whitespace-nowrap">Dev Only</span>
                 </div>
                 <p className="text-gray-400 text-xs mt-1">Direct IP or router scan. Most stable for long sessions & real-time data.</p>
+                {!isHttps && <p className="text-[#C8952A] text-[9px] font-bold mt-1 uppercase tracking-tighter">Perfect for local testing</p>}
+                {isHttps && <p className="text-amber-500/80 text-[9px] font-bold mt-1 uppercase tracking-tighter">Requires "Allow Insecure Content" in browser</p>}
               </div>
             </div>
           </div>
