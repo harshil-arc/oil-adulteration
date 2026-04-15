@@ -4,7 +4,7 @@ import SplashOnboarding from './pages/SplashOnboarding';
 import Login from './pages/Login';
 import Home from './pages/Home';
 import ScanFlow from './pages/ScanFlow'; // Kept as backup or delete
-import ProtocolSelector from './pages/scan/ProtocolSelector';
+import QRLanding from './pages/QRLanding';
 import BluetoothScan from './pages/scan/Bluetooth';
 import LocalRouter from './pages/scan/LocalRouter';
 import CloudSync from './pages/scan/CloudSync';
@@ -16,7 +16,11 @@ import History from './pages/History';
 import MapPage from './pages/MapPage';
 import Profile from './pages/Profile';
 import { AppProvider } from './context/AppContext';
-import { PrivacySecurity, AboutApp, LearningCenter, ReportsList, DeveloperTools } from './pages/ProfileSubScreens';
+import { ReportsList, DeveloperTools } from './pages/ProfileSubScreens';
+import PrivacySecurity from './pages/PrivacySecurity';
+import AboutDashboard from './pages/AboutDashboard';
+import LearningCenter from './pages/LearningCenter';
+import QRGenerator from './pages/QRGenerator';
 import ScanDetail from './pages/ScanDetail';
 import AuthLock from './components/AuthLock';
 import ProtectedRoute from './components/ProtectedRoute';
@@ -39,7 +43,7 @@ export default function App() {
                 <Routes>
                   <Route path="/" element={<Navigate to="/home" replace />} />
                   <Route path="/home" element={<Home />} />
-                  <Route path="/scan" element={<ProtocolSelector />} />
+                  <Route path="/scan" element={<QRLanding />} />
                   <Route path="/scan/bluetooth" element={<BluetoothScan />} />
                   <Route path="/scan/local" element={<LocalRouter />} />
                   <Route path="/scan/cloud" element={<CloudSync />} />
@@ -52,10 +56,12 @@ export default function App() {
                   <Route path="/map" element={<MapPage />} />
                   <Route path="/profile" element={<Profile />} />
                   <Route path="/privacy" element={<PrivacySecurity />} />
-                  <Route path="/about" element={<AboutApp />} />
+                  <Route path="/privacy-security" element={<PrivacySecurity />} />
+                  <Route path="/about" element={<AboutDashboard />} />
                   <Route path="/learning" element={<LearningCenter />} />
                   <Route path="/reports" element={<ReportsList />} />
                   <Route path="/developer" element={<DeveloperTools />} />
+                  <Route path="/developer/qr" element={<QRGenerator />} />
                 </Routes>
               </Layout>
             </AuthLock>

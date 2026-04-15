@@ -1,11 +1,16 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Droplets, Eye, EyeOff, Mail, Lock, User, Phone, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login, signup, loginWithGoogle, session } = useApp();
+  
+  const fromPath = location.state?.from?.pathname || '/home';
+  const fromSearch = location.state?.from?.search || '';
+  const redirectUrl = fromPath + fromSearch;
   
   const [activeTab, setActiveTab] = useState('login'); // 'login' or 'signup'
   const [showPassword, setShowPassword] = useState(false);
@@ -21,8 +26,8 @@ export default function Login() {
   const [phone, setPhone] = useState('');
 
   useEffect(() => {
-    if (session) navigate('/home');
-  }, [session, navigate]);
+    if (session) navigate(redirectUrl);
+  }, [session, navigate, redirectUrl]);
 
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
@@ -36,7 +41,7 @@ export default function Login() {
       setErrorMsg(error.message);
       setIsLoading(false);
     } else {
-      navigate('/home');
+      navigate(redirectUrl);
     }
   };
 

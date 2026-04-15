@@ -181,7 +181,7 @@ export default function Profile() {
 
                 {/* Navigation Links */}
                  {[
-                   { icon: Shield, title: t('profile.privacy'), path: '/privacy' },
+                   { icon: Shield, title: t('profile.privacy'), path: '/privacy-security' },
                    { icon: Info, title: t('profile.about'), path: '/about' },
                    { icon: BookOpen, title: t('profile.learning'), path: '/learning' },
                    { icon: Server, title: "Developer Tools", path: '/developer' },

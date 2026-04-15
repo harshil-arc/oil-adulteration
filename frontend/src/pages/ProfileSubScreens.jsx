@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
 import { useEffect, useState } from 'react';
-import { Download, ChevronLeft, Lock, Fingerprint, EyeOff, Shield, ExternalLink, PlayCircle, BookOpen, AlertCircle, FileText, Trash2, Server, RefreshCw } from 'lucide-react';
+import { Download, ChevronLeft, Lock, Fingerprint, EyeOff, Shield, ExternalLink, PlayCircle, BookOpen, AlertCircle, FileText, Trash2, Server, RefreshCw, QrCode } from 'lucide-react';
 import { getConfig, updateConfig } from '../lib/config';
 import { getSensorData } from '../lib/sensorApi';
 // Reusable Top Nav for Sub Screens
@@ -277,6 +277,7 @@ export function ReportsList() {
 
 // 5. Developer Tools & Simulator Settings
 export function DeveloperTools() {
+  const navigate = useNavigate();
   const [config, setConfig] = useState(getConfig());
   const [status, setStatus] = useState('Not Connected');
   const [lastFetched, setLastFetched] = useState(null);
@@ -398,6 +399,17 @@ export function DeveloperTools() {
                {autoRefresh ? 'Auto Pinging' : 'Auto Refresh'}
              </button>
            </div>
+        </div>
+
+        {/* Utilities */}
+        <div className="card p-4 border-[#333] flex flex-col gap-2">
+           <button onClick={() => navigate('/developer/qr')} className="w-full flex items-center justify-between p-4 bg-[#1c1c1c] rounded-xl hover:bg-[#333] transition-colors">
+              <div className="flex items-center gap-3 text-[#d4af37]">
+                 <QrCode size={18} />
+                 <span className="font-bold text-sm tracking-widest uppercase">QR Code Generator Tool</span>
+              </div>
+              <ChevronLeft size={16} className="text-gray-500 rotate-180" />
+           </button>
         </div>
 
       </div>
