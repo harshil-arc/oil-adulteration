@@ -4,40 +4,39 @@ import { useTranslation } from 'react-i18next';
 export default function NotificationsCenter({ onClose }) {
   const { t } = useTranslation();
 
-  // Simulated notifications
   const notifications = [
     {
       id: 1,
       type: 'critical',
-      title: 'FSSAI Regional Alert',
-      message: 'High incidence of Argemone Oil adulteration detected in Mustard Oil batches in your region. Test your stock immediately.',
+      title: 'Food Waste Advisory',
+      message: 'Unusually high surplus calculated at recent college events in your region. Adjust production downwards by 15%.',
       date: '2 hours ago',
       icon: ShieldAlert,
-      link: 'https://fssai.gov.in/notifications'
     },
     {
       id: 2,
       type: 'warning',
-      title: 'Recent Scan Flagged',
-      message: 'Your last test on "Mustard Oil" showed 42% deviation (Moderate Risk). We recommend discontinuing use.',
+      title: 'Demand Prediction Alert',
+      message: 'Weather forecast changed to Heavy Rain for your upcoming open-air event. Demand prediction confidence dropped.',
       date: '1 day ago',
       icon: AlertTriangle
     },
     {
       id: 3,
       type: 'info',
-      title: 'Device Maintenance',
-      message: 'Your ESP32 sensor lens was last cleaned 30 days ago. Wipe with isopropyl alcohol for maximum accuracy.',
+      title: 'NGO Network Status',
+      message: '"Feeding India" partner is currently operating at high capacity. Delivery times may be delayed.',
       date: '3 days ago',
       icon: BellRing
     },
     {
       id: 4,
       type: 'update',
-      title: 'New Oil Baseline Available',
-      message: 'The central database updated the natural density range for Olive Oil (Extra Virgin).',
+      title: 'New Quality Compliance Rule',
+      message: 'FSSAI updated maximum hold time allowed for sensitive prepared items before mandatory disposal.',
       date: '1 week ago',
-      icon: Info
+      icon: Info,
+      link: 'https://fssai.gov.in/notifications'
     }
   ];
 

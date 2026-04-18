@@ -5,13 +5,27 @@ import {
   HeartHandshake, TrendingDown, Sparkles, CalendarDays,
   Users, MapPin, Utensils, Plus, X, ChevronDown, Activity,
   Siren, Wifi, WifiOff, Info, Shield, Phone, Navigation,
-  Bell, LayoutDashboard
+  Bell, LayoutDashboard, Search, RotateCcw
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useApp } from '../context/AppContext';
 import { useOffline } from '../context/OfflineContext';
 import axios from 'axios';
 import { STATES_LIST, getCities, getRegionalFoods } from '../data/indiaRegions';
+import AiChatbot from '../components/AiChatbot';
+import NotificationsCenter from '../components/NotificationsCenter';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+// Fix for default Leaflet markers in React
+delete L.Icon.Default.prototype._getIconUrl;
+const mapIcon = new L.DivIcon({
+  className: 'custom-leaflet-marker',
+  html: `<div style="background-color: #eab308; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; box-shadow: 0 0 10px rgba(0,0,0,0.5);"></div>`,
+  iconSize: [16, 16],
+  iconAnchor: [8, 8]
+});
 
 const API = 'http://localhost:5000/api';
 
@@ -20,9 +34,9 @@ const WEATHER_OPTIONS = ['Clear', 'Cloudy', 'Rainy', 'Hot'];
 
 // Nearby NGOs - in production fetch from DB based on location
 const NEARBY_NGOS = [
-  { id: 'n1', name: 'Roti Bank India', distance: '2.4 km', urgency: 'high', contact: '+91 98765 43210' },
-  { id: 'n2', name: 'Feeding India', distance: '3.8 km', urgency: 'medium', contact: '+91 87654 32109' },
-  { id: 'n3', name: 'No Food Waste NGO', distance: '5.1 km', urgency: 'low', contact: '+91 76543 21098' },
+  { id: 'n1', name: 'Roti Bank India', distance: '2.4 km', urgency: 'high', contact: '+91 98765 43210', lat: 19.0760, lng: 72.8777 },
+  { id: 'n2', name: 'Feeding India', distance: '3.8 km', urgency: 'medium', contact: '+91 87654 32109', lat: 19.0860, lng: 72.8877 },
+  { id: 'n3', name: 'No Food Waste NGO', distance: '5.1 km', urgency: 'low', contact: '+91 76543 21098', lat: 19.0660, lng: 72.8677 },
 ];
 
 const DEFAULT_FORM = {
@@ -39,7 +53,7 @@ const DEFAULT_FORM = {
 
 export default function Home() {
   const navigate = useNavigate();
-  const { deviceStatus } = useApp();
+  const { deviceStatus, setMenuOpen } = useApp();
   const { isOnline, pendingSync } = useOffline();
 
   const [readings, setReadings] = useState([]);
@@ -48,6 +62,8 @@ export default function Home() {
   const [prediction, setPrediction] = useState(null);
   const [loadingPred, setLoadingPred] = useState(false);
   const [showForm, setShowForm] = useState(true);
+  const [showAiChat, setShowAiChat] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   // Surplus input state
   const [totalPrepared, setTotalPrepared] = useState('');
@@ -77,6 +93,13 @@ export default function Home() {
     const t = setInterval(check, 30000);
     return () => clearInterval(t);
   }, []);
+
+  // Sync Prediction to Ledger automatically
+  useEffect(() => {
+    if (prediction && prediction.predicted_food_kg) {
+      setTotalPrepared(prediction.predicted_food_kg);
+    }
+  }, [prediction]);
 
   // Helpers
   const addFoodItem = (item) => {
@@ -138,8 +161,13 @@ export default function Home() {
   const riskColor = riskLabel === 'HIGH' ? 'text-red-500' : riskLabel === 'MEDIUM' ? 'text-orange-500' : 'text-green-500';
   const riskBorder = riskLabel === 'HIGH' ? 'border-red-500/30 bg-red-500/10' : riskLabel === 'MEDIUM' ? 'border-orange-500/30 bg-orange-500/10' : 'border-green-500/30 bg-green-500/10';
 
+  const formIsComplete = form.eventName && form.guestCount && form.state && form.city && form.eventDate && form.foodItems.length > 0;
+
   return (
     <div className="flex flex-col theme-bg min-h-screen pb-24 transition-colors duration-300">
+      
+      {showAiChat && <AiChatbot onClose={() => setShowAiChat(false)} />}
+      {showNotifications && <NotificationsCenter onClose={() => setShowNotifications(false)} />}
 
       {/* ── DISASTER BANNER ── */}
       {disaster.active && (
@@ -153,21 +181,32 @@ export default function Home() {
         </div>
       )}
 
-      {/* ── HEADER ── */}
       <div className="px-5 pt-8 pb-4 flex items-center justify-between sticky top-0 z-30 bg-[#f5f5f5]/80 backdrop-blur-md">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center">
+          <button 
+            onClick={() => setMenuOpen(true)}
+            className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center hover:bg-gray-50 active:scale-90 transition-all"
+          >
              <LayoutDashboard size={20} className="text-black" />
-          </div>
+          </button>
           <div>
             <h1 className="text-[14px] font-black theme-text tracking-tighter uppercase leading-none">
-              AI FOOD QUALITY & WASTE
+              Food Quality \u0026 Management AI
             </h1>
             <p className="theme-text-muted text-[8px] font-bold uppercase tracking-[0.2em] mt-1">Kitchen Intelligence System</p>
           </div>
         </div>
-        <div className="relative">
-          <button className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center relative">
+        <div className="relative flex items-center gap-3">
+          {/* ASK AI BUTTON - Now active */}
+          <button 
+            onClick={() => setShowAiChat(true)}
+            className="bg-[#1a1a1a] text-white px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest flex items-center gap-1.5 shadow-sm hover:scale-95 transition-all text-[#d4af37]">
+            <Sparkles size={12} className="text-[#d4af37]" /> Ask AI
+          </button>
+          <button 
+            onClick={() => setShowNotifications(true)}
+            className="w-10 h-10 bg-white rounded-xl shadow-sm flex items-center justify-center relative hover:bg-gray-50 active:scale-90 transition-all"
+          >
             <Bell size={18} className="text-gray-400" />
             <div className="absolute top-3 right-3 w-1.5 h-1.5 bg-red-500 rounded-full border-2 border-white" />
           </button>
@@ -199,16 +238,10 @@ export default function Home() {
                   <p className="text-2xl font-black">{prediction ? `${prediction.confidence}%` : '94.2%'}</p>
                 </div>
                 <div>
-                  <p className="text-[8px] text-gray-500 font-bold uppercase tracking-widest mb-1">Est. Savings</p>
-                  <p className="text-2xl font-black">$1.2k</p>
+                  <p className="text-[8px] text-gray-500 font-bold uppercase tracking-widest mb-1">Waste Risk</p>
+                  <p className={`text-2xl font-black ${prediction && riskLabel === 'HIGH' ? 'text-red-400' : prediction && riskLabel === 'MEDIUM' ? 'text-orange-400' : 'text-white'}`}>{prediction ? riskLabel : 'LOW'}</p>
                 </div>
               </div>
-              
-              <button onClick={handlePredict} disabled={loadingPred}
-                className="bg-[#eab308] hover:bg-[#ca8a04] active:scale-95 transition-all text-black px-4 py-3 rounded-2xl flex items-center gap-2 font-black text-[11px] shadow-lg shadow-yellow-500/20">
-                {loadingPred ? 'Processing...' : 'Predict Food Demand'}
-                <Sparkles size={14} />
-              </button>
             </div>
           </div>
           
@@ -218,19 +251,32 @@ export default function Home() {
 
         {/* ── STATUS INDICATORS ── */}
         <div className="flex flex-col gap-3">
-          <div className="bg-white rounded-[24px] p-5 flex items-center justify-between shadow-sm">
+          <div className="bg-white rounded-[24px] p-5 flex items-center justify-between shadow-sm border border-gray-50">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-[#f5f5f5] rounded-2xl flex items-center justify-center">
-                <Droplets size={20} className="text-gray-400" />
+              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${readings.length > 0 ? 'bg-[#f5f5f5]' : 'bg-red-50'}`}>
+                <Droplets size={20} className={readings.length > 0 ? "text-gray-400" : "text-red-400"} />
               </div>
               <div>
                 <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Oil Integrity</p>
-                <p className="text-sm font-black text-gray-900">{oilSafe ? 'Optimal Range' : 'Degraded (Action Required)'}</p>
+                {readings.length > 0 ? (
+                  <p className="text-sm font-black text-gray-900">{oilSafe ? 'Optimal Range' : 'Degraded (Action Required)'}</p>
+                ) : (
+                  <p className="text-sm font-black text-red-600">Pending Calibration</p>
+                )}
               </div>
             </div>
-            <span className="text-[10px] font-black text-amber-500 bg-amber-50 px-2 py-1 rounded-lg">
-              {oilSafe ? '68%' : '24%'}
-            </span>
+            {readings.length > 0 ? (
+              <span className={`text-[10px] font-black px-2 py-1 rounded-lg ${oilSafe ? 'text-amber-500 bg-amber-50' : 'text-red-500 bg-red-50'}`}>
+                {readings[0].quality === 'Safe' ? '92%' : '24%'}
+              </span>
+            ) : (
+              <button 
+                onClick={() => navigate('/scan')}
+                className="text-[9px] font-black bg-red-500 text-white px-3 py-1.5 rounded-lg uppercase tracking-widest hover:bg-red-600 transition-all shadow-sm active:scale-95"
+              >
+                Scan Now
+              </button>
+            )}
           </div>
 
           <div className="bg-white rounded-[24px] p-5 flex items-center justify-between shadow-sm">
@@ -246,359 +292,388 @@ export default function Home() {
             <div className={`w-2 h-2 rounded-full ${isOnlineSensor ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`} />
           </div>
 
-          <div className="bg-white rounded-[24px] p-5 flex items-center justify-between shadow-sm" onClick={() => navigate('/history')}>
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-[#f5f5f5] rounded-2xl flex items-center justify-center">
-                <CalendarDays size={20} className="text-gray-400" />
+          {/* Replaced Next Forecast with embedded Map Card */}
+          <div className="bg-white rounded-[24px] overflow-hidden shadow-sm flex flex-col">
+            <div className="p-4 bg-white flex justify-between items-center border-b border-gray-50">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-amber-100 flex justify-center items-center">
+                  <MapPin size={14} className="text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="text-[10px] font-black text-gray-900 uppercase tracking-widest leading-none">Nearby NGOs Map</h3>
+                  <p className="text-[9px] text-gray-500 mt-0.5">{form.city ? form.city : 'Select city to view local NGOs'}</p>
+                </div>
               </div>
-              <div>
-                <p className="text-[9px] font-bold text-gray-400 uppercase tracking-widest mb-1">Next Forecast</p>
-                <p className="text-sm font-black text-gray-900">In 2h 15m</p>
-              </div>
+              <button onClick={() => navigate('/map')} className="text-amber-500 text-[10px] font-black uppercase px-3 py-1.5 bg-amber-50 rounded-xl hover:bg-amber-100 transition-all">
+                Full Map
+              </button>
             </div>
-            <Plus size={16} className="text-gray-300" />
+            <div className="h-40 bg-gray-100 relative pointer-events-none">
+                <MapContainer center={[19.0760, 72.8777]} zoom={11} className="w-full h-full" zoomControl={false} dragging={false}>
+                  <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
+                  {NEARBY_NGOS.map(ngo => (
+                    <Marker key={ngo.id} position={[ngo.lat, ngo.lng]} icon={mapIcon} />
+                  ))}
+                </MapContainer>
+                {/* Gradient overlay so it looks pristine */}
+                <div className="absolute inset-0 bg-gradient-to-t from-white/60 to-transparent z-[400]" />
+            </div>
           </div>
         </div>
 
         {/* ── EVENT CONFIGURATION ── */}
-        <div className="bg-[#ececec] rounded-[32px] p-6 flex flex-col gap-5">
-          <div className="flex items-center justify-between">
-            <h3 className="text-[11px] font-black text-gray-900 uppercase tracking-widest leading-none">Event Configuration</h3>
-            <LayoutDashboard size={14} className="text-gray-400" />
-          </div>
-
+        {showForm && (
           <div className="flex flex-col gap-4">
-            {/* Event Designation */}
-            <div>
-              <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Event Designation</p>
-              <input type="text" placeholder="e.g. Grand Ballroom Wedding"
-                value={form.eventName} onChange={e => setForm(f => ({ ...f, eventName: e.target.value }))}
-                className="w-full bg-white border-none rounded-2xl px-5 py-4 text-sm font-bold shadow-sm focus:ring-2 ring-yellow-400 outline-none" />
-            </div>
+            <div className="bg-[#ececec] rounded-[32px] p-6 flex flex-col gap-5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-[11px] font-black text-gray-900 uppercase tracking-widest leading-none">Event Configuration</h3>
+                <LayoutDashboard size={14} className="text-gray-400" />
+              </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              {/* Event Type */}
-              <div>
-                <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Event Type</p>
-                <div className="relative">
-                  <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
-                    className="w-full bg-white border-none rounded-2xl px-5 py-4 text-sm font-bold shadow-sm appearance-none outline-none">
-                    {EVENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                  <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" />
-                </div>
-              </div>
-              {/* Guest Count */}
-              <div>
-                <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Guest Count</p>
-                <input type="number" placeholder="450"
-                  value={form.guestCount} onChange={e => setForm(f => ({ ...f, guestCount: e.target.value }))}
-                  className="w-full bg-white border-none rounded-2xl px-5 py-4 text-sm font-bold shadow-sm focus:ring-2 ring-yellow-400 outline-none" />
-              </div>
-            </div>
-
-            {/* State & City (Preserved as requested) */}
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">State</p>
-                <div className="relative">
-                  <select value={form.state} onChange={e => handleStateChange(e.target.value)}
-                    className="w-full bg-white border-none rounded-2xl px-5 py-4 text-[10px] font-bold shadow-sm appearance-none outline-none">
-                    <option value="">Select State</option>
-                    {STATES_LIST.map(s => <option key={s} value={s}>{s}</option>)}
-                  </select>
-                  <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" />
-                </div>
-              </div>
-              {form.state && (
+              <div className="flex flex-col gap-4">
+                {/* Event Designation */}
                 <div>
-                  <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">City</p>
-                  <div className="relative">
-                    <select value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))}
-                      className="w-full bg-white border-none rounded-2xl px-5 py-4 text-[10px] font-bold shadow-sm appearance-none outline-none">
-                      <option value="">Select City</option>
-                      {cities.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                    <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" />
+                  <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Event Designation</p>
+                  <input type="text" placeholder="e.g. Grand Ballroom Wedding"
+                    value={form.eventName} onChange={e => setForm(f => ({ ...f, eventName: e.target.value }))}
+                    className="w-full bg-white border-none rounded-2xl px-5 py-4 text-sm font-bold shadow-sm focus:ring-2 ring-yellow-400 outline-none" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Event Type */}
+                  <div>
+                    <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Event Type</p>
+                    <div className="relative">
+                      <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
+                        className="w-full bg-white border-none rounded-2xl px-5 py-4 text-sm font-bold shadow-sm appearance-none outline-none">
+                        {EVENT_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                      <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" />
+                    </div>
+                  </div>
+                  {/* Guest Count */}
+                  <div>
+                    <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Guest Count</p>
+                    <input type="number" placeholder="450"
+                      value={form.guestCount} onChange={e => setForm(f => ({ ...f, guestCount: e.target.value }))}
+                      className="w-full bg-white border-none rounded-2xl px-5 py-4 text-sm font-bold shadow-sm focus:ring-2 ring-yellow-400 outline-none" />
                   </div>
                 </div>
-              )}
-            </div>
 
-            {/* Regional Suggestions (Styled) */}
-            {form.state && regionalSuggestions.length > 0 && (
-              <div className="bg-white/50 rounded-2xl p-3 border border-gray-200">
-                <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1">
-                  <Sparkles size={10} className="text-amber-500" /> Suggested for {form.city || form.state}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {regionalSuggestions.map(item => (
-                    <button key={item} onClick={() => addFoodItem(item)}
-                      disabled={form.foodItems.includes(item)}
-                      className={`text-[9px] font-bold px-3 py-1.5 rounded-xl transition-all ${form.foodItems.includes(item) ? 'bg-amber-100 text-amber-600' : 'bg-white text-gray-600 shadow-sm border border-gray-100'}`}>
-                      {item}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Current State Toggle */}
-            <div>
-              <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Current State</p>
-              <div className="bg-white rounded-2xl p-1 flex gap-1 shadow-sm">
-                <button className="flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl bg-[#ececec] text-gray-600">
-                  Planning
-                </button>
-                <button className="flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl text-gray-400 hover:text-gray-600">
-                  Active
-                </button>
-              </div>
-            </div>
-
-            {/* Date, Weather, Food Menu (Condensed) */}
-            <div className="mt-2 flex flex-col gap-4">
-               <div>
-                  <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Food Menu</p>
-                  <div className="flex gap-2">
-                    <input type="text" placeholder="Add dishes..." value={form.foodInput}
-                      onChange={e => setForm(f => ({ ...f, foodInput: e.target.value }))}
-                      onKeyDown={e => e.key === 'Enter' && addFoodItem(form.foodInput)}
-                      className="flex-1 bg-white border-none rounded-2xl px-5 py-4 text-sm font-bold shadow-sm outline-none" />
-                    <button onClick={() => addFoodItem(form.foodInput)} className="w-14 bg-amber-400 text-black rounded-2xl flex items-center justify-center font-black"><Plus size={20} /></button>
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Event Date */}
+                  <div>
+                    <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Event Date</p>
+                    <input type="date" value={form.eventDate} onChange={e => setForm(f => ({ ...f, eventDate: e.target.value }))}
+                      className="w-full bg-white border-none rounded-2xl px-5 py-3 text-[12px] text-gray-600 font-bold shadow-sm outline-none" />
                   </div>
-                  {form.foodItems.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mt-3">
-                      {form.foodItems.map(item => (
-                        <span key={item} className="flex items-center gap-2 text-[10px] font-bold bg-white text-gray-700 shadow-sm border border-gray-100 px-4 py-2 rounded-xl">
-                          {item} <button onClick={() => removeFoodItem(item)}><X size={10} /></button>
-                        </span>
-                      ))}
+                  {/* Weather */}
+                  <div>
+                    <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Weather Context</p>
+                    <div className="relative">
+                      <select value={form.weather} onChange={e => setForm(f => ({ ...f, weather: e.target.value }))}
+                        className="w-full bg-white border-none rounded-2xl px-5 py-3 text-[12px] text-gray-600 font-bold shadow-sm appearance-none outline-none">
+                        {WEATHER_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                      </select>
+                      <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* State & City */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">State</p>
+                    <div className="relative">
+                      <select value={form.state} onChange={e => handleStateChange(e.target.value)}
+                        className="w-full bg-white border-none rounded-2xl px-5 py-4 text-[10px] font-bold shadow-sm appearance-none outline-none">
+                        <option value="">Select State</option>
+                        {STATES_LIST.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                      <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" />
+                    </div>
+                  </div>
+                  {form.state && (
+                    <div>
+                      <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">City</p>
+                      <div className="relative">
+                        <select value={form.city} onChange={e => setForm(f => ({ ...f, city: e.target.value }))}
+                          className="w-full bg-white border-none rounded-2xl px-5 py-4 text-[10px] font-bold shadow-sm appearance-none outline-none">
+                          <option value="">Select City</option>
+                          {cities.map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                        <ChevronDown size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 pointer-events-none" />
+                      </div>
                     </div>
                   )}
-               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ── PREDICTION RESULT ── */}
-        {prediction && (
-          <div className="theme-card border theme-border rounded-[20px] p-5 flex flex-col gap-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <BrainCircuit size={14} className="text-blue-500" />
-                <span className="text-[11px] font-bold text-blue-500 uppercase tracking-[0.12em]">AI Prediction Result</span>
-              </div>
-              <button onClick={() => { setPrediction(null); setShowForm(true); }} className="text-[9px] theme-text-muted underline">Edit</button>
-            </div>
-            {form.eventName && <p className="text-xs font-semibold theme-text-secondary">📋 {form.eventName} · {form.type} · {Number(form.guestCount).toLocaleString()} guests{form.city ? ` · ${form.city}, ${form.state}` : ''}</p>}
-
-            <div className="theme-elevated border theme-border rounded-[16px] p-4 flex items-end justify-between">
-              <div>
-                <p className="text-[10px] theme-text-muted uppercase tracking-widest font-bold mb-1">Total Food Required</p>
-                <div className="flex items-end gap-2">
-                  <span className="text-[48px] font-black leading-none theme-text">{prediction.predicted_food_kg}</span>
-                  <span className="text-sm font-bold theme-text-secondary mb-1">kg</span>
                 </div>
-                <p className="text-[10px] theme-text-muted mt-1">Confidence: <span className="font-bold theme-text">{prediction.confidence}%</span></p>
-              </div>
-              <div className="text-right">
-                <p className="text-[9px] theme-text-muted uppercase tracking-widest font-bold mb-1">Waste Risk</p>
-                <span className={`text-sm font-black px-3 py-1.5 rounded-xl border ${riskBorder} ${riskColor}`}>{riskLabel}</span>
-                <p className="text-[10px] theme-text-muted mt-1">{prediction.waste_risk_score}/100</p>
-              </div>
-            </div>
 
-            <div className="bg-[#d4af37]/10 border border-[#d4af37]/25 rounded-[14px] p-4">
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <Sparkles size={12} className="text-[#d4af37]" />
-                <span className="text-[9px] font-black text-[#d4af37] uppercase tracking-widest">AI Recommendation</span>
-              </div>
-              <p className="text-xs theme-text leading-relaxed">{prediction.ai_recommendation}</p>
-            </div>
-
-            {/* Pipeline */}
-            <div>
-              <p className="text-[10px] font-bold theme-text-muted uppercase tracking-widest mb-3">Food Flow Pipeline</p>
-              <div className="flex items-center justify-between relative">
-                <div className="absolute left-5 right-5 top-[18px] h-px theme-elevated" />
-                {[
-                  { icon: <BrainCircuit size={12} />, label: 'Forecast' },
-                  { icon: <Utensils size={12} />, label: 'Prepare', warn: prediction.waste_risk_score > 40 },
-                  { icon: <Users size={12} />, label: 'Serve' },
-                  { icon: <TrendingDown size={12} />, label: 'Leftover' },
-                  { icon: <HeartHandshake size={12} />, label: 'Donate' },
-                ].map(({ icon, label, warn }) => (
-                  <div key={label} className="flex flex-col items-center gap-1 z-10">
-                    <div className={`w-9 h-9 rounded-full border flex items-center justify-center theme-card ${warn ? 'border-orange-500/40 text-orange-500' : 'theme-border theme-text-muted'}`}>{icon}</div>
-                    <span className={`text-[7px] font-black uppercase tracking-widest ${warn ? 'text-orange-500' : 'theme-text-muted'}`}>{label}</span>
+                {/* Regional Suggestions */}
+                {form.state && regionalSuggestions.length > 0 && (
+                  <div className="bg-white/50 rounded-2xl p-3 border border-gray-200">
+                    <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-2 flex items-center gap-1">
+                      <Sparkles size={10} className="text-amber-500" /> Suggested for {form.city || form.state}
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {regionalSuggestions.map(item => (
+                        <button key={item} onClick={() => addFoodItem(item)}
+                          disabled={form.foodItems.includes(item)}
+                          className={`text-[9px] font-bold px-3 py-1.5 rounded-xl transition-all ${form.foodItems.includes(item) ? 'bg-amber-100 text-amber-600' : 'bg-white text-gray-600 shadow-sm border border-gray-100'}`}>
+                          {item}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                ))}
+                )}
+
+                {/* Current State Toggle */}
+                <div>
+                  <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Current State</p>
+                  <div className="bg-white rounded-2xl p-1 flex gap-1 shadow-sm">
+                    <button className="flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl bg-[#ececec] text-gray-600">
+                      Planning
+                    </button>
+                    <button className="flex-1 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl text-gray-400 hover:text-gray-600">
+                      Active
+                    </button>
+                  </div>
+                </div>
+
+                {/* Date, Weather, Food Menu */}
+                <div className="mt-2 flex flex-col gap-4">
+                  <div>
+                      <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1.5 ml-1">Food Menu</p>
+                      <div className="flex gap-2">
+                        <input type="text" placeholder="Add dishes..." value={form.foodInput}
+                          onChange={e => setForm(f => ({ ...f, foodInput: e.target.value }))}
+                          onKeyDown={e => e.key === 'Enter' && addFoodItem(form.foodInput)}
+                          className="flex-1 bg-white border-none rounded-2xl px-5 py-4 text-sm font-bold shadow-sm outline-none" />
+                        <button onClick={() => addFoodItem(form.foodInput)} className="w-14 bg-amber-400 text-black rounded-2xl flex items-center justify-center font-black hover:bg-amber-500 transition-colors"><Plus size={20} /></button>
+                      </div>
+                      {form.foodItems.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mt-3">
+                          {form.foodItems.map(item => (
+                            <span key={item} className="flex items-center gap-2 text-[10px] font-bold bg-white text-gray-700 shadow-sm border border-gray-100 px-4 py-2 rounded-xl">
+                              {item} <button onClick={() => removeFoodItem(item)} className="hover:text-red-500 rounded-full bg-gray-100 p-0.5"><X size={10} /></button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                  </div>
+                </div>
               </div>
+            </div>
+
+            {/* PREDICT DEMAND BUTTON */}
+            <div className="animate-slide-up mt-2">
+              <button 
+                onClick={handlePredict} 
+                disabled={!formIsComplete || loadingPred}
+                className={`w-full active:scale-95 transition-all text-black px-4 py-5 rounded-3xl flex items-center justify-center gap-2 font-black text-[14px] shadow-lg uppercase tracking-widest ${
+                  !formIsComplete || loadingPred 
+                    ? 'bg-gray-200 text-gray-400 cursor-not-allowed shadow-none' 
+                    : 'bg-[#eab308] hover:bg-[#ca8a04] shadow-yellow-500/20'
+                }`}>
+                {loadingPred ? 'Processing Prediction...' : 'Calculate Necessary Food Production'}
+                <Sparkles size={18} />
+              </button>
+              {!formIsComplete && (
+                <p className="text-center text-[9px] text-gray-400 mt-3 font-bold uppercase tracking-widest">
+                  Complete all fields (Name, Type, Guests, Date, Location, Food Items) to enable prediction
+                </p>
+              )}
             </div>
           </div>
         )}
 
-        {/* ── OIL LIFECYCLE MONITORING ── */}
-        <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-50 flex flex-col gap-6">
-          <div className="flex items-center gap-3">
-             <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
-                <Droplets size={18} className="text-amber-600" />
-             </div>
-             <h3 className="text-[11px] font-black text-gray-900 uppercase tracking-widest leading-none">Oil Lifecycle Monitoring</h3>
-          </div>
-
-          <div className="flex flex-col gap-6">
-            {/* Level bar */}
-            <div>
-              <div className="flex justify-between text-[8px] font-black text-gray-400 uppercase tracking-widest mb-2">
-                <span>TIME/LEVEL (Est.)</span>
-                <span>NEXT CHANGE: 2 DAYS</span>
+        {/* ── PREDICTION RESULT ── */}
+        {prediction && (
+          <div className="theme-card border theme-border rounded-[32px] p-8 flex flex-col gap-6 shadow-xl animate-fade-in relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/5 blur-[50px] -mr-10 -mt-10 pointer-events-none" />
+            
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-blue-500/10 rounded-2xl flex items-center justify-center border border-blue-500/20">
+                  <BrainCircuit size={18} className="text-blue-500" />
+                </div>
+                <div>
+                  <h3 className="text-[11px] font-black text-gray-900 dark:text-white uppercase tracking-widest leading-none">Prediction Result</h3>
+                  <p className="text-[9px] text-gray-500 mt-0.5">{form.eventName} · {form.type}</p>
+                </div>
               </div>
-              <div className="h-2 w-full bg-[#f5f5f5] rounded-full overflow-hidden">
-                <div className="h-full bg-amber-900/60 rounded-full" style={{ width: '65%' }} />
+              <button onClick={() => { setPrediction(null); setShowForm(true); }} className="text-gray-400 bg-gray-100 dark:bg-[#1a1a1a] p-2 rounded-xl hover:text-gray-900 transition-colors"><RotateCcw size={14} /></button>
+            </div>
+
+            <div className="theme-elevated border theme-border rounded-[24px] p-6 flex flex-col gap-6">
+              <div className="flex items-end justify-between border-b theme-border pb-6">
+                <div>
+                  <p className="text-[10px] theme-text-muted uppercase tracking-widest font-bold mb-2">Target Production</p>
+                  <div className="flex items-end gap-2">
+                    <span className="text-[54px] font-black leading-none theme-text tracking-tighter">{prediction.predicted_food_kg}</span>
+                    <span className="text-sm font-bold theme-text-secondary mb-2">kg</span>
+                  </div>
+                  <p className="text-[10px] theme-text-muted mt-2 flex items-center gap-1"><CheckCircle size={10} className="text-green-500" /> Confidence: <span className="font-bold theme-text">{prediction.confidence}%</span></p>
+                </div>
+                <div className="text-right">
+                  <p className="text-[9px] theme-text-muted uppercase tracking-widest font-bold mb-2">Waste Risk</p>
+                  <span className={`text-sm font-black px-4 py-2 rounded-xl border ${riskBorder} ${riskColor}`}>{riskLabel} RISK</span>
+                  <p className="text-[10px] theme-text-muted mt-2">{prediction.waste_risk_score}/100 Index</p>
+                </div>
+              </div>
+
+              <div className="bg-[#d4af37]/10 border border-[#d4af37]/25 rounded-2xl p-5">
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles size={14} className="text-[#d4af37]" />
+                  <span className="text-[10px] font-black text-[#d4af37] uppercase tracking-widest">AI Action Plan</span>
+                </div>
+                <p className="text-sm theme-text font-medium leading-relaxed">{prediction.ai_recommendation}</p>
               </div>
             </div>
 
-            {/* Stats Table */}
-            <div className="flex flex-col gap-1">
-               <div className="bg-[#f5f5f5] p-4 rounded-xl flex justify-between items-center transition-all hover:bg-gray-200/50">
-                  <span className="text-[10px] font-bold text-gray-500">Temperature</span>
-                  <span className="text-xs font-black text-gray-900">{readings.length > 0 ? `${readings[0].temperature || readings[0].temp_c}°C` : '175°C'}</span>
-               </div>
-               <div className="bg-[#f5f5f5] p-4 rounded-xl flex justify-between items-center transition-all hover:bg-gray-200/50">
-                  <span className="text-[10px] font-bold text-gray-500">Polarity Index</span>
-                  <span className={`text-[10px] font-black px-3 py-1 rounded-lg ${oilSafe ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                    {readings.length > 0 ? readings[0].quality : 'Safe'}
-                  </span>
-               </div>
+            {/* Pipeline visually improved */}
+            <div className="mt-2">
+              <p className="text-[10px] font-bold theme-text-muted uppercase tracking-widest mb-4">Event Flow</p>
+              <div className="flex items-center justify-between relative px-2">
+                <div className="absolute left-6 right-6 top-[22px] h-0.5 theme-elevated" />
+                {[
+                  { icon: <BrainCircuit size={14} />, label: 'Forecast', active: true },
+                  { icon: <Utensils size={14} />, label: 'Prepare', active: true },
+                  { icon: <Users size={14} />, label: 'Serve', active: false },
+                  { icon: <TrendingDown size={14} />, label: 'Measure', active: false },
+                  { icon: <HeartHandshake size={14} />, label: 'Donate', active: false },
+                ].map(({ icon, label, active }) => (
+                  <div key={label} className="flex flex-col items-center gap-2 z-10 bg-transparent">
+                    <div className={`w-11 h-11 rounded-2xl flex items-center justify-center transition-all ${active ? 'bg-black text-white dark:bg-white dark:text-black shadow-lg scale-110' : 'theme-card border theme-border text-gray-400'}`}>{icon}</div>
+                    <span className={`text-[8px] font-black uppercase tracking-widest ${active ? 'theme-text' : 'text-gray-400'}`}>{label}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-
-            <button onClick={() => navigate('/scan')}
-              className="w-full py-4 bg-[#525252] hover:bg-[#404040] text-white font-black text-[11px] uppercase tracking-widest rounded-2xl transition-all shadow-md active:scale-[0.98]">
-              Start Oil Analysis
-            </button>
+            
+            <div className="text-center mt-2">
+              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest flex items-center justify-center gap-1">
+                <Activity size={10} /> Data auto-synced to efficiency ledger
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* ── EFFICIENCY LEDGER ── */}
-        <div className="bg-[#ececec] rounded-[32px] p-8 flex flex-col gap-6">
+        <div className="bg-[#ececec] rounded-[32px] p-8 flex flex-col gap-6 border-t-[8px] border-amber-400">
           <div className="flex items-center justify-between">
-            <h3 className="text-[11px] font-black text-gray-900 uppercase tracking-widest leading-none">Efficiency Ledger</h3>
+            <div>
+              <h3 className="text-[11px] font-black text-gray-900 uppercase tracking-widest leading-none">Efficiency Ledger</h3>
+              <p className="text-[9px] text-gray-500 mt-1 uppercase tracking-widest font-bold">Post-Event Analysis</p>
+            </div>
             <LayoutDashboard size={14} className="text-gray-400" />
           </div>
 
           <div className="flex flex-col gap-3">
-             <div className="bg-white p-6 rounded-[24px] shadow-sm flex flex-col gap-2 relative overflow-hidden">
-                <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Prepared Inventory (kg)</p>
+             <div className="bg-white p-6 rounded-[24px] shadow-sm flex flex-col gap-2 relative overflow-hidden border border-gray-100 focus-within:border-amber-400 transition-colors">
+                <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Target Production (kg)</p>
                 <div className="flex items-end gap-2">
                   <input type="number" value={totalPrepared} onChange={e => setTotalPrepared(e.target.value)}
-                    placeholder="0" className="text-4xl font-black text-gray-900 border-none outline-none p-0 w-32" />
+                    placeholder="0" className="text-4xl font-black text-gray-900 border-none outline-none p-0 w-full" />
                 </div>
-                <div className="absolute right-6 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg border border-gray-100 flex items-center justify-center text-gray-200">
-                  <LayoutDashboard size={14} />
+                <div className="absolute right-6 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-gray-50 border border-gray-100 flex items-center justify-center text-gray-300">
+                  <Utensils size={14} />
                 </div>
              </div>
 
-             <div className="bg-white p-6 rounded-[24px] shadow-sm flex flex-col gap-2 relative overflow-hidden">
-                <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Leftover Dal (kg)</p>
+             <div className="bg-white p-6 rounded-[24px] shadow-sm flex flex-col gap-2 relative overflow-hidden border border-gray-100 focus-within:border-amber-400 transition-colors">
+                {/* Dynamically labeling leftover food based on form selection */}
+                <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">
+                  Actual Leftover ({form.foodItems.length > 0 ? form.foodItems.slice(0, 2).join(', ') : 'Food'}) (kg)
+                </p>
                 <div className="flex items-end gap-2">
                   <input type="number" value={leftoverInput} onChange={e => setLeftoverInput(e.target.value)}
-                    placeholder="0" className="text-4xl font-black text-gray-900 border-none outline-none p-0 w-32" />
+                    placeholder="0" className="text-4xl font-black text-gray-900 border-none outline-none p-0 w-full" />
                 </div>
-                <div className="absolute right-6 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg border border-gray-100 flex items-center justify-center">
-                  <div className="w-1.5 h-1.5 bg-red-400 rounded-full" />
+                <div className="absolute right-6 top-1/2 -translate-y-1/2 w-8 h-8 rounded-lg bg-red-50 border border-red-100 flex items-center justify-center text-red-500">
+                  <TrendingDown size={14} />
                 </div>
              </div>
 
              <button onClick={handleSurplusCalculate}
-                className="w-full py-4 bg-white text-gray-900 shadow-sm rounded-2xl flex items-center justify-center gap-3 font-black text-[10px] uppercase tracking-widest active:scale-95 transition-all">
-                <LayoutDashboard size={14} /> Calculate Waste
+                className="w-full py-4 mt-2 bg-[#1a1a1a] text-white shadow-xl hover:bg-black rounded-2xl flex items-center justify-center gap-3 font-black text-[11px] uppercase tracking-widest active:scale-95 transition-all">
+                <Activity size={14} className="text-amber-400" /> Calculate Efficiency
              </button>
           </div>
 
           {/* Ledger Result */}
           {surplusResult && (
-            <div className="bg-white/50 rounded-2xl p-6 border border-white/20">
-               <div className="flex justify-between items-center mb-4">
+            <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm animate-fade-in mt-2 flex flex-col gap-6">
+               <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Efficiency Score</p>
-                    <p className="text-3xl font-black text-gray-900">{100 - parseFloat(surplusResult.wastePct)}%</p>
+                    <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Efficiency Score</p>
+                    <p className="text-3xl font-black text-gray-900">{100 - parseFloat(surplusResult.wastePct)}<span className="text-lg text-gray-400">%</span></p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Redistributable</p>
-                    <p className="text-xl font-black text-amber-600">~{surplusResult.mealsWasted} Meals</p>
+                    <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Waste Factor</p>
+                    <p className="text-3xl font-black text-red-500">{surplusResult.wastePct}<span className="text-lg text-red-400/50">%</span></p>
                   </div>
                </div>
+
+               <div className="h-px w-full bg-gray-100" />
+
+               <div className="grid grid-cols-2 gap-4">
+                  <div>
+                     <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Total Consumed</p>
+                     <p className="text-lg font-bold text-gray-900">{surplusResult.consumed} kg</p>
+                  </div>
+                  <div className="text-right">
+                     <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest mb-1">Redistributable</p>
+                     <div className="flex items-center justify-end gap-1.5">
+                       <HeartHandshake size={12} className="text-amber-500" />
+                       <p className="text-lg font-black text-amber-600">~{surplusResult.mealsWasted} Meals</p>
+                     </div>
+                  </div>
+               </div>
+
+               {/* New Redirect Button to Donate */}
+               {surplusResult.mealsWasted > 0 && (
+                 <button onClick={() => navigate('/ngo-dashboard')}
+                   className="w-full mt-2 py-4 bg-amber-50 rounded-2xl border border-amber-200 text-amber-700 font-black text-[10px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-amber-100 active:scale-95 transition-all">
+                   <Navigation size={14} /> Send to NGO Partner Network
+                 </button>
+               )}
             </div>
           )}
         </div>
 
         {/* ── ACTIVE NGO PARTNERS ── */}
-        <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-50 flex flex-col gap-6">
+        <div className="bg-white rounded-[32px] p-8 shadow-sm border border-gray-50 flex flex-col gap-6 mb-6">
           <div className="flex items-center gap-4">
-             <div className="w-12 h-12 bg-[#f5f5f5] rounded-2xl flex items-center justify-center">
-                <Users size={20} className="text-gray-400" />
+             <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center">
+                <Users size={20} className="text-amber-600" />
              </div>
              <div>
                 <h3 className="text-[11px] font-black text-gray-900 uppercase tracking-widest leading-none mb-1.5">Active NGO Partners</h3>
                 <p className="text-[9px] text-gray-400 font-bold leading-relaxed">
-                   FoodGlobal and Local Harvest are currently available for surplus pickup within 45 minutes.
+                   Available for rapid surplus pickup within 45 minutes in selected zones.
                 </p>
              </div>
           </div>
 
           <div className="flex flex-col gap-3">
              {NEARBY_NGOS.slice(0, 2).map((ngo, i) => (
-                <div key={ngo.id} className="flex items-center justify-between p-1">
-                   <div className="flex items-center gap-2">
-                      <span className="text-[8px] font-black text-green-500 bg-green-50 px-2 py-1 rounded-md uppercase tracking-widest">Available</span>
-                      <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">{ngo.distance} Away</span>
+                <div key={ngo.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl border border-gray-100/50">
+                   <div>
+                     <p className="text-[11px] font-black text-gray-900">{ngo.name}</p>
+                     <p className="text-[9px] font-bold text-gray-400 mt-1 uppercase tracking-widest">{ngo.distance}</p>
                    </div>
+                   <span className="text-[8px] font-black text-green-600 bg-green-100 border border-green-200 px-3 py-1.5 rounded-lg uppercase tracking-widest shadow-sm">
+                      Available
+                   </span>
                 </div>
              ))}
           </div>
-        </div>
-
-        {/* ── EFFICIENCY INSIGHT ── */}
-        <div className="bg-[#1a1a1a] rounded-[32px] p-8 text-white relative overflow-hidden shadow-xl mb-6">
-          <div className="relative z-10 flex items-start gap-6">
-             <div className="w-12 h-12 bg-amber-400 rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-yellow-500/20">
-                <Zap size={20} className="text-black" />
-             </div>
-             <div className="flex flex-col gap-3">
-                <h3 className="text-[11px] font-black text-white uppercase tracking-widest leading-none">Efficiency Insight</h3>
-                <p className="text-[11px] text-gray-400 font-medium leading-relaxed">
-                   Reducing salad production by 12% for weddings with >450 guests could save $450/event.
-                </p>
-                <button className="text-[9px] font-black text-amber-400 uppercase tracking-widest flex items-center gap-2 hover:translate-x-1 transition-transform">
-                   Apply Optimization <Plus size={12} />
-                </button>
-             </div>
-          </div>
+          <button onClick={() => navigate('/ngo-dashboard')} className="w-full text-center py-3 text-[10px] font-black text-gray-500 uppercase tracking-widest border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+            View All Partners
+          </button>
         </div>
 
       </div>
     </div>
-  );
-}
-
-/* ── Sub-components ── */
-function StatusChip({ label, value, good, bad }) {
-  const color = bad ? 'text-red-500' : good ? 'text-green-500' : 'theme-text-secondary';
-  return (
-    <div className="flex flex-col gap-0.5">
-      <span className="text-[8px] theme-text-muted uppercase font-bold tracking-widest">{label}</span>
-      <span className={`text-[10px] font-black ${color}`}>{value}</span>
-    </div>
-  );
-}
-
-function InsightRow({ icon, text, highlight }) {
-  return (
-    <li className={`flex gap-3 items-start p-3 rounded-xl border ${highlight ? 'theme-elevated theme-border' : 'border-transparent'}`}>
-      <div className="mt-0.5 shrink-0 theme-elevated p-1.5 rounded-lg border theme-border">{icon}</div>
-      <span className={`text-xs leading-relaxed font-medium ${highlight ? 'theme-text' : 'theme-text-secondary'}`}>{text}</span>
-    </li>
   );
 }

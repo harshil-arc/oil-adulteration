@@ -45,6 +45,7 @@ export function AppProvider({ children }) {
 
   const [deviceStatus, setDeviceStatus] = useState('offline');
   const [liveData, setLiveData] = useState(null);
+  const [isMenuOpen, setMenuOpen] = useState(false);
   const timeoutRef = useRef(null);
 
   useEffect(() => {
@@ -185,6 +186,7 @@ export function AppProvider({ children }) {
       settings, updateSetting, 
       profile, updateProfile,
       deviceStatus, liveData,
+      isMenuOpen, setMenuOpen,
       session, user, loadingSession,
       login, signup, loginWithGoogle, logout
     }}>

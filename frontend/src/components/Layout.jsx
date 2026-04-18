@@ -1,5 +1,6 @@
 import { Home, ScanLine, Map as MapIcon, Clock, User } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import GlobalNavigation from './GlobalNavigation';
 
 const navItems = [
   { path: '/home', label: 'DASHBOARD', Icon: Home },
@@ -15,6 +16,7 @@ export default function Layout({ children }) {
 
   return (
     <div className="min-h-screen flex flex-col max-w-md mx-auto relative theme-bg theme-text transition-colors duration-300">
+      <GlobalNavigation />
       {/* Page content */}
       <main className="flex-1 overflow-y-auto pb-24 animate-fade-in relative">
         {children}

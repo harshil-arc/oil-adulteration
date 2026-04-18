@@ -7,14 +7,14 @@ const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
 const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY || '';
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
 
-const SYSTEM_PROMPT = `You are PureOil AI, an expert assistant embedded in a mobile app used by FSSAI food safety inspectors in India. 
-Your role is to help with oil adulteration detection, interpret sensor readings, explain FSSAI regulations, identify adulterants, and guide inspectors in the field.
-Be concise, technically accurate, and use markdown bold (**text**) for key values. Never make up sensor data. If unsure, say so.`;
+const SYSTEM_PROMPT = `You are FoodIntel AI, an expert assistant embedded in a smart food quality and waste management app.
+Your role is to help with oil adulteration detection, interpret sensor readings, explain FSSAI regulations, identify adulterants, and also assist with event food demand forecasting, predicting food surplus, and organizing NGO food redistribution.
+Be concise, technically accurate, and use markdown bold (**text**) for key values. Never make up sensor data or event data. If unsure, say so.`;
 
 const DEFAULT_GREETING = {
   id: 'init',
   sender: 'ai',
-  text: "Hello Inspector! I'm your PureOil AI Assistant powered by Grok. I can help interpret sensor readings, explain FSSAI regulations, or identify adulterants. What do you need help with?"
+  text: "Hello! I'm your Food Quality & Management AI powered by Grok. I can help you with food waste reduction, demand prediction, food quality checks, and donation suggestions. How can I help you today?"
 };
 
 function loadHistory() {
@@ -162,10 +162,10 @@ export default function AiChatbot({ onClose }) {
             </div>
             <div>
               <h2 className="text-white font-bold text-sm tracking-wide flex items-center gap-2">
-                PureOil Assistant
+                Food Quality & Management AI
                 <span className="px-1.5 py-0.5 rounded uppercase tracking-widest text-[8px] bg-[#d4af37]/20 text-[#d4af37] border border-[#d4af37]/30">Grok</span>
               </h2>
-              <p className="text-gray-400 text-xs">AI Inspector Support</p>
+              <p className="text-gray-400 text-xs">AI Food Assistant</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -187,7 +187,7 @@ export default function AiChatbot({ onClose }) {
         <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
           <div className="text-center py-2">
             <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500 bg-[#1c1c1c] px-3 py-1 rounded-full border border-[#333]">
-              FSSAI Inspector Mode · Hold message to delete
+              Food Management Mode · Hold message to delete
             </span>
           </div>
 
@@ -208,7 +208,7 @@ export default function AiChatbot({ onClose }) {
                 {msg.sender === 'ai' && (
                   <div className="flex items-center gap-2 mb-2 text-[#d4af37]">
                     <Sparkles size={14} />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">PureOil AI</span>
+                    <span className="text-[10px] font-bold uppercase tracking-widest">Food Quality AI</span>
                   </div>
                 )}
                 <div className="leading-relaxed whitespace-pre-wrap">{renderText(msg.text)}</div>
@@ -228,10 +228,13 @@ export default function AiChatbot({ onClose }) {
 
           {isTyping && (
             <div className="flex justify-start">
-              <div className="bg-[#d4af37]/10 border border-[#d4af37]/20 rounded-2xl rounded-tl-sm p-4 flex items-center gap-1.5 w-fit">
-                <div className="w-1.5 h-1.5 bg-[#d4af37] rounded-full animate-bounce" />
-                <div className="w-1.5 h-1.5 bg-[#d4af37] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <div className="w-1.5 h-1.5 bg-[#d4af37] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+              <div className="bg-[#d4af37]/10 border border-[#d4af37]/20 rounded-2xl rounded-tl-sm p-4 flex items-center gap-2 w-fit">
+                <span className="text-[#d4af37] text-[10px] font-bold uppercase tracking-widest">Thinking...</span>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 bg-[#d4af37] rounded-full animate-bounce" />
+                  <div className="w-1.5 h-1.5 bg-[#d4af37] rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <div className="w-1.5 h-1.5 bg-[#d4af37] rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                </div>
               </div>
             </div>
           )}
@@ -249,14 +252,14 @@ export default function AiChatbot({ onClose }) {
         {/* Suggested Pills */}
         {!isTyping && messages.length < 3 && (
           <div className="px-4 pb-2 flex gap-2 overflow-x-auto scrollbar-none">
-            <button onClick={() => setInput('What are FSSAI limits for Mustard Oil?')} className="whitespace-nowrap px-3 py-1.5 rounded-full bg-[#1c1c1c] border border-[#333] text-[10px] font-bold uppercase tracking-widest text-[#d4af37] hover:bg-[#333] flex items-center gap-1.5">
-              <ShieldCheck size={12} /> FSSAI Limits
+            <button onClick={() => setInput('How can we reduce food waste at large events?')} className="whitespace-nowrap px-3 py-1.5 rounded-full bg-[#1c1c1c] border border-[#333] text-[10px] font-bold uppercase tracking-widest text-[#d4af37] hover:bg-[#333] flex items-center gap-1.5">
+              <ShieldCheck size={12} /> Reduce Waste
             </button>
-            <button onClick={() => setInput('What was my last scan result?')} className="whitespace-nowrap px-3 py-1.5 rounded-full bg-[#1c1c1c] border border-[#333] text-[10px] font-bold uppercase tracking-widest text-[#d4af37] hover:bg-[#333] flex items-center gap-1.5">
-              <FileText size={12} /> Last Scan
+            <button onClick={() => setInput('Predict demand for 500 guests at a wedding')} className="whitespace-nowrap px-3 py-1.5 rounded-full bg-[#1c1c1c] border border-[#333] text-[10px] font-bold uppercase tracking-widest text-[#d4af37] hover:bg-[#333] flex items-center gap-1.5">
+              <FileText size={12} /> Demand Prediction
             </button>
-            <button onClick={() => setInput('How is Argemone oil detected?')} className="whitespace-nowrap px-3 py-1.5 rounded-full bg-[#1c1c1c] border border-[#333] text-[10px] font-bold uppercase tracking-widest text-[#d4af37] hover:bg-[#333] flex items-center gap-1.5">
-              <AlertTriangle size={12} /> Argemone
+            <button onClick={() => setInput('How do I donate leftover food safely to NGOs?')} className="whitespace-nowrap px-3 py-1.5 rounded-full bg-[#1c1c1c] border border-[#333] text-[10px] font-bold uppercase tracking-widest text-[#d4af37] hover:bg-[#333] flex items-center gap-1.5">
+              <AlertTriangle size={12} /> Donation Flow
             </button>
           </div>
         )}
@@ -267,7 +270,7 @@ export default function AiChatbot({ onClose }) {
             <input
               value={input}
               onChange={e => setInput(e.target.value)}
-              placeholder="Message PureOil AI..."
+              placeholder="Message Food Quality AI..."
               disabled={isTyping}
               className="w-full bg-[#1c1c1c] border border-[#333] text-white rounded-full py-4 pl-5 pr-14 outline-none text-sm focus:border-[#d4af37] transition-colors placeholder:text-gray-600 disabled:opacity-60"
             />
@@ -279,7 +282,7 @@ export default function AiChatbot({ onClose }) {
               <Send size={18} className="translate-x-[-1px] translate-y-[1px]" />
             </button>
           </form>
-          <p className="text-center text-[9px] text-gray-500 mt-3 font-medium">PureOil AI may make mistakes. Verify critical actions with FSSAI reports.</p>
+          <p className="text-center text-[9px] text-gray-500 mt-3 font-medium">AI may make mistakes. Verify critical actions with food safety guidelines.</p>
         </div>
       </div>
 
