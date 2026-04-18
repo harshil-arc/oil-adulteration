@@ -106,12 +106,37 @@ export default function Readings() {
           }
           if (row) {
             console.log('[Readings] CLOUD data:', row);
+
+            // Derive wavelength: nm of peak AS7343 channel from spectral_data JSONB
+            const spectral = row.spectral_data || {};
+            const chMap = {
+              f1_405nm: 405, f2_425nm: 425, fz_450nm: 450,
+              f3_475nm: 475, f4_515nm: 515, f5_550nm: 550,
+              fy_555nm: 555, fxl_600nm: 600, f6_640nm: 640,
+              f7_690nm: 690, f8_745nm: 745, nir_855nm: 855,
+            };
+            let peakNm = 550, peakVal = 0;
+            for (const [key, nm] of Object.entries(chMap)) {
+              if ((spectral[key] || 0) > peakVal) {
+                peakVal = spectral[key]; peakNm = nm;
+              }
+            }
+
+            // Derive density proxy from weight (50g reference)
+            const weightG = row.weight ?? 0;
+            const densityProxy = weightG > 0 ? +(weightG / 50.0).toFixed(3) : 0;
+
+            // Adulteration index from NIR vs VIS ratio
+            const vis = spectral.vis || 1;
+            const nir = spectral.nir_855nm || 1;
+            const adulterationIndex = Math.min(100, Math.round((nir / vis) * 100));
+
             setData({
-              temperature:        row.temperature        ?? 0,
-              wavelength:         row.wavelength         ?? 0,
-              density:            row.density            ?? 0,
-              oil_type:           row.oil_type           || '—',
-              adulteration_index: row.adulteration_index ?? 0,
+              temperature:        row.temperature ?? 0,
+              wavelength:         peakNm,
+              density:            densityProxy,
+              oil_type:           'Cloud Sample',
+              adulteration_index: adulterationIndex,
             });
             setFailCount(0);
             setLastUpdated(Date.now());

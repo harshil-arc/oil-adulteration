@@ -1,168 +1,136 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
-#include <ArduinoJson.h> // Ensure you have installed 'ArduinoJson' by Benoit Blanchon
-#include <WebServer.h>
+#include <Wire.h>
+#include <SparkFun_AS7343.h> // Ensure this library is installed
+#include <Adafruit_MLX90614.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
 
-WebServer server(80);
-String deviceId;
-String deviceName;
+// --- WiFi Credentials ---
+const char* ssid = "atl";
+const char* password = "harshil913";
 
+// --- Supabase Config ---
+const char* supabaseUrl = "https://vntaprmahmjeyuzhwqsc.supabase.co/rest/v1/readings"; 
+const char* supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZudGFwcm1haG1qZXl1emh3cXNjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0NjY3NDMsImV4cCI6MjA5MTA0Mjc0M30.K3NE7-bRaYRRRhV9Up2Y7f4mVoRvM3B0_dNMitJT_S8";
 
-// ── Configuration ───────────────────────────────────
-const char* ssid = "YOUR_WIFI_SSID";
-const char* password = "YOUR_WIFI_PASSWORD";
+// --- Hardware Objects ---
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
+Adafruit_MLX90614 mlx = Adafruit_MLX90614();
+SfeAS7343ArdI2C spectralSensor;
 
-// Replace with your Network IP from the Settings Page
-const char* server_url = "http://192.168.x.x:4000/api/data"; 
+uint16_t spectralData[ksfAS7343NumChannels]; // Array for 14+ channels
 
-// This MUST match the DEVICE_API_KEY in the backend .env
-const char* api_key = "dev_secret_key_123";
-
-// ── Timing ──────────────────────────────────────────
-unsigned long lastTime = 0;
-unsigned long timerDelay = 5000; // Send reading every 5 seconds for real-time feel
+// Approximate wavelengths in nm for the AS7343 channels (ordered by index)
+// Typical 14 channel map: FZ(425), FY(475), FX(525), F8(600), NIR(850)...
+// (We will use this to calculate dominant wavelength)
+const int channelWavelengths[] = {425, 475, 525, 550, 600, 650, 700, 750, 800, 850, 400, 450, 500, 550};
 
 void setup() {
   Serial.begin(115200);
-  WiFi.mode(WIFI_STA);
-  connectToWiFi();
-  
-  // Set Device IDs based on MAC address
-  String mac = WiFi.macAddress();
-  mac.replace(":", "");
-  deviceId = "ESP32_" + mac.substring(mac.length() - 6);
-  deviceName = "ESP_OIL_" + mac.substring(mac.length() - 4);
-  
-  // Setup WebServer endpoints
-  server.on("/status", HTTP_GET, handleStatus);
-  server.on("/sensor", HTTP_GET, handleSensor);
-  server.on("/connect", HTTP_GET, handleConnect);
-  
-  // CORS Headers for all routes
-  server.onNotFound([]() {
-    if (server.method() == HTTP_OPTIONS) {
-      server.sendHeader("Access-Control-Allow-Origin", "*");
-      server.sendHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-      server.sendHeader("Access-Control-Allow-Headers", "*");
-      server.send(204);
-    } else {
-      server.send(404, "application/json", "{\"error\":\"Not found\"}");
-    }
-  });
+  Wire.begin(21, 22); // AS7343 & MLX share these pins
 
-  server.begin();
-  Serial.println("✅ WebServer started on port 80");
-}
-
-
-void loop() {
-  server.handleClient(); // Handle incoming HTTP requests without blocking
-
-  if (WiFi.status() != WL_CONNECTED) {
-    connectToWiFi();
-  }
-
-  if ((millis() - lastTime) > timerDelay) {
-    sendSensorData();
-    lastTime = millis();
-  }
-}
-
-
-void connectToWiFi() {
-  Serial.print("Connecting to WiFi: ");
+  // 1. WiFi Connection
   WiFi.begin(ssid, password);
+  Serial.print("Connecting WiFi");
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
   }
-  Serial.println("\n✅ Connected. IP: " + WiFi.localIP().toString());
-}
+  Serial.println("\nWiFi Connected!");
 
-void sendSensorData() {
-  HTTPClient http;
-  http.begin(server_url);
-  
-  http.addHeader("Content-Type", "application/json");
-  http.addHeader("x-device-api-key", api_key); // STRICT SECURITY HEADER
+  // 2. OLED Init
+  if(!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) Serial.println("OLED Failed");
+  display.clearDisplay();
+  display.setTextColor(SSD1306_WHITE);
 
-  StaticJsonDocument<512> doc;
-  doc["device_id"] = deviceId;
-  doc["oil_type"] = "Mustard Oil";
-  doc["timestamp"] = "2024-04-08T18:00:00Z"; // In production, use NTP to get real time
+  // 3. Temperature Sensor Init
+  if (!mlx.begin()) Serial.println("MLX90614: Not Found!");
 
-  JsonObject sensor_values = doc.createNestedObject("sensor_values");
-  
-  // Replace these with actual analogRead() + calibration formulas
-  sensor_values["tds_ppm"] = 95;           // Example TDS sensor reading
-  sensor_values["turbidity_ntu"] = 10.2;   // Example Turbidity sensor
-  sensor_values["ph"] = 6.45;              // Example pH sensor
-  sensor_values["density_gcm3"] = 0.908;   // Calculated density
-  sensor_values["temperature_c"] = 27.5;   // DS18B20 Reading
-  sensor_values["viscosity_cp"] = 74.2;    // Calculated viscosity
-  sensor_values["refractive_index"] = 1.466; // Optical sensor interpolation
-
-  String requestBody;
-  serializeJson(doc, requestBody);
-
-  int httpResponseCode = http.POST(requestBody);
-  
-  if (httpResponseCode > 0) {
-    Serial.print("✅ Data Sent. Response: ");
-    Serial.println(httpResponseCode);
+  // 4. Spectral Sensor Init
+  if (spectralSensor.begin() == false) {
+    Serial.println("AS7343: Not Found!");
   } else {
-    Serial.print("❌ Failed. Error code: ");
-    Serial.println(httpResponseCode);
+    spectralSensor.powerOn();
+    Serial.println("AS7343: Ready.");
   }
-  
-  http.end();
 }
 
-// ── WebServer Handlers ──────────────────────────────
-void sendCorsHeaders() {
-  server.sendHeader("Access-Control-Allow-Origin", "*");
-  server.sendHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-  server.sendHeader("Access-Control-Allow-Headers", "*");
-}
-
-void handleStatus() {
-  sendCorsHeaders();
-  StaticJsonDocument<256> doc;
-  doc["deviceId"] = deviceId;
-  doc["name"] = deviceName;
-  doc["rssi"] = WiFi.RSSI();
-  doc["ip"] = WiFi.localIP().toString();
-  doc["status"] = "ok";
+void loop() {
+  // --- 1. Read Temperature ---
+  float objC = mlx.readObjectTempC();
   
-  String response;
-  serializeJson(doc, response);
-  server.send(200, "application/json", response);
-}
+  // --- 2. Read Spectral Data (14 Channels) ---
+  spectralSensor.ledOn();
+  delay(200); // Wait for sensor to stabilize
+  if (spectralSensor.readSpectraDataFromSensor()) {
+    spectralSensor.getData(spectralData);
+  }
+  spectralSensor.ledOff();
 
-void handleSensor() {
-  sendCorsHeaders();
-  StaticJsonDocument<512> doc;
-  
-  // These are the same variables collected in sendSensorData
-  doc["adcValue"] = analogRead(32); // Example ADC
-  doc["voltage"] = 3.3; // Example Voltage
-  doc["tds"] = 95;
-  doc["temperature"] = 27.5;
-  doc["timestamp"] = "2024-04-08T18:00:00Z";
-  
-  String response;
-  serializeJson(doc, response);
-  server.send(200, "application/json", response);
-}
+  // Find Dominant Wavelength (Channel with highest intensity)
+  uint16_t maxIntensity = 0;
+  int peakChannel = 0;
+  for(int i = 0; i < 14; i++) {
+    if(spectralData[i] > maxIntensity) {
+      maxIntensity = spectralData[i];
+      peakChannel = i;
+    }
+  }
+  float dominantWavelength = channelWavelengths[peakChannel % 14];
 
-void handleConnect() {
-  sendCorsHeaders();
-  StaticJsonDocument<256> doc;
-  doc["status"] = "ok";
-  doc["deviceId"] = deviceId;
-  
-  String response;
-  serializeJson(doc, response);
-  server.send(200, "application/json", response);
-}
+  // --- 3. Send to Supabase ---
+  if (WiFi.status() == WL_CONNECTED) {
+    HTTPClient http;
+    http.begin(supabaseUrl);
+    
+    http.addHeader("Content-Type", "application/json");
+    // VERY IMPORTANT for Supabase REST POST (fixes schema tracking)
+    http.addHeader("Prefer", "return=minimal"); 
+    http.addHeader("apikey", supabaseKey);
+    http.addHeader("Authorization", "Bearer " + String(supabaseKey));
 
+    // Construct JSON Body
+    String jsonPayload = "{";
+    jsonPayload += "\"temperature\":" + String(objC) + ",";
+    
+    // Send the absolute dominant wavelength so the frontend shows a single number (e.g. 525nm)
+    jsonPayload += "\"wavelength\":" + String(dominantWavelength) + ",";
+    
+    // Store all 14 channels raw data safely as a proper JSON array, not a comma-separated string!
+    // Ex: "spectral_channels": [100, 150, 120, ...]
+    jsonPayload += "\"spectral_data\":[";
+    for(int i = 0; i < 14; i++) {
+      jsonPayload += String(spectralData[i]) + (i == 13 ? "" : ",");
+    }
+    jsonPayload += "]";
+    jsonPayload += "}";
+    
+    int httpResponseCode = http.POST(jsonPayload);
+
+    // Debugging
+    Serial.print("Supabase Response: "); Serial.println(httpResponseCode);
+    if (httpResponseCode != 201 && httpResponseCode != 204) {
+      String response = http.getString();
+      Serial.println("Error Detail: " + response);
+    }
+    http.end();
+  }
+
+  // --- 4. OLED Update ---
+  display.clearDisplay();
+  display.setCursor(0,0);
+  display.setTextSize(1);
+  display.println("CLOUD SYNC ACTIVE");
+  display.printf("Temp: %.2f C\n", objC);
+  display.printf("Peak Wlen: %.0f nm\n", dominantWavelength);
+  display.println("Spec (1-4):");
+  for(int i = 0; i < 4; i++) {
+    display.print(spectralData[i]); display.print(" ");
+  }
+  display.display();
+
+  delay(5000); 
+}

@@ -2,10 +2,10 @@ import { Home, ScanLine, Map as MapIcon, Clock, User } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const navItems = [
-  { path: '/home', label: 'HOME', Icon: Home },
-  { path: '/scan', label: 'SCAN', Icon: ScanLine },
-  { path: '/map', label: 'MAP', Icon: MapIcon },
-  { path: '/history', label: 'HISTORY', Icon: Clock },
+  { path: '/home', label: 'DASHBOARD', Icon: Home },
+  { path: '/scan', label: 'OIL SCAN', Icon: ScanLine },
+  { path: '/history', label: 'ANALYTICS', Icon: Clock },
+  { path: '/ngo-dashboard', label: 'DONATIONS', Icon: MapIcon },
   { path: '/profile', label: 'PROFILE', Icon: User }
 ];
 
@@ -21,31 +21,31 @@ export default function Layout({ children }) {
       </main>
 
       {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 w-full max-w-md z-50 glass border-t px-4 py-3 pb-safe theme-border">
-        <div className="flex items-center justify-between px-2">
+      <nav className="fixed bottom-4 left-1/2 -translate-x-1/2 w-[92%] max-w-md z-50 bg-white shadow-2xl rounded-3xl border border-gray-100 px-2 py-2">
+        <div className="flex items-center justify-around">
           {navItems.map(({ path, label, Icon }) => {
             const isActive = path === '/scan' 
                 ? location.pathname.startsWith('/scan') 
                 : location.pathname === path;
                 
+            const shortLabel = label === 'DASHBOARD' ? 'HOME' : 
+                             label === 'OIL SCAN' ? 'SCAN' : 
+                             label === 'ANALYTICS' ? 'HISTORY' : 
+                             label === 'DONATIONS' ? 'NGO' : 'PROFILE';
+
             return (
               <button
                 key={path}
                 onClick={() => navigate(path)}
-                className="flex flex-col items-center gap-1.5 group relative"
-              >
-                <div className={`p-2 rounded-2xl transition-all duration-300 ${
+                className={`flex flex-col items-center gap-1 py-2 px-4 rounded-2xl transition-all duration-300 ${
                   isActive 
-                    ? 'text-[#d4af37] transform -translate-y-1' 
-                    : 'text-[var(--text-muted)] hover:text-[#d4af37]/60'
-                }`}>
-                  <Icon size={24} strokeWidth={isActive ? 2.5 : 2} />
-                  {isActive && (
-                    <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-[#d4af37] rounded-full" />
-                  )}
-                </div>
-                <span className={`text-[9px] font-bold tracking-widest transition-colors ${isActive ? 'text-[#d4af37]' : 'text-[var(--text-muted)]'}`}>
-                  {label}
+                    ? 'bg-[#eab308] text-black shadow-lg shadow-yellow-500/20 scale-105' 
+                    : 'text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                <Icon size={20} strokeWidth={isActive ? 2.5 : 2} />
+                <span className={`text-[8px] font-black tracking-widest ${isActive ? 'text-black' : 'text-gray-400'}`}>
+                  {shortLabel}
                 </span>
               </button>
             );

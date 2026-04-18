@@ -20,7 +20,7 @@ const SubScreenNav = ({ title }) => {
 
 export default function QRGenerator() {
   const [productId, setProductId] = useState('BCH-9942');
-  const [targetUrl, setTargetUrl] = useState('https://pureoil.vercel.app');
+  const targetUrl = 'https://spectratrust-oil-purity-finder.vercel.app';
   const qrRef = useRef();
 
   const handleDownload = () => {
@@ -55,21 +55,8 @@ export default function QRGenerator() {
            </p>
         </div>
 
-        {/* Input Controls */}
+         {/* Input Controls */}
         <div className="card p-5 border-[var(--border-color)] bg-[var(--bg-elevated)] flex flex-col gap-4">
-           <div>
-             <label className="text-[10px] uppercase font-black tracking-widest text-[#C8952A] mb-2 block">Base Domain</label>
-             <div className="relative">
-               <LinkIcon size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
-               <input 
-                 type="text" 
-                 value={targetUrl}
-                 onChange={e => setTargetUrl(e.target.value)}
-                 placeholder="https://yourapp.vercel.app"
-                 className="w-full bg-[#111] border border-[#333] rounded-xl py-3 pl-10 pr-4 text-sm text-white focus:border-[#C8952A] outline-none"
-               />
-             </div>
-           </div>
            
            <div>
              <label className="text-[10px] uppercase font-black tracking-widest text-[#C8952A] mb-2 block">Product / Batch ID</label>

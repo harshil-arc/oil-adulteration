@@ -11,6 +11,9 @@ const alertRoutes = require('./routes/alertRoutes');
 const deviceRoutes = require('./routes/deviceRoutes');
 const shopRoutes = require('./routes/shopRoutes');
 const complaintRoutes = require('./routes/complaintRoutes');
+const messRoutes = require('./routes/messRoutes'); // Legacy
+const platformRoutes = require('./routes/platformRoutes');
+const offlineRoutes = require('./routes/offlineRoutes');
 
 const app = express();
 const server = http.createServer(app);
@@ -170,6 +173,9 @@ app.use('/api/alerts', alertRoutes);
 app.use('/api/devices', deviceRoutes);
 app.use('/api/shops', shopRoutes);
 app.use('/api/complaints', complaintRoutes);
+app.use('/api/mess', messRoutes); // Legacy
+app.use('/api/platform', platformRoutes);
+app.use('/api/', offlineRoutes);
 
 // ── 404 handler ───────────────────────────────────────────
 app.use((req, res) => {

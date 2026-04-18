@@ -1,126 +1,205 @@
-import { useState, useEffect } from 'react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { Activity, MapPin } from 'lucide-react';
-import { supabase } from '../lib/supabase';
+import { useState } from 'react';
+import { BarChart3, TrendingDown, CheckCircle, HeartHandshake, Leaf, Target, Calendar } from 'lucide-react';
 
-export default function AnalyticsPage() {
-  const [dbData, setDbData] = useState([]);
-  const [loading, setLoading] = useState(true);
+const STATS = {
+  totalFoodSavedKg: 2847,
+  mealsSaved: 7118,
+  predictionAccuracy: 88.4,
+  wasteReductionPercent: 34,
+  eventsManaged: 47,
+  ngoDeliveries: 23,
+};
 
-  useEffect(() => {
-    supabase.from('analysis_results').select('*').order('timestamp', { ascending: false }).limit(20)
-      .then(({data}) => { 
-        if (data) setDbData(data);
-        setLoading(false);
-      });
-  }, []);
+const WEEKLY_DATA = [
+  { day: 'Mon', predicted: 320, actual: 290, waste: 30 },
+  { day: 'Tue', predicted: 260, actual: 270, waste: 20 },
+  { day: 'Wed', predicted: 410, actual: 380, waste: 45 },
+  { day: 'Thu', predicted: 190, actual: 175, waste: 18 },
+  { day: 'Fri', predicted: 520, actual: 490, waste: 60 },
+  { day: 'Sat', predicted: 880, actual: 820, waste: 95 },
+  { day: 'Sun', predicted: 730, actual: 680, waste: 72 },
+];
 
-  const totalScans = dbData.length;
-  const avgPurity = totalScans > 0 ? Math.round(dbData.reduce((acc, val) => acc + val.purity, 0) / totalScans) : '--';
-  const flagged = dbData.filter(d => d.quality === 'Unsafe').length;
+const maxActual = Math.max(...WEEKLY_DATA.map(d => d.actual));
+const maxWaste = Math.max(...WEEKLY_DATA.map(d => d.waste));
 
-  const weeklyData = dbData.slice(0, 7).map(d => ({
-    day: new Date(d.timestamp).toLocaleDateString('en-US', { weekday: 'short' }).charAt(0),
-    purity: d.purity
-  })).reverse();
-
-  const recentScans = dbData.map(d => {
-    let status = 'Pure';
-    if (d.quality === 'Moderate') status = 'Warn';
-    if (d.quality === 'Unsafe') status = 'Critical';
-    return {
-      id: d.id,
-      loc: d.oil_type ? `${d.oil_type} Analysis` : 'Unknown Sample',
-      time: new Date(d.timestamp).toLocaleString([], { dateStyle:'short', timeStyle:'short' }),
-      purity: d.purity,
-      status: status
-    };
-  });
-
-  const getBadgeColor = (status) => {
-    if (status === 'Pure') return 'bg-[#e0f2ec] text-[#177e5e] border border-[#a2d7c2]';
-    if (status === 'Warn') return 'bg-orange-50 text-orange-600 border border-orange-200';
-    return 'bg-red-50 text-red-600 border border-red-200';
-  };
+export default function Analytics() {
+  const [activeTab, setActiveTab] = useState('overview');
 
   return (
-    <div className="px-5 pt-6 pb-6 flex flex-col gap-6 animate-slide-up">
+    <div className="flex flex-col theme-bg min-h-screen pb-24 font-sans transition-colors duration-300">
       {/* Header */}
-      <div>
-        <h1 className="text-xl font-extrabold text-gray-900 tracking-tight">Analytics & History</h1>
-        <p className="text-xs text-[#1d9e75] font-bold uppercase tracking-widest mt-0.5">Network Grid Overview</p>
+      <div className="px-5 pt-7 pb-4 border-b theme-border">
+        <h1 className="text-[19px] font-black theme-text flex items-center gap-2">
+          <BarChart3 size={18} className="text-blue-500" /> Analytics Hub
+        </h1>
+        <p className="theme-text-muted text-[10px] uppercase tracking-[0.2em] mt-0.5">Platform Intelligence · All Events</p>
       </div>
 
-      {/* 3 Summary Stat Tiles */}
-      <div className="grid grid-cols-3 gap-3">
-        <div className="card py-4 px-3 flex flex-col items-center justify-center text-center gap-1 shadow-sm">
-          <p className="text-[10px] font-bold text-gray-400 tracking-widest uppercase">Total Scans</p>
-          <p className="text-2xl font-black text-gray-800">{loading ? '-' : totalScans}</p>
-        </div>
-        <div className="card py-4 px-3 flex flex-col items-center justify-center text-center gap-1 shadow-sm">
-          <p className="text-[10px] font-bold text-gray-400 tracking-widest uppercase">Avg Purity</p>
-          <p className="text-2xl font-black text-[#1d9e75]">{loading ? '-' : avgPurity}{!loading && avgPurity !== '--' && <span className="text-sm text-gray-400">%</span>}</p>
-        </div>
-        <div className="card py-4 px-3 flex flex-col items-center justify-center text-center gap-1 shadow-sm">
-          <p className="text-[10px] font-bold text-red-400 tracking-widest uppercase">Flagged</p>
-          <p className="text-2xl font-black text-red-500">{loading ? '-' : flagged}</p>
-        </div>
+      {/* Tab switcher */}
+      <div className="flex gap-2 px-5 mt-4">
+        {['overview', 'demand', 'waste'].map(t => (
+          <button
+            key={t}
+            onClick={() => setActiveTab(t)}
+            className={`px-4 py-2 rounded-full text-[10px] font-bold uppercase tracking-wider border transition-all ${activeTab === t ? 'bg-blue-500 text-white border-blue-500' : 'theme-elevated theme-border theme-text'}`}
+          >
+            {t}
+          </button>
+        ))}
       </div>
 
-      {/* Weekly Bar Chart */}
-      <div className="card shadow-sm">
-        <div className="flex items-center gap-2 mb-4">
-          <Activity size={16} className="text-[#1d9e75]" />
-          <h2 className="text-xs font-bold text-gray-800 tracking-wide uppercase">Purity Trend (7 Days)</h2>
-        </div>
-        <div className="h-48 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={weeklyData} margin={{ top: 0, right: 0, left: -25, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-              <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#9CA3AF' }} dy={5} />
-              <YAxis domain={[0, 100]} axisLine={false} tickLine={false} tick={{ fontSize: 10, fill: '#9CA3AF' }} />
-              <Tooltip 
-                cursor={{ fill: '#f7f9f7' }}
-                contentStyle={{ borderRadius: '12px', border: '1px solid #e8ede8', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
-                itemStyle={{ color: '#1d9e75', fontWeight: 'bold' }}
-              />
-              <Bar dataKey="purity" fill="#1d9e75" radius={[4, 4, 0, 0]} barSize={24} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+      <div className="px-4 flex flex-col gap-5 mt-5">
 
-      {/* Scrollable Recent Scans list */}
-      <div>
-        <h2 className="text-xs font-bold text-gray-800 tracking-wide uppercase mb-3 px-1">Recent Network Scans</h2>
-        <div className="flex flex-col gap-3">
-          {recentScans.length === 0 && !loading && (
-            <div className="text-center py-6 text-gray-400 text-sm">No analysis history available yet.</div>
-          )}
-          {recentScans.map((scan) => (
-            <div key={scan.id} className="card shadow-sm py-3 px-4 flex items-center justify-between transition-colors hover:bg-[#f7f9f7]">
-              <div className="flex items-start gap-3">
-                <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0 text-gray-500 mt-0.5">
-                  <MapPin size={14} />
-                </div>
-                <div>
-                  <h3 className="text-[13px] font-extrabold text-gray-800">{scan.loc}</h3>
-                  <p className="text-[10px] text-gray-400 font-medium tracking-wide mt-0.5">{scan.time}</p>
-                </div>
+        {activeTab === 'overview' && (
+          <>
+            {/* Hero stat */}
+            <div className="theme-card border border-green-500/20 rounded-[20px] p-5 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/5 rounded-full blur-3xl pointer-events-none" />
+              <div className="flex items-center gap-2 mb-4">
+                <Leaf size={15} className="text-green-500" />
+                <span className="text-[10px] font-bold text-green-500 uppercase tracking-[0.15em]">Total Impact</span>
               </div>
-              <div className="flex flex-col items-end gap-1.5">
-                <div className="flex items-baseline gap-0.5">
-                  <span className="text-sm font-black text-gray-800">{scan.purity}</span>
-                  <span className="text-[10px] text-gray-400 font-bold">%</span>
-                </div>
-                <span className={`text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-full ${getBadgeColor(scan.status)}`}>
-                  {scan.status}
-                </span>
+              <div className="flex items-end gap-2 mb-1">
+                <span className="text-[52px] font-black leading-none theme-text">{STATS.totalFoodSavedKg.toLocaleString()}</span>
+                <span className="text-base font-bold theme-text-secondary mb-2">kg saved</span>
+              </div>
+              <p className="text-[11px] theme-text-secondary">Equivalent to <span className="font-bold theme-text">{STATS.mealsSaved.toLocaleString()} meals</span> served to those in need.</p>
+            </div>
+
+            {/* 2×2 stat grid */}
+            <div className="grid grid-cols-2 gap-3">
+              <StatCard label="Prediction Accuracy" value={`${STATS.predictionAccuracy}%`} icon={<Target size={16} className="text-blue-500" />} color="blue" />
+              <StatCard label="Waste Reduction" value={`${STATS.wasteReductionPercent}%`} icon={<TrendingDown size={16} className="text-green-500" />} color="green" />
+              <StatCard label="Events Managed" value={STATS.eventsManaged} icon={<Calendar size={16} className="text-purple-500" />} color="purple" />
+              <StatCard label="NGO Deliveries" value={STATS.ngoDeliveries} icon={<HeartHandshake size={16} className="text-pink-500" />} color="pink" />
+            </div>
+
+            {/* Accuracy breakdown */}
+            <div className="theme-card border theme-border rounded-[20px] p-5">
+              <h3 className="text-[11px] font-bold theme-text-muted uppercase tracking-[0.15em] mb-4">Accuracy by Event Type</h3>
+              <div className="flex flex-col gap-3">
+                {[['Wedding', 91], ['Corporate', 88], ['Festival', 82], ['Party', 86]].map(([type, acc]) => (
+                  <div key={type} className="flex items-center gap-3">
+                    <span className="text-xs font-bold theme-text w-20 shrink-0">{type}</span>
+                    <div className="flex-1 h-2 theme-elevated rounded-full overflow-hidden">
+                      <div className="h-full bg-blue-500 rounded-full" style={{ width: `${acc}%` }} />
+                    </div>
+                    <span className="text-xs font-black theme-text w-10 text-right">{acc}%</span>
+                  </div>
+                ))}
               </div>
             </div>
-          ))}
-        </div>
+          </>
+        )}
+
+        {activeTab === 'demand' && (
+          <>
+            <div className="theme-card border theme-border rounded-[20px] p-5">
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-[11px] font-bold theme-text-muted uppercase tracking-[0.15em]">Predicted vs Actual (kg)</h3>
+                <span className="text-[9px] theme-text-muted">This week</span>
+              </div>
+              <div className="flex items-end gap-2 h-36 mb-2">
+                {WEEKLY_DATA.map((d) => (
+                  <div key={d.day} className="flex-1 flex items-end gap-0.5">
+                    <div className="flex-1 bg-blue-500/30 rounded-t" style={{ height: `${(d.predicted / maxActual) * 100}%` }} />
+                    <div className="flex-1 bg-blue-500 rounded-t" style={{ height: `${(d.actual / maxActual) * 100}%` }} />
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-between mb-3">
+                {WEEKLY_DATA.map(d => <span key={d.day} className="flex-1 text-center text-[8px] theme-text-muted">{d.day}</span>)}
+              </div>
+              <div className="flex gap-4 pt-4 border-t theme-border">
+                <div className="flex items-center gap-1.5"><div className="w-3 h-2 rounded-sm bg-blue-500/30" /><span className="text-[10px] theme-text-muted">Predicted</span></div>
+                <div className="flex items-center gap-1.5"><div className="w-3 h-2 rounded-sm bg-blue-500" /><span className="text-[10px] theme-text-muted">Actual</span></div>
+              </div>
+            </div>
+
+            <div className="theme-card border theme-border rounded-[20px] p-5">
+              <h3 className="text-[11px] font-bold theme-text-muted uppercase tracking-[0.15em] mb-4">Daily Accuracy</h3>
+              {WEEKLY_DATA.map(d => {
+                const acc = Math.round((Math.min(d.predicted, d.actual) / Math.max(d.predicted, d.actual)) * 100);
+                return (
+                  <div key={d.day} className="flex items-center gap-3 mb-3">
+                    <span className="text-xs font-bold theme-text w-8">{d.day}</span>
+                    <div className="flex-1 h-1.5 theme-elevated rounded-full overflow-hidden">
+                      <div className={`h-full rounded-full ${acc >= 90 ? 'bg-green-500' : acc >= 80 ? 'bg-orange-400' : 'bg-red-500'}`} style={{ width: `${acc}%` }} />
+                    </div>
+                    <span className={`text-xs font-black w-10 text-right ${acc >= 90 ? 'text-green-500' : acc >= 80 ? 'text-orange-400' : 'text-red-500'}`}>{acc}%</span>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {activeTab === 'waste' && (
+          <>
+            <div className="theme-card border theme-border rounded-[20px] p-5">
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-[11px] font-bold theme-text-muted uppercase tracking-[0.15em]">Food Waste (kg/day)</h3>
+                <span className="text-[9px] text-red-500 font-bold flex items-center gap-1">
+                  <TrendingDown size={9} className="rotate-180" /> +12% trend
+                </span>
+              </div>
+              <div className="flex items-end gap-2 h-36 mb-2">
+                {WEEKLY_DATA.map((d) => (
+                  <div key={d.day} className="flex-1">
+                    <div
+                      className={`w-full rounded-t transition-all ${d.waste === maxWaste ? 'bg-red-500' : 'bg-orange-400/60'}`}
+                      style={{ height: `${(d.waste / maxWaste) * 100}%` }}
+                    />
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-between mb-4">
+                {WEEKLY_DATA.map(d => <span key={d.day} className="flex-1 text-center text-[8px] theme-text-muted">{d.day}</span>)}
+              </div>
+              <div className="grid grid-cols-3 gap-3 pt-4 border-t theme-border">
+                <MiniStat label="Total Waste" value={`${WEEKLY_DATA.reduce((s, d) => s + d.waste, 0)} kg`} />
+                <MiniStat label="Daily Avg" value={`${(WEEKLY_DATA.reduce((s, d) => s + d.waste, 0) / 7).toFixed(0)} kg`} />
+                <MiniStat label="Peak Day" value="Saturday" bad />
+              </div>
+            </div>
+
+            <div className="theme-card border theme-border rounded-[20px] p-5 mb-4">
+              <h3 className="text-[11px] font-bold theme-text-muted uppercase tracking-[0.15em] mb-4">Waste by Event Type</h3>
+              {[['Wedding', 38, 'red'], ['Festival', 28, 'orange'], ['Corporate', 22, 'blue'], ['Party', 12, 'green']].map(([type, pct, color]) => (
+                <div key={type} className="flex items-center gap-3 mb-3">
+                  <span className="text-xs font-bold theme-text w-20 shrink-0">{type}</span>
+                  <div className="flex-1 h-2 theme-elevated rounded-full overflow-hidden">
+                    <div className={`h-full bg-${color}-500 rounded-full`} style={{ width: `${pct * 2.5}%` }} />
+                  </div>
+                  <span className="text-xs font-black theme-text-secondary w-8 text-right">{pct}%</span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
       </div>
+    </div>
+  );
+}
+
+function StatCard({ label, value, icon, color }) {
+  const borders = { blue: 'border-blue-500/15', green: 'border-green-500/15', purple: 'border-purple-500/15', pink: 'border-pink-500/15' };
+  return (
+    <div className={`theme-card rounded-[18px] p-4 border ${borders[color]}`}>
+      <div className="mb-2">{icon}</div>
+      <p className="text-[24px] font-black theme-text leading-none">{value}</p>
+      <p className="text-[9px] theme-text-muted uppercase tracking-widest mt-1.5 font-bold">{label}</p>
+    </div>
+  );
+}
+
+function MiniStat({ label, value, bad }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-[8px] theme-text-muted uppercase tracking-widest font-bold">{label}</span>
+      <span className={`text-xs font-black ${bad ? 'text-red-500' : 'theme-text'}`}>{value}</span>
     </div>
   );
 }
