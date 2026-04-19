@@ -13,7 +13,7 @@ export default function Readings() {
   const connRef = useRef(getActiveConnection());
 
   const [data, setData] = useState({
-    temperature: 0, wavelength: 0, density: 0, oil_type: '—', adulteration_index: 0,
+    temperature: 0, spectral_data: '—', oil_type: '—', adulteration_index: 0,
   });
 
   const [failCount, setFailCount] = useState(0);
@@ -83,8 +83,7 @@ export default function Readings() {
           console.log('[Readings] LOCAL data:', json);
           setData({
             temperature:        json.temperature        ?? 0,
-            wavelength:         json.wavelength         ?? 0,
-            density:            json.density            ?? 0,
+            spectral_data:      json.spectral_data ? JSON.stringify(json.spectral_data) : '—',
             oil_type:           json.oil_type           || '—',
             adulteration_index: json.adulteration_index ?? 0,
           });
@@ -107,35 +106,18 @@ export default function Readings() {
           if (row) {
             console.log('[Readings] CLOUD data:', row);
 
-            // Derive wavelength: nm of peak AS7343 channel from spectral_data JSONB
+            // Parse spectral_data for adulteration index (NIR vs VIS ratio)
             const spectral = row.spectral_data || {};
-            const chMap = {
-              f1_405nm: 405, f2_425nm: 425, fz_450nm: 450,
-              f3_475nm: 475, f4_515nm: 515, f5_550nm: 550,
-              fy_555nm: 555, fxl_600nm: 600, f6_640nm: 640,
-              f7_690nm: 690, f8_745nm: 745, nir_855nm: 855,
-            };
-            let peakNm = 550, peakVal = 0;
-            for (const [key, nm] of Object.entries(chMap)) {
-              if ((spectral[key] || 0) > peakVal) {
-                peakVal = spectral[key]; peakNm = nm;
-              }
-            }
-
-            // Derive density proxy from weight (50g reference)
-            const weightG = row.weight ?? 0;
-            const densityProxy = weightG > 0 ? +(weightG / 50.0).toFixed(3) : 0;
-
-            // Adulteration index from NIR vs VIS ratio
             const vis = spectral.vis || 1;
             const nir = spectral.nir_855nm || 1;
             const adulterationIndex = Math.min(100, Math.round((nir / vis) * 100));
 
             setData({
               temperature:        row.temperature ?? 0,
-              wavelength:         peakNm,
-              density:            densityProxy,
-              oil_type:           'Cloud Sample',
+              spectral_data:      typeof row.spectral_data === 'string' 
+                                    ? row.spectral_data 
+                                    : (row.spectral_data ? JSON.stringify(row.spectral_data) : '—'),
+              oil_type:           row.oil_type || 'Cloud Sample',
               adulteration_index: adulterationIndex,
             });
             setFailCount(0);
@@ -278,9 +260,15 @@ export default function Readings() {
         {/* Sensor cards */}
         <div className="grid grid-cols-2 gap-4">
           <SensorCard label="Temperature" value={data.temperature} unit="°C" decimals={1} />
-          <SensorCard label="Wavelength"  value={data.wavelength}  unit="nm"  decimals={0} />
-          <SensorCard label="Density"     value={data.density}     unit="g/cm³" decimals={3} />
           <OilTypeCard label="Oil Type" value={data.oil_type} />
+          <div className="col-span-2">
+            <div className="bg-[#1c1c1c] border border-[#333] rounded-2xl p-4 flex flex-col gap-1">
+              <span className="text-[9px] text-gray-500 uppercase font-bold tracking-widest">Spectral Data</span>
+              <span className="text-sm font-black text-[#d4af37] leading-tight mt-1 break-all">
+                {data.spectral_data || '—'}
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* ── Analyze Oil CTA ─────────────────────────── */}
