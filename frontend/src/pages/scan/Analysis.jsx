@@ -47,9 +47,11 @@ function PurityGaugeAnimated({ purity = 100 }) {
   const targetOffset = circumference - (clamped / 100) * circumference;
 
   let color = '#22c55e';
-  let zoneLabel = 'Pure';
-  if (clamped < 40) { color = '#ef4444'; zoneLabel = 'Heavily Adulterated'; }
-  else if (clamped < 80) { color = '#eab308'; zoneLabel = 'Adulterated'; }
+  // We determine the color based on purity, but avoid changing the label below the percentage 
+  // to "Adulterated" because it creates visual confusion (e.g. "47.4% Adulterated" looks like 
+  // the adulteration percentage rather than the purity percentage).
+  if (clamped < 40) { color = '#ef4444'; }
+  else if (clamped < 80) { color = '#eab308'; }
 
   useEffect(() => {
     if (!circleRef.current) return;
@@ -86,7 +88,7 @@ function PurityGaugeAnimated({ purity = 100 }) {
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-end pb-2">
           <span className="text-4xl font-black font-mono" style={{ color }}>{clamped.toFixed(1)}%</span>
-          <span className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-widest mt-0.5">{zoneLabel}</span>
+          <span className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-widest mt-0.5">PURITY SCORE</span>
         </div>
       </div>
     </div>

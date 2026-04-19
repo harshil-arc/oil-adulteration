@@ -126,7 +126,10 @@ export default function Home() {
         food_menu: form.foodItems,
         weather_context: form.weather,
       });
-      if (data?.data) setPrediction(data.data);
+      if (data?.data) {
+        setPrediction(data.data);
+        setTotalPrepared(data.data.predicted_food_kg);
+      }
     } catch {
       const multipliers = { wedding: 0.8, corporate: 0.5, festival: 0.7, party: 0.6, 'ngo camp': 0.4, 'college event': 0.5, other: 0.55 };
       const base = multipliers[form.type.toLowerCase()] || 0.55;
@@ -139,6 +142,7 @@ export default function Home() {
         confidence: conf.toFixed(1),
         ai_recommendation: `Prepare ~${kg} kg for ${form.guestCount} guests. ${risk > 40 ? 'Consider staggered cooking to reduce waste.' : 'Preparation level looks optimal.'}`,
       });
+      setTotalPrepared(kg);
     }
     setLoadingPred(false);
     setShowForm(false);
@@ -512,12 +516,18 @@ export default function Home() {
                     <span className="text-[54px] font-black leading-none theme-text tracking-tighter">{prediction.predicted_food_kg}</span>
                     <span className="text-sm font-bold theme-text-secondary mb-2">kg</span>
                   </div>
-                  <p className="text-[10px] theme-text-muted mt-2 flex items-center gap-1"><CheckCircle size={10} className="text-green-500" /> Confidence: <span className="font-bold theme-text">{prediction.confidence}%</span></p>
+                  <p className="text-[10px] theme-text-muted mt-2 flex items-center gap-1.5 flex-wrap">
+                    <CheckCircle size={10} className="text-green-500" /> Confidence: <span className="font-bold theme-text">{prediction.confidence}%</span>
+                    <span className="text-gray-300">|</span>
+                    <Utensils size={10} className="text-amber-500" /> <span className="font-bold theme-text">{form.guestCount ? Math.round((prediction.predicted_food_kg * 1000) / form.guestCount) : 0}g</span> per plate
+                  </p>
                 </div>
-                <div className="text-right">
+                <div className="flex flex-col items-end justify-between py-1">
                   <p className="text-[9px] theme-text-muted uppercase tracking-widest font-bold mb-2">Waste Risk</p>
-                  <span className={`text-sm font-black px-4 py-2 rounded-xl border ${riskBorder} ${riskColor}`}>{riskLabel} RISK</span>
-                  <p className="text-[10px] theme-text-muted mt-2">{prediction.waste_risk_score}/100 Index</p>
+                  <div className={`flex items-center justify-center px-4 py-2 rounded-xl border ${riskBorder} ${riskColor}`}>
+                    <span className="text-sm font-black tracking-widest leading-none">{riskLabel} RISK</span>
+                  </div>
+                  <p className="text-[10px] theme-text-muted mt-3 font-bold">{prediction.waste_risk_score}/100 Index</p>
                 </div>
               </div>
 

@@ -101,11 +101,16 @@ export function calculateAdulteration(sensorReadings, oilRef) {
   const total_dist = pure_dist + adulterated_dist;
   let purity = 100;
   
-  if (total_dist > 0) {
-    purity = (1 - (pure_dist / total_dist)) * 100;
+  const sumInput = inputNorm.reduce((a, b) => a + b, 0);
+  if (sumInput === 0) {
+    purity = 0; // Invalid reading
+  } else if (total_dist > 0) {
+    // Inverse distance squared weighting to create sharper contrast instead of 50/50 splits
+    const wPure = 1 / Math.pow(pure_dist + 0.0001, 2);
+    const wAdult = 1 / Math.pow(adulterated_dist + 0.0001, 2);
+    purity = (wPure / (wPure + wAdult)) * 100;
   } else {
-    // If exactly 0 to both (impossible unless references are identical), default safely
-    purity = 50; 
+    purity = 100; 
   }
   
   // Safety clamp
