@@ -145,7 +145,6 @@ export default function Home() {
       setTotalPrepared(kg);
     }
     setLoadingPred(false);
-    setShowForm(false);
   };
 
   const handleSurplusCalculate = () => {
