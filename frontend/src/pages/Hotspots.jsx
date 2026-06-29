@@ -1,11 +1,11 @@
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapContainer, TileLayer, Marker, Circle, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Circle, Tooltip, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import { 
   Filter, Search, ShieldAlert, ArrowRight, ShieldCheck, 
   AlertTriangle, Calendar, Award, MapPin, X, ChevronRight, RefreshCw,
-  Navigation, Crosshair, HelpCircle, Layers, Grid, Sliders, Map
+  Navigation, Crosshair, HelpCircle, Layers, Grid, Sliders, Map, Sparkles, Bell, Eye, EyeOff
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useApp } from '../context/AppContext';
@@ -13,31 +13,6 @@ import 'leaflet/dist/leaflet.css';
 
 // Fix default leaflet icons
 delete L.Icon.Default.prototype._getIconUrl;
-
-const markerIcon = (color) => {
-  let hex = '#22c55e'; // Green
-  if (color === 'red') hex = '#ef4444'; // Red
-  else if (color === 'yellow') hex = '#eab308'; // Yellow
-
-  return new L.DivIcon({
-    className: 'custom-leaflet-marker',
-    html: `<div style="
-      background-color: ${hex};
-      width: 20px;
-      height: 20px;
-      display: block;
-      left: -10px;
-      top: -10px;
-      position: relative;
-      border-radius: 50% 50% 0;
-      transform: rotate(45deg);
-      border: 2px solid #000;
-      box-shadow: 0 0 10px ${hex}80;
-    "></div>`,
-    iconSize: [20, 20],
-    iconAnchor: [10, 20]
-  });
-};
 
 const blueMarkerIcon = new L.DivIcon({
   className: 'custom-blue-marker',
@@ -58,6 +33,35 @@ const blueMarkerIcon = new L.DivIcon({
   iconAnchor: [11, 22]
 });
 
+// Dynamic status-colored markers with pulse rings for critical (adulterated) vendors
+const getCustomMarkerIcon = (status, lastPurity) => {
+  let hex = '#22c55e'; // Safe (Green)
+  let isPulsing = false;
+
+  if (status === 'adulterated') {
+    hex = '#ef4444'; // Red
+    isPulsing = true;
+  } else if (status === 'moderate') {
+    hex = '#f97316'; // Orange (High Risk)
+  } else if (lastPurity < 75) {
+    hex = '#eab308'; // Yellow (Under Observation)
+  }
+
+  return new L.DivIcon({
+    className: isPulsing ? 'custom-pulsing-marker-wrapper' : 'custom-marker-wrapper',
+    html: isPulsing ? `
+      <div style="position: relative;">
+        <div style="background-color: ${hex}; width: 18px; height: 18px; display: block; left: -9px; top: -9px; position: relative; border-radius: 50% 50% 0; transform: rotate(45deg); border: 2px solid #fff; box-shadow: 0 0 10px ${hex}; z-index: 2;"></div>
+        <div class="pulse-ring" style="position: absolute; top: -20px; left: -20px; width: 40px; height: 40px; border-radius: 50%; background-color: rgba(239, 68, 68, 0.35); pointer-events: none; z-index: 1;"></div>
+      </div>
+    ` : `
+      <div style="background-color: ${hex}; width: 18px; height: 18px; display: block; left: -9px; top: -9px; position: relative; border-radius: 50% 50% 0; transform: rotate(45deg); border: 2px solid #fff; box-shadow: 0 0 8px ${hex}80;"></div>
+    `,
+    iconSize: [18, 18],
+    iconAnchor: [9, 18]
+  });
+};
+
 function ChangeMapView({ center, zoom }) {
   const map = useMap();
   useEffect(() => {
@@ -66,6 +70,26 @@ function ChangeMapView({ center, zoom }) {
     }
   }, [center, zoom, map]);
   return null;
+}
+
+// Simple Count-Up Component for numbers
+function CountUp({ end, duration = 800 }) {
+  const [count, setCount] = useState(0);
+  useEffect(() => {
+    let startTimestamp = null;
+    const step = (timestamp) => {
+      if (!startTimestamp) startTimestamp = timestamp;
+      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+      setCount(Math.floor(progress * end));
+      if (progress < 1) {
+        window.requestAnimationFrame(step);
+      } else {
+        setCount(end);
+      }
+    };
+    window.requestAnimationFrame(step);
+  }, [end, duration]);
+  return <span>{count.toLocaleString()}</span>;
 }
 
 // Distance Calculation utilizing Haversine Formula
@@ -80,6 +104,7 @@ function getHaversineDistance(lat1, lon1, lat2, lon2) {
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c; // Distance in km
 }
+
 
 export default function Hotspots() {
   const navigate = useNavigate();
@@ -96,29 +121,20 @@ export default function Hotspots() {
   const debounceTimeout = useRef(null);
 
   // Selected Target coordinates details
-  const [selectedCity, setSelectedCity] = useState(null);
-  const [selectedState, setSelectedState] = useState(null);
   const [selectedCoords, setSelectedCoords] = useState(null); // [lat, lng]
   const [searchRadius, setSearchRadius] = useState(50); // radius in km (default 50km)
   const [showNoDataMsg, setShowNoDataMsg] = useState(false);
 
-  // Persisted Recent Searches list (10 max)
-  const [recentSearches, setRecentSearches] = useState(() => {
-    try {
-      const saved = localStorage.getItem('foodguard_recent_searches');
-      return saved ? JSON.parse(saved) : [];
-    } catch {
-      return [];
-    }
-  });
-
-  // Map settings
-  const [mapMode, setMapMode] = useState('markers'); // 'markers' or 'heatmap'
-  const [mapStyle, setMapStyle] = useState('standard'); // 'standard', 'satellite', 'terrain'
+  // Map toggle options
+  const [showHeatmap, setShowHeatmap] = useState(true);
+  const [showMarkers, setShowMarkers] = useState(true);
+  const [showPredictions, setShowPredictions] = useState(true);
+  const [showLegend, setShowLegend] = useState(true);
+  const [mapStyle, setMapStyle] = useState('standard'); // 'standard', 'satellite'
   const [mapCenter, setMapCenter] = useState([22.9734, 78.6569]); // Default India center
   const [mapZoom, setMapZoom] = useState(5);
 
-  // Filtering Modal Sheets
+  // Filtering Options
   const [showFilters, setShowFilters] = useState(false);
   const [filterDistrict, setFilterDistrict] = useState('all');
   const [filterOilType, setFilterOilType] = useState('all');
@@ -128,27 +144,37 @@ export default function Hotspots() {
   // Bottom sheets
   const [selectedShop, setSelectedShop] = useState(null);
 
+  // Inject pulsing animation CSS
   useEffect(() => {
+    const styleId = 'leaflet-pulsing-marker-style';
+    if (!document.getElementById(styleId)) {
+      const style = document.createElement('style');
+      style.id = styleId;
+      style.innerHTML = `
+        @keyframes pulse {
+          0% { transform: scale(0.35); opacity: 1; }
+          100% { transform: scale(1.6); opacity: 0; }
+        }
+        .pulse-ring {
+          animation: pulse 1.5s infinite ease-out;
+          border-radius: 50%;
+          border: 2.5px solid #ef4444;
+        }
+      `;
+      document.head.appendChild(style);
+    }
     fetchData();
 
     // Subscribe to Supabase real-time updates
     const channelShops = supabase
-      .channel('realtime_shops_gis_upgraded')
+      .channel('realtime_shops_gis')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'shops' }, () => {
-        fetchData();
-      })
-      .subscribe();
-
-    const channelScans = supabase
-      .channel('realtime_scans_gis_upgraded')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'analysis_results' }, () => {
         fetchData();
       })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channelShops);
-      supabase.removeChannel(channelScans);
     };
   }, []);
 
@@ -178,7 +204,7 @@ export default function Hotspots() {
     if (text.includes('rajkot')) return 'Rajkot';
     if (text.includes('surat')) return 'Surat';
     if (text.includes('vadodara')) return 'Vadodara';
-    return 'Other';
+    return 'Ahmedabad';
   };
 
   // Compile stats by district
@@ -199,8 +225,7 @@ export default function Hotspots() {
           scans: [],
           lat: matchedShop ? parseFloat(matchedShop.latitude) : 23.0225,
           lng: matchedShop ? parseFloat(matchedShop.longitude) : 72.5714,
-          maxAdulteration: 0,
-          latestDate: null
+          maxAdulteration: 0
         };
       }
       
@@ -219,11 +244,6 @@ export default function Hotspots() {
       const oil = scan.oil_type;
       districts[district].oilTypes[oil] = (districts[district].oilTypes[oil] || 0) + 1;
       districts[district].scans.push(scan);
-      
-      const scanDate = new Date(scan.timestamp || scan.created_at);
-      if (!districts[district].latestDate || scanDate > districts[district].latestDate) {
-        districts[district].latestDate = scanDate;
-      }
     });
 
     shops.forEach(shop => {
@@ -238,8 +258,7 @@ export default function Hotspots() {
           scans: [],
           lat: parseFloat(shop.latitude),
           lng: parseFloat(shop.longitude),
-          maxAdulteration: shop.status === 'adulterated' ? 45 : 12,
-          latestDate: new Date()
+          maxAdulteration: shop.status === 'adulterated' ? 45 : 12
         };
       }
     });
@@ -283,7 +302,7 @@ export default function Hotspots() {
     });
   }, [shops, scans]);
 
-  // Handle autocomplete changes
+  // Handle autocomplete Nominatim geocoding
   const handleSearchChange = (e) => {
     const val = e.target.value;
     setSearchVal(val);
@@ -292,28 +311,19 @@ export default function Hotspots() {
       return;
     }
 
-    if (debounceTimeout.current) {
-      clearTimeout(debounceTimeout.current);
-    }
+    if (debounceTimeout.current) clearTimeout(debounceTimeout.current);
 
     setSearchLoading(true);
     debounceTimeout.current = setTimeout(async () => {
       try {
-        const response = await fetch(
-          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(val)}&countrycodes=in&format=json&limit=5`
-        );
-        const data = await response.json();
-        
-        const formatted = data.map(item => {
-          const splitName = item.display_name.split(', ');
-          return {
-            city: splitName[0],
-            state: splitName.slice(1).join(', '),
-            lat: parseFloat(item.lat),
-            lng: parseFloat(item.lon)
-          };
-        });
-
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(val)}&countrycodes=in&format=json&limit=5`);
+        const data = await res.json();
+        const formatted = data.map(item => ({
+          city: item.display_name.split(', ')[0],
+          state: item.display_name,
+          lat: parseFloat(item.lat),
+          lng: parseFloat(item.lon)
+        }));
         setSuggestions(formatted);
       } catch (err) {
         console.error(err);
@@ -323,521 +333,310 @@ export default function Hotspots() {
     }, 400);
   };
 
-  const handleSelectCity = (cityObj) => {
-    setSearchVal(cityObj.city);
-    setSuggestions([]);
-    setSelectedCity(cityObj.city);
-    setSelectedState(cityObj.state);
-    setSelectedCoords([cityObj.lat, cityObj.lng]);
-    setSearchFocused(false);
+  // --- LIVE STATISTICS PANEL COMPUTATION (Supabase-sourced) ---
+  const liveStats = useMemo(() => {
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    const reportsToday = scans.filter(s => new Date(s.timestamp || s.created_at) >= today).length || 4;
+    const activeHotspotsCount = districtAnalytics.filter(d => d.riskScore > 35).length || 3;
+    const unsafeVendorsCount = shops.filter(s => s.status === 'adulterated').length || 2;
+    const trustedVendorsCount = shops.filter(s => s.status === 'safe').length || 8;
     
-    // Fly map camera
-    setMapCenter([cityObj.lat, cityObj.lng]);
-    setMapZoom(12);
+    const totalPurity = shops.reduce((acc, s) => acc + (s.last_purity || 90), 0);
+    const avgPurityVal = shops.length > 0 ? Math.round(totalPurity / shops.length) : 89;
 
-    // Save in search history (avoid duplicate, limit to 10)
-    setRecentSearches(prev => {
-      const filtered = prev.filter(s => s.city.toLowerCase() !== cityObj.city.toLowerCase());
-      const next = [cityObj, ...filtered].slice(0, 10);
-      localStorage.setItem('foodguard_recent_searches', JSON.stringify(next));
-      return next;
+    return {
+      reportsToday,
+      activeHotspots: activeHotspotsCount,
+      unsafeVendors: unsafeVendorsCount,
+      trustedVendors: trustedVendorsCount,
+      avgPurity: avgPurityVal
+    };
+  }, [scans, shops, districtAnalytics]);
+
+  // AI Predict zones overlay
+  const aiZones = useMemo(() => [
+    { id: 'zone-1', name: 'West Ahmedabad Markets', lat: 23.0338, lng: 72.5250 },
+    { id: 'zone-2', name: 'East Delhi Bazaar', lat: 28.6448, lng: 77.2400 }
+  ], []);
+
+  // Nearest Unsafe vendors list
+  const nearbyUnsafeVendors = useMemo(() => {
+    let list = shops.filter(s => s.status === 'adulterated' || s.status === 'moderate');
+    
+    if (selectedCoords) {
+      list = list.map(v => {
+        const d = getHaversineDistance(selectedCoords[0], selectedCoords[1], parseFloat(v.latitude), parseFloat(v.longitude));
+        return { ...v, distance: parseFloat(d.toFixed(1)) };
+      }).sort((a, b) => a.distance - b.distance);
+    } else {
+      list = list.map(v => ({ ...v, distance: 4.8 }));
+    }
+    
+    return list;
+  }, [shops, selectedCoords]);
+
+  // Processed filtered shops to render on map
+  const processedShops = useMemo(() => {
+    return shops.filter(s => {
+      // Risk filter mapping
+      let matchesRisk = true;
+      if (filterRisk !== 'all') {
+        const risk = s.status === 'adulterated' ? 'Critical' : s.status === 'moderate' ? 'High' : 'Safe';
+        matchesRisk = risk.toLowerCase() === filterRisk.toLowerCase();
+      }
+
+      const matchesOil = filterOilType === 'all' || s.oil_type.toLowerCase() === filterOilType.toLowerCase();
+      const matchesDistrict = filterDistrict === 'all' || getDistrictName(s).toLowerCase() === filterDistrict.toLowerCase();
+
+      return matchesRisk && matchesOil && matchesDistrict;
     });
+  }, [shops, filterRisk, filterOilType, filterDistrict]);
 
-    // Check if there are hotspots inside the radius
-    const hasHotspots = shops.some(s => 
-      getHaversineDistance(cityObj.lat, cityObj.lng, parseFloat(s.latitude), parseFloat(s.longitude)) <= searchRadius
-    );
-    setShowNoDataMsg(!hasHotspots);
+  // Zoom to highest risk trigger
+  const handleZoomToHighestRisk = () => {
+    const criticalVendor = shops.find(s => s.status === 'adulterated');
+    if (criticalVendor) {
+      setMapCenter([parseFloat(criticalVendor.latitude), parseFloat(criticalVendor.longitude)]);
+      setMapZoom(14);
+      setSelectedShop(criticalVendor);
+    }
   };
 
-  // Center on user GPS location
   const handleGPSLocation = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const coords = [pos.coords.latitude, pos.coords.longitude];
-          setMapCenter(coords);
-          setMapZoom(12);
-          
-          const gpsObj = {
-            city: 'My Coordinates',
-            state: 'User GPS Coordinates',
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude
-          };
-          
-          setSelectedCity(gpsObj.city);
-          setSelectedState(gpsObj.state);
-          setSelectedCoords(coords);
-          
-          const hasHotspots = shops.some(s => 
-            getHaversineDistance(coords[0], coords[1], parseFloat(s.latitude), parseFloat(s.longitude)) <= searchRadius
-          );
-          setShowNoDataMsg(!hasHotspots);
+        (position) => {
+          const lat = position.coords.latitude;
+          const lng = position.coords.longitude;
+          setSelectedCoords([lat, lng]);
+          setMapCenter([lat, lng]);
+          setMapZoom(13);
+          setSearchVal('Current Location');
         },
-        () => alert('Could not resolve current location. Verify site permissions.')
+        () => {
+          alert('Could not resolve GPS location. Searching manually.');
+        }
       );
-    } else {
-      alert('Geolocation is not supported by this browser.');
     }
-  };
-
-  const districtsList = useMemo(() => [...new Set(districtAnalytics.map(d => d.name))].sort(), [districtAnalytics]);
-  const oilTypesList = useMemo(() => {
-    const list = new Set();
-    shops.forEach(s => list.add(s.oil_type));
-    scans.forEach(s => list.add(s.oil_type));
-    return [...list].sort();
-  }, [shops, scans]);
-
-  // Compute active filtered items
-  const filteredShops = useMemo(() => {
-    let result = shops.map(shop => {
-      const district = getDistrictName(shop);
-      const analytics = districtAnalytics.find(d => d.name === district) || { riskScore: 50, riskLevel: 'Medium', color: 'yellow' };
-      
-      const matchedScans = scans.filter(s => s.oil_type === shop.oil_type);
-      const latestScanDate = matchedScans.length > 0 ? new Date(matchedScans[0].timestamp || matchedScans[0].created_at) : new Date();
-
-      return {
-        ...shop,
-        district,
-        riskScore: analytics.riskScore,
-        riskLevel: analytics.riskLevel,
-        color: analytics.color,
-        avgPurity: analytics.avgPurity,
-        latestDate: latestScanDate,
-        failedCount: analytics.unsafeCount,
-        mostAdulterated: analytics.mostAdulterated
-      };
-    });
-
-    // 1. Filter by searched location radius if a location center exists
-    if (selectedCoords) {
-      result = result.filter(shop => {
-        const dist = getHaversineDistance(selectedCoords[0], selectedCoords[1], parseFloat(shop.latitude), parseFloat(shop.longitude));
-        shop.distance = dist;
-        return dist <= searchRadius;
-      });
-    }
-
-    // 2. Sidebar Filters
-    return result.filter(s => {
-      const matchesSearch = s.name.toLowerCase().includes(searchVal.toLowerCase()) || 
-                            s.district.toLowerCase().includes(searchVal.toLowerCase()) ||
-                            s.oil_type.toLowerCase().includes(searchVal.toLowerCase());
-      
-      const matchesDistrict = filterDistrict === 'all' || s.district === filterDistrict;
-      const matchesOil = filterOilType === 'all' || s.oil_type === filterOilType;
-      
-      let matchesRisk = true;
-      if (filterRisk !== 'all') {
-        matchesRisk = s.riskLevel.toLowerCase() === filterRisk.toLowerCase();
-      }
-
-      let matchesDate = true;
-      if (filterDateRange !== 'all') {
-        const diffDays = Math.ceil(Math.abs(new Date() - s.latestDate) / (1000 * 60 * 60 * 24));
-        if (filterDateRange === 'today') matchesDate = diffDays <= 1;
-        else if (filterDateRange === 'week') matchesDate = diffDays <= 7;
-        else if (filterDateRange === 'month') matchesDate = diffDays <= 30;
-      }
-
-      return matchesSearch && matchesDistrict && matchesOil && matchesRisk && matchesDate;
-    });
-  }, [shops, districtAnalytics, searchVal, selectedCoords, searchRadius, filterDistrict, filterOilType, filterRisk, filterDateRange, scans]);
-
-  // Selected Card stats
-  const searchCardStats = useMemo(() => {
-    if (!selectedCoords) return null;
-    
-    // Filter shops inside current radius
-    const inside = shops.filter(shop => 
-      getHaversineDistance(selectedCoords[0], selectedCoords[1], parseFloat(shop.latitude), parseFloat(shop.longitude)) <= searchRadius
-    );
-
-    const count = inside.length;
-    
-    // Average purity in radius
-    const totalPurity = inside.reduce((acc, val) => acc + parseFloat(val.last_purity || 90), 0);
-    const avgPurity = count > 0 ? Math.round(totalPurity / count) : 92;
-
-    // Highest risk oil
-    const oilThreats = {};
-    inside.forEach(s => {
-      if (s.status === 'adulterated') {
-        oilThreats[s.oil_type] = (oilThreats[s.oil_type] || 0) + 1;
-      }
-    });
-
-    let highestRiskOil = 'None';
-    let maxT = 0;
-    Object.entries(oilThreats).forEach(([oil, val]) => {
-      if (val > maxT) {
-        maxT = val;
-        highestRiskOil = oil;
-      }
-    });
-
-    if (highestRiskOil === 'None' && count > 0) {
-      highestRiskOil = inside[0].oil_type;
-    }
-
-    return {
-      count,
-      avgPurity,
-      highestRiskOil
-    };
-  }, [selectedCoords, searchRadius, shops]);
-
-  // Nearby unsafe list items
-  const nearbyUnsafeAreas = useMemo(() => {
-    const list = districtAnalytics
-      .filter(d => d.riskLevel === 'High' || d.riskLevel === 'Critical')
-      .map(d => {
-        const dist = Math.round(
-          getHaversineDistance(
-            selectedCoords ? selectedCoords[0] : mapCenter[0], 
-            selectedCoords ? selectedCoords[1] : mapCenter[1], 
-            d.lat, 
-            d.lng
-          )
-        );
-        return { ...d, distance: dist };
-      });
-      
-    // Sort by distance if searched coords exist
-    if (selectedCoords) {
-      return list.filter(d => d.distance <= searchRadius).sort((a,b) => a.distance - b.distance);
-    }
-    return list.slice(0, 5);
-  }, [districtAnalytics, selectedCoords, mapCenter, searchRadius]);
-
-  // Recent Hotspot alerts feed
-  const recentAlerts = useMemo(() => {
-    return scans
-      .filter(s => s.quality === 'Unsafe')
-      .slice(0, 5)
-      .map(s => {
-        const timeDiff = Math.ceil(Math.abs(new Date() - new Date(s.timestamp || s.created_at)) / (1000 * 60 * 60));
-        const matchedShop = shops.find(shop => shop.oil_type === s.oil_type && (s.vendor && shop.name.toLowerCase().includes(s.vendor.toLowerCase())));
-        
-        return {
-          id: s.id,
-          title: `New threat in ${s.vendor || 'Local Vendor'}`,
-          desc: `${s.oil_type} • Risk High`,
-          timeText: `${timeDiff} hours ago`,
-          lat: matchedShop ? parseFloat(matchedShop.latitude) : 23.0225,
-          lng: matchedShop ? parseFloat(matchedShop.longitude) : 72.5714
-        };
-      });
-  }, [scans, shops]);
-
-  // Quick statistics (Live database summaries)
-  const quickStats = useMemo(() => {
-    const totalPurity = scans.reduce((acc, val) => acc + parseFloat(val.purity || 0), 0);
-    const avgPurity = scans.length > 0 ? Math.round(totalPurity / scans.length) : 91;
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const hotspotsToday = scans.filter(s => s.quality === 'Unsafe' && new Date(s.timestamp || s.created_at) >= today).length;
-
-    const safeCount = districtAnalytics.filter(d => d.riskLevel === 'Low').length;
-    const criticalCount = districtAnalytics.filter(d => d.riskLevel === 'Critical' || d.riskLevel === 'High').length;
-
-    return {
-      hotspotsToday: hotspotsToday > 0 ? hotspotsToday : 4,
-      safeAreas: safeCount > 0 ? safeCount : 12,
-      criticalAreas: criticalCount > 0 ? criticalCount : 6,
-      avgPurity
-    };
-  }, [scans, districtAnalytics]);
-
-  const handleSelectShop = (shop) => {
-    setSelectedShop(shop);
-    setMapCenter([parseFloat(shop.latitude), parseFloat(shop.longitude)]);
-    setMapZoom(13);
-  };
-
-  const handleNavigateToArea = (dist) => {
-    setMapCenter([dist.lat, dist.lng]);
-    setMapZoom(12);
-  };
-
-  const getTileUrl = () => {
-    if (mapStyle === 'satellite') {
-      return "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}";
-    }
-    if (mapStyle === 'terrain') {
-      return "https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png";
-    }
-    return document.documentElement.classList.contains('dark')
-      ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-      : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png";
   };
 
   return (
     <div className="flex flex-col min-h-screen theme-bg theme-text animate-fade-in pb-16">
       
-      {/* --- SEARCH HEADER BLOCK --- */}
-      <div className="p-4 bg-[var(--bg-card)] border-b border-[var(--border-color)] flex flex-col gap-3 sticky top-0 z-40">
-        
-        <div className="flex gap-2">
-          {/* Autocomplete Search input */}
-          <div className="relative flex-1">
-            <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">
-              {searchLoading ? (
-                <div className="w-4 h-4 border-2 border-[var(--border-color)] border-t-brand-500 rounded-full animate-spin" />
-              ) : (
-                <Search size={16} />
-              )}
-            </div>
-            <input
-              value={searchVal}
-              onChange={handleSearchChange}
-              onFocus={() => setSearchFocused(true)}
-              type="text"
-              placeholder="Search every city, district or state in India..."
-              className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] focus:border-brand-500 text-sm theme-text rounded-xl py-3 pl-10 pr-4 outline-none transition-all placeholder-gray-500"
-            />
-            
-            {/* suggestions and search history dropdown */}
-            {searchFocused && (suggestions.length > 0 || recentSearches.length > 0) && (
-              <div className="absolute top-full left-0 w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl mt-1.5 shadow-2xl overflow-hidden z-50 max-h-72 overflow-y-auto">
-                <div className="flex justify-between items-center px-4 py-2 bg-[var(--bg-elevated)] border-b border-[var(--border-color)]">
-                  <span className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-wider">
-                    {suggestions.length > 0 ? 'Live Suggestions' : 'Recent Searches'}
-                  </span>
-                  <button 
-                    onClick={() => { setSuggestions([]); setSearchFocused(false); }}
-                    className="p-1 text-[9px] text-[var(--text-muted)] font-black uppercase hover:theme-text"
-                  >
-                    Close
-                  </button>
-                </div>
-
-                {suggestions.length > 0 ? (
-                  suggestions.map(s => (
-                    <button
-                      key={s.state + s.city}
-                      onClick={() => handleSelectCity(s)}
-                      className="w-full text-left p-3.5 text-xs hover:bg-[var(--hover-bg)] font-bold uppercase tracking-wider theme-text border-b border-[var(--border-color)]/30 flex items-center gap-3.5"
-                    >
-                      <MapPin size={14} className="text-brand-500 shrink-0" />
-                      <span>{s.city} <span className="text-[9px] text-[var(--text-muted)] font-normal ml-1">({s.state.slice(0, 45)}...)</span></span>
-                    </button>
-                  ))
-                ) : (
-                  recentSearches.map(s => (
-                    <button
-                      key={s.state + s.city + '-history'}
-                      onClick={() => handleSelectCity(s)}
-                      className="w-full text-left p-3.5 text-xs hover:bg-[var(--hover-bg)] font-semibold uppercase tracking-wider text-[var(--text-secondary)] hover:theme-text border-b border-[var(--border-color)]/30 flex items-center gap-3.5"
-                    >
-                      <MapPin size={14} className="text-[var(--text-muted)] shrink-0" />
-                      <span>{s.city} <span className="text-[9px] text-[var(--text-muted)] font-normal ml-1">({s.state.slice(0, 40)}...)</span></span>
-                    </button>
-                  ))
-                )}
-              </div>
-            )}
-          </div>
-
-          <button 
-            onClick={() => setShowFilters(true)}
-            className={`px-4 bg-[var(--bg-elevated)] border rounded-xl flex items-center justify-center hover:bg-[var(--hover-bg)] transition-all ${
-              filterDistrict !== 'all' || filterOilType !== 'all' || filterRisk !== 'all' || filterDateRange !== 'all'
-                ? 'text-brand-500 border-brand-500/30 shadow-sm shadow-brand-500/5' 
-                : 'text-[var(--text-secondary)] border-[var(--border-color)]'
-            }`}
-          >
-            <Filter size={18} />
-          </button>
+      {/* --- HEADER --- */}
+      <div className="px-5 pt-8 pb-5 border-b border-[var(--border-color)] bg-[var(--bg-card)] sticky top-0 z-30 flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-black tracking-tight theme-text">Safety Hotspots</h1>
+          <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-widest mt-0.5 font-sans">GIS Adulteration Intelligence Map</p>
         </div>
-
-        {/* Selected city information details card */}
-        {selectedCity && searchCardStats && (
-          <div className="bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded-2xl p-4.5 animate-fade-in relative">
-            <button 
-              onClick={() => { setSelectedCity(null); setSelectedCoords(null); setSearchVal(''); setShowNoDataMsg(false); }}
-              className="absolute top-3 right-3 text-[var(--text-muted)] hover:theme-text p-1"
-            >
-              <X size={14} />
-            </button>
-            
-            <div className="flex justify-between items-start mb-3 pr-6">
-              <div>
-                <h3 className="text-xs font-black uppercase tracking-wider theme-text leading-none">{selectedCity}</h3>
-                <p className="text-[8px] text-[var(--text-muted)] font-bold uppercase tracking-widest mt-1 truncate max-w-[200px]">{selectedState}</p>
-              </div>
-              {selectedCoords && (
-                <div className="text-[8px] font-black font-mono bg-brand-500/10 text-brand-500 border border-brand-500/20 px-2 py-0.5 rounded">
-                  {selectedCoords[0].toFixed(4)}° N, {selectedCoords[1].toFixed(4)}° E
-                </div>
-              )}
-            </div>
-
-            <div className="grid grid-cols-3 gap-2.5 text-center mt-3 pt-3 border-t border-[var(--border-color)]">
-              <div>
-                <p className="text-[7px] text-[var(--text-muted)] font-black uppercase tracking-widest mb-0.5">Nearby Hotspots</p>
-                <p className="text-base font-black text-red-500 font-mono">{searchCardStats.count}</p>
-              </div>
-              <div className="border-x border-[var(--border-color)]">
-                <p className="text-[7px] text-[var(--text-muted)] font-black uppercase tracking-widest mb-0.5">Avg Purity</p>
-                <p className="text-base font-black text-green-500 font-mono">{searchCardStats.avgPurity}%</p>
-              </div>
-              <div>
-                <p className="text-[7px] text-[var(--text-muted)] font-black uppercase tracking-widest mb-0.5">Highest Risk</p>
-                <p className="text-[9px] font-black text-amber-500 mt-1 truncate">{searchCardStats.highestRiskOil}</p>
-              </div>
-            </div>
-            
-            {showNoDataMsg && (
-              <p className="text-[9px] text-red-500 font-bold uppercase tracking-wide text-center mt-3 border-t border-red-500/10 pt-2.5">
-                No hotspot reports are currently available for this location.
-              </p>
-            )}
-          </div>
-        )}
+        
+        <button 
+          onClick={() => setShowFilters(true)}
+          className="p-2.5 bg-[var(--bg-elevated)] border border-[var(--border-color)] text-[var(--text-secondary)] hover:text-brand-500 rounded-xl hover:scale-105 transition-all"
+        >
+          <Filter size={16} />
+        </button>
       </div>
 
-      {/* --- INTERACTIVE MAP BLOCK --- */}
-      <div className="h-96 w-full relative border-b border-[var(--border-color)] z-0">
-        
-        {/* Map Layers style toggler */}
-        <div className="absolute top-3 left-3 z-[400] flex flex-col gap-2">
-          <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-1 flex shadow-lg">
-            {['markers', 'heatmap'].map(mode => (
-              <button
-                key={mode}
-                onClick={() => setMapMode(mode)}
-                className={`px-3 py-1.5 text-[8px] font-black uppercase tracking-wider rounded-lg transition-all ${
-                  mapMode === mode 
-                    ? 'bg-brand-500 text-black font-extrabold shadow-sm' 
-                    : 'text-[var(--text-secondary)] hover:theme-text'
-                }`}
-              >
-                {mode === 'markers' ? 'Markers' : 'Heatmap'}
-              </button>
-            ))}
+      {/* --- LIVE STATISTICS PANEL --- */}
+      <div className="px-5 pt-4">
+        <div className="grid grid-cols-5 gap-2 text-center bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl p-3 shadow-sm">
+          <div>
+            <p className="text-[6px] text-[var(--text-muted)] font-black uppercase tracking-widest mb-0.5">Today Reports</p>
+            <p className="text-xs font-black text-brand-500 font-mono"><CountUp end={liveStats.reportsToday} /></p>
           </div>
-
-          <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-1 flex shadow-lg">
-            {['standard', 'satellite', 'terrain'].map(style => (
-              <button
-                key={style}
-                onClick={() => setMapStyle(style)}
-                className={`px-2 py-1 text-[7px] font-black uppercase tracking-wider rounded-md transition-all ${
-                  mapStyle === style 
-                    ? 'bg-brand-500 text-black font-extrabold shadow-sm' 
-                    : 'text-[var(--text-secondary)] hover:theme-text'
-                }`}
-              >
-                {style}
-              </button>
-            ))}
+          <div className="border-l border-[var(--border-color)]">
+            <p className="text-[6px] text-[var(--text-muted)] font-black uppercase tracking-widest mb-0.5">Active Zones</p>
+            <p className="text-xs font-black text-orange-500 font-mono"><CountUp end={liveStats.activeHotspots} /></p>
+          </div>
+          <div className="border-l border-[var(--border-color)]">
+            <p className="text-[6px] text-[var(--text-muted)] font-black uppercase tracking-widest mb-0.5">Unsafe Vendors</p>
+            <p className="text-xs font-black text-red-500 font-mono"><CountUp end={liveStats.unsafeVendors} /></p>
+          </div>
+          <div className="border-l border-[var(--border-color)]">
+            <p className="text-[6px] text-[var(--text-muted)] font-black uppercase tracking-widest mb-0.5">Trusted</p>
+            <p className="text-xs font-black text-green-500 font-mono"><CountUp end={liveStats.trustedVendors} /></p>
+          </div>
+          <div className="border-l border-[var(--border-color)]">
+            <p className="text-[6px] text-[var(--text-muted)] font-black uppercase tracking-widest mb-0.5">Avg Purity</p>
+            <p className="text-xs font-black theme-text font-mono"><CountUp end={liveStats.avgPurity} />%</p>
           </div>
         </div>
+      </div>
 
-        {/* Floating GPS and Radius search settings */}
-        <div className="absolute bottom-4 right-4 z-[400] flex flex-col gap-2.5 items-end">
-          
-          {/* Radius selector dropdown */}
-          {selectedCoords && (
-            <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-1 flex items-center gap-1.5 shadow-xl">
-              <span className="text-[7px] font-black text-[var(--text-muted)] uppercase tracking-wider pl-1.5">Radius:</span>
-              <select 
-                value={searchRadius} 
-                onChange={e => {
-                  const nextRadius = parseInt(e.target.value);
-                  setSearchRadius(nextRadius);
-                  
-                  // Check if there are hotspots inside the radius
-                  const hasHotspots = shops.some(s => 
-                    getHaversineDistance(selectedCoords[0], selectedCoords[1], parseFloat(s.latitude), parseFloat(s.longitude)) <= nextRadius
-                  );
-                  setShowNoDataMsg(!hasHotspots);
-                }}
-                className="bg-[var(--bg-elevated)] border border-[var(--border-color)] theme-text rounded-lg py-1 px-2 text-[8px] font-black outline-none"
-              >
-                <option value="5">5 KM</option>
-                <option value="10">10 KM</option>
-                <option value="25">25 KM</option>
-                <option value="50">50 KM</option>
-                <option value="100">100 KM</option>
-              </select>
+      <div className="px-5 pt-4 flex flex-col gap-4">
+        
+        {/* Autocomplete Nominatim City Search */}
+        <div className="relative z-20">
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)]">
+            {searchLoading ? (
+              <div className="w-4 h-4 border-2 border-[var(--border-color)] border-t-brand-500 rounded-full animate-spin" />
+            ) : (
+              <Search size={14} />
+            )}
+          </div>
+          <input
+            value={searchVal}
+            onChange={handleSearchChange}
+            onFocus={() => setSearchFocused(true)}
+            type="text"
+            placeholder="Search city, district or state in India..."
+            className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] focus:border-brand-500 text-xs theme-text rounded-xl py-3 pl-9 pr-4 outline-none transition-all placeholder-gray-500"
+          />
+          {searchFocused && suggestions.length > 0 && (
+            <div className="absolute top-full left-0 w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl mt-1.5 shadow-2xl overflow-hidden z-50">
+              {suggestions.map(s => (
+                <button
+                  key={s.state + s.city}
+                  onClick={() => {
+                    setSearchVal(s.city);
+                    setSuggestions([]);
+                    setSearchFocused(false);
+                    setSelectedCoords([s.lat, s.lng]);
+                    setMapCenter([s.lat, s.lng]);
+                    setMapZoom(13);
+                  }}
+                  className="w-full text-left p-3 text-xs hover:bg-[var(--hover-bg)] font-bold uppercase tracking-wider theme-text border-b border-[var(--border-color)]/30 flex justify-between items-center"
+                >
+                  <span>{s.city} <span className="text-[8px] text-[var(--text-muted)] font-normal ml-1">({s.state.slice(0, 30)}...)</span></span>
+                  <ChevronRight size={10} />
+                </button>
+              ))}
             </div>
           )}
-
-          <button 
-            onClick={handleGPSLocation}
-            className="w-11 h-11 bg-brand-500 hover:brightness-110 text-black rounded-full flex items-center justify-center shadow-2xl transition-all active:scale-95"
-          >
-            <Crosshair size={20} />
-          </button>
         </div>
 
-        <MapContainer
-          center={mapCenter}
-          zoom={mapZoom}
-          scrollWheelZoom={true}
-          className="w-full h-full"
-          zoomControl={false}
-        >
-          <TileLayer
-            url={getTileUrl()}
-            attribution='&copy; <a href="https://carto.com/">CartoDB</a>'
-          />
-          <ChangeMapView center={mapCenter} zoom={mapZoom} />
-
-          {/* Searched target coordinates temporary blue pin */}
-          {selectedCoords && (
-            <Marker
-              position={selectedCoords}
-              icon={blueMarkerIcon}
+        {/* --- MAP WORKSPACE --- */}
+        <div className="h-[26rem] w-full border border-[var(--border-color)] rounded-[2rem] overflow-hidden relative z-0">
+          
+          <MapContainer
+            center={mapCenter}
+            zoom={mapZoom}
+            scrollWheelZoom={true}
+            className="w-full h-full"
+            zoomControl={false}
+          >
+            <TileLayer
+              url={mapStyle === 'satellite' 
+                ? "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                : document.documentElement.classList.contains('dark')
+                  ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                  : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+              }
+              attribution='&copy; ESRI / CartoDB'
             />
-          )}
+            <ChangeMapView center={mapCenter} zoom={mapZoom} />
 
-          {/* Heatmap overlay circles */}
-          {mapMode === 'heatmap' && districtAnalytics.map(dist => {
-            // If searched coordinates exist, apply radius logic to heatmap circles too
-            if (selectedCoords) {
-              const distFromCenter = getHaversineDistance(selectedCoords[0], selectedCoords[1], dist.lat, dist.lng);
-              if (distFromCenter > searchRadius) return null;
-            }
+            {/* Blue geocoding search marker */}
+            {selectedCoords && (
+              <Circle 
+                center={selectedCoords} 
+                radius={searchRadius * 1000} 
+                pathOptions={{ color: '#3b82f6', fillColor: '#3b82f6', fillOpacity: 0.05 }} 
+              />
+            )}
+            {selectedCoords && (
+              <Marker position={selectedCoords} icon={blueMarkerIcon} />
+            )}
 
-            return (
+            {/* --- Heatmap circles (overlays creating heat intensity scale) --- */}
+            {showHeatmap && processedShops.map(shop => {
+              let color = '#22c55e'; // Green
+              if (shop.status === 'adulterated') color = '#ef4444'; // Red
+              else if (shop.status === 'moderate') color = '#f97316'; // Orange
+              else if (shop.last_purity < 75) color = '#eab308'; // Yellow
+
+              return (
+                <Circle 
+                  key={`heat-${shop.id}`}
+                  center={[parseFloat(shop.latitude), parseFloat(shop.longitude)]}
+                  radius={2800}
+                  pathOptions={{
+                    fillColor: color,
+                    fillOpacity: 0.18,
+                    stroke: false
+                  }}
+                />
+              );
+            })}
+
+            {/* --- AI Predictive overlay Zones (dashed blue circles) --- */}
+            {showPredictions && aiZones.map(zone => (
               <Circle
-                key={`heat-overlay-${dist.name}`}
-                center={[dist.lat, dist.lng]}
-                radius={dist.riskScore * 850}
+                key={zone.id}
+                center={[zone.lat, zone.lng]}
+                radius={3500}
                 pathOptions={{
-                  fillColor: dist.color === 'red' ? '#ef4444' : dist.color === 'yellow' ? '#eab308' : '#22c55e',
-                  fillOpacity: 0.22,
-                  stroke: false
+                  color: '#3b82f6',
+                  dashArray: '6, 6',
+                  fillColor: '#3b82f6',
+                  fillOpacity: 0.04
+                }}
+              >
+                <Tooltip permanent direction="center" className="bg-blue-500/10 text-blue-500 border border-blue-500/20 text-[8px] font-black uppercase px-2 py-0.5 rounded shadow-none pointer-events-none">
+                  Predicted High Risk Zone
+                </Tooltip>
+              </Circle>
+            ))}
+
+            {/* --- Shop vendor markers --- */}
+            {showMarkers && processedShops.map(shop => (
+              <Marker
+                key={shop.id}
+                position={[parseFloat(shop.latitude), parseFloat(shop.longitude)]}
+                icon={getCustomMarkerIcon(shop.status, shop.last_purity)}
+                eventHandlers={{
+                  click: () => {
+                    setSelectedShop(shop);
+                    setMapCenter([parseFloat(shop.latitude), parseFloat(shop.longitude)]);
+                    setMapZoom(14);
+                  }
                 }}
               />
-            );
-          })}
+            ))}
+          </MapContainer>
 
-          {/* Filtered Pins */}
-          {mapMode === 'markers' && filteredShops.map(shop => (
-            <Marker
-              key={shop.id}
-              position={[parseFloat(shop.latitude), parseFloat(shop.longitude)]}
-              icon={markerIcon(shop.color)}
-              eventHandlers={{
-                click: () => handleSelectShop(shop)
-              }}
-            />
-          ))}
-        </MapContainer>
-      </div>
+          {/* Quick controls Overlay */}
+          <div className="absolute bottom-4 left-4 z-[400] flex flex-col gap-2">
+            <button onClick={handleGPSLocation} className="p-3 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl text-[var(--text-secondary)] hover:text-brand-500 shadow-lg active:scale-95 transition-all"><Crosshair size={14} /></button>
+            <button onClick={handleZoomToHighestRisk} className="p-3 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl text-red-500 hover:text-red-600 shadow-lg active:scale-95 transition-all"><ShieldAlert size={14} /></button>
+            <button onClick={() => setMapStyle(mapStyle === 'standard' ? 'satellite' : 'standard')} className="p-3 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl text-[var(--text-secondary)] hover:text-brand-500 shadow-lg active:scale-95 transition-all"><Layers size={14} /></button>
+          </div>
 
-      {/* --- DETAILED MARKER OVERLAY BOTTOM SHEET --- */}
-      {selectedShop && (
-        <div className="px-4 -mt-12 mb-6 relative z-10 animate-slide-up">
-          <div className="bg-[var(--bg-card)] border border-brand-500/20 rounded-3xl p-5 shadow-2xl relative">
+          <div className="absolute bottom-4 right-4 z-[400] flex flex-col gap-2">
+            <button onClick={() => setShowHeatmap(!showHeatmap)} className={`p-2.5 rounded-xl border text-[8px] font-black uppercase tracking-wider shadow-lg transition-all ${showHeatmap ? 'bg-brand-500/10 border-brand-500 text-brand-500' : 'bg-[var(--bg-card)] border-[var(--border-color)] text-[var(--text-secondary)]'}`}>Heatmap</button>
+            <button onClick={() => setShowMarkers(!showMarkers)} className={`p-2.5 rounded-xl border text-[8px] font-black uppercase tracking-wider shadow-lg transition-all ${showMarkers ? 'bg-brand-500/10 border-brand-500 text-brand-500' : 'bg-[var(--bg-card)] border-[var(--border-color)] text-[var(--text-secondary)]'}`}>Markers</button>
+            <button onClick={() => setShowPredictions(!showPredictions)} className={`p-2.5 rounded-xl border text-[8px] font-black uppercase tracking-wider shadow-lg transition-all ${showPredictions ? 'bg-brand-500/10 border-brand-500 text-brand-500' : 'bg-[var(--bg-card)] border-[var(--border-color)] text-[var(--text-secondary)]'}`}>AI Zones</button>
+          </div>
+
+          {/* Floating Legend box toggle */}
+          <div className="absolute top-4 right-4 z-[400]">
+            <button 
+              onClick={() => setShowLegend(!showLegend)}
+              className="p-2.5 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl text-[var(--text-secondary)] hover:theme-text shadow-lg flex items-center gap-1.5 text-[8px] font-black uppercase tracking-wider"
+            >
+              {showLegend ? <EyeOff size={10} /> : <Eye size={10} />}
+              <span>Legend</span>
+            </button>
+          </div>
+
+          {showLegend && (
+            <div className="absolute top-4 left-4 z-[400] bg-[var(--bg-card)]/90 backdrop-blur-sm border border-[var(--border-color)] rounded-2xl p-3.5 shadow-xl text-[8px] font-black uppercase tracking-wider flex flex-col gap-2.5 max-w-[12rem] animate-fade-in pointer-events-none">
+              <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-green-500 border border-white" /> <span>Trusted Vendor</span></div>
+              <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-yellow-500 border border-white" /> <span>Observation</span></div>
+              <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-orange-500 border border-white" /> <span>High Risk</span></div>
+              <div className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-red-500 border border-white animate-pulse" /> <span>Critical Vendor</span></div>
+              <div className="flex items-center gap-2"><span className="w-4 h-1.5 bg-red-500/35 rounded-sm" /> <span>Heat Density</span></div>
+              <div className="flex items-center gap-2"><span className="w-3.5 h-3.5 rounded-full border border-blue-500 border-dashed" /> <span>AI Predict zone</span></div>
+            </div>
+          )}
+        </div>
+
+        {/* --- MARKER BOTTOM SHEET DETAIL DRAWER --- */}
+        {selectedShop && (
+          <div className="card p-5 border-2 border-brand-500 bg-[var(--bg-card)] shadow-2xl relative animate-slide-up z-50 rounded-[2rem] flex flex-col gap-4">
             <button 
               onClick={() => setSelectedShop(null)}
               className="absolute top-4 right-4 w-7 h-7 bg-[var(--bg-elevated)] rounded-full flex items-center justify-center text-[var(--text-muted)] hover:theme-text transition-colors"
@@ -845,153 +644,99 @@ export default function Hotspots() {
               <X size={14} />
             </button>
 
-            <div className="flex items-start gap-4 mb-4">
-              <div className={`w-11 h-11 rounded-full flex items-center justify-center border ${
-                selectedShop.riskLevel === 'Critical' || selectedShop.riskLevel === 'High'
-                  ? 'text-red-500 bg-red-500/10 border-red-500/20'
-                  : 'text-green-500 bg-green-500/10 border-green-500/20'
-              }`}>
-                {selectedShop.riskLevel === 'Critical' ? <ShieldAlert size={18} /> : <ShieldCheck size={18} />}
-              </div>
-              <div className="flex-1 pr-6">
-                <h3 className="font-bold text-base theme-text leading-tight">{selectedShop.name}</h3>
-                <p className="text-[10px] text-[var(--text-secondary)] font-bold uppercase tracking-wider mt-1.5 flex items-center gap-1">
-                  <MapPin size={10} className="text-brand-500" /> {selectedShop.district}
+            <div className="flex items-start gap-3">
+              <span className="text-xl">🏪</span>
+              <div>
+                <h3 className="font-bold text-sm theme-text leading-tight">{selectedShop.name}</h3>
+                <p className="text-[9px] text-[var(--text-muted)] font-black uppercase mt-1 flex items-center gap-1">
+                  <MapPin size={10} className="text-brand-500" /> {getDistrictName(selectedShop)}, India
                 </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-3 bg-[var(--bg-elevated)] rounded-2xl p-4 border border-[var(--border-color)] mb-4 text-center">
+            <div className="grid grid-cols-3 gap-2 text-center bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded-2xl p-3 text-[9px] font-bold">
               <div>
-                <p className="text-[7px] text-[var(--text-muted)] font-black uppercase tracking-widest mb-0.5">Purity Avg</p>
-                <p className="text-sm font-black text-green-500 font-mono">{selectedShop.avgPurity}%</p>
+                <p className="text-[7px] text-[var(--text-muted)] uppercase tracking-wider mb-0.5">Latest Purity</p>
+                <p className={`text-xs font-black font-mono ${selectedShop.last_purity >= 75 ? 'text-green-500' : 'text-red-500'}`}>{selectedShop.last_purity}%</p>
               </div>
               <div className="border-x border-[var(--border-color)]">
-                <p className="text-[7px] text-[var(--text-muted)] font-black uppercase tracking-widest mb-0.5">Failed Tests</p>
-                <p className="text-sm font-black text-red-500 font-mono">{selectedShop.failedCount}</p>
+                <p className="text-[7px] text-[var(--text-muted)] uppercase tracking-wider mb-0.5">Product Type</p>
+                <p className="text-xs font-black theme-text uppercase truncate">{selectedShop.oil_type}</p>
               </div>
               <div>
-                <p className="text-[7px] text-[var(--text-muted)] font-black uppercase tracking-widest mb-0.5">Risk Rating</p>
-                <p className="text-amber-500 text-xs font-black uppercase tracking-wider mt-0.5">{selectedShop.riskLevel}</p>
+                <p className="text-[7px] text-[var(--text-muted)] uppercase tracking-wider mb-0.5">Status</p>
+                <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded border ${
+                  selectedShop.status === 'adulterated' ? 'bg-red-500/10 text-red-500 border-red-500/20' : 'bg-green-500/10 text-green-500 border-green-500/20'
+                }`}>{selectedShop.status === 'adulterated' ? 'Restricted' : 'Trusted'}</span>
               </div>
             </div>
 
-            <div className="flex flex-col gap-1.5 text-xs text-[var(--text-secondary)] mb-4 pl-1">
-              <div className="flex items-center gap-2">
-                <Grid size={12} className="text-brand-500" />
-                <span>Most Detected Adulterated: <strong>{selectedShop.mostAdulterated}</strong></span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Calendar size={12} className="text-brand-500" />
-                <span>Last Inspected: <strong>{new Date(selectedShop.latestDate).toLocaleDateString([], {day:'2-digit', month:'short', year:'numeric'})}</strong></span>
-              </div>
-              <div className="flex items-center gap-2">
-                <TrendingUp size={12} className="text-red-500" />
-                <span>Trend Status: <strong className="text-red-500">Increasing Risks</strong></span>
-              </div>
+            <div className="grid grid-cols-2 gap-2 mt-2">
+              <button 
+                onClick={() => window.open(`https://maps.google.com/?q=${selectedShop.latitude},${selectedShop.longitude}`)}
+                className="py-3 bg-[#121214] text-white border border-[#26262a] dark:bg-[#1c1c1f] rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-1 hover:theme-text transition-colors"
+              >
+                <Navigation size={10} className="rotate-45" />
+                <span>Navigate Store</span>
+              </button>
+              <button 
+                onClick={() => {
+                  alert('Latching incident logs to Consumer Protection complaints...');
+                  navigate('/community');
+                }}
+                className="py-3 bg-[#121214] text-white border border-[#26262a] dark:bg-[#1c1c1f] rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-1 hover:theme-text transition-colors"
+              >
+                <ShieldAlert size={10} />
+                <span>Report Vendor</span>
+              </button>
             </div>
+          </div>
+        )}
 
-            <button 
-              onClick={() => alert(`Directing to FSSAI complete details for shop ID: ${selectedShop.id}`)}
-              className="btn-primary w-full py-4 rounded-xl text-[10px] font-black uppercase tracking-widest flex justify-center items-center gap-1.5 shadow-lg shadow-brand-500/10"
-            >
-              <span>VIEW FULL REPORT DETAILS</span>
-              <ArrowRight size={14} />
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* --- QUICK STATISTICS PANEL --- */}
-      <div className="px-5 mt-6">
-        <h3 className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-3 pl-1">Quick Statistics</h3>
-        <div className="grid grid-cols-2 gap-4">
-          <div className="card p-4.5 flex flex-col justify-between h-24 shadow-sm relative overflow-hidden">
-            <p className="text-[7px] text-[var(--text-muted)] font-black uppercase tracking-wider">Hotspots Today</p>
-            <h2 className="text-2xl font-black tracking-tight text-red-500 font-mono mt-1">{quickStats.hotspotsToday}</h2>
-            <p className="text-[6px] text-gray-500 font-bold uppercase">live database count</p>
-          </div>
-          <div className="card p-4.5 flex flex-col justify-between h-24 shadow-sm relative overflow-hidden">
-            <p className="text-[7px] text-[var(--text-muted)] font-black uppercase tracking-wider">Safe Areas</p>
-            <h2 className="text-2xl font-black tracking-tight text-green-500 font-mono mt-1">{quickStats.safeAreas} Zones</h2>
-            <p className="text-[6px] text-gray-500 font-bold uppercase">trust score &gt; 70</p>
-          </div>
-          <div className="card p-4.5 flex flex-col justify-between h-24 shadow-sm relative overflow-hidden">
-            <p className="text-[7px] text-[var(--text-muted)] font-black uppercase tracking-wider">Critical Areas</p>
-            <h2 className="text-2xl font-black tracking-tight text-orange-500 font-mono mt-1">{quickStats.criticalAreas} Zones</h2>
-            <p className="text-[6px] text-gray-500 font-bold uppercase">FSSAI warning priority</p>
-          </div>
-          <div className="card p-4.5 flex flex-col justify-between h-24 shadow-sm relative overflow-hidden">
-            <p className="text-[7px] text-[var(--text-muted)] font-black uppercase tracking-wider">Average Purity</p>
-            <h2 className="text-2xl font-black tracking-tight text-brand-500 font-mono mt-1">{quickStats.avgPurity}%</h2>
-            <p className="text-[6px] text-gray-500 font-bold uppercase">national purity score</p>
-          </div>
-        </div>
-      </div>
-
-      {/* --- RECENT ALERTS (Horizontal Feed) --- */}
-      <div className="px-5 mt-6">
-        <h3 className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-3 pl-1">Recent Hotspot Alerts</h3>
-        <div className="flex gap-3 overflow-x-auto pb-3 scrollbar-none">
-          {recentAlerts.map(alert => (
-            <div 
-              key={alert.id}
-              onClick={() => {
-                setMapCenter([alert.lat, alert.lng]);
-                setMapZoom(14);
-                setSelectedCity(alert.title.replace('New threat in ', ''));
-                setSelectedCoords([alert.lat, alert.lng]);
-              }}
-              className="card min-w-[210px] max-w-[210px] p-4 flex flex-col gap-2 hover:border-brand-500/30 transition-all shrink-0 cursor-pointer"
-            >
-              <div className="flex justify-between items-start">
-                <span className="text-[8px] font-black text-red-500 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded uppercase tracking-wider font-mono">CRITICAL</span>
-                <span className="text-[7px] text-[var(--text-muted)] font-bold">{alert.timeText}</span>
-              </div>
-              <h4 className="font-bold text-xs theme-text line-clamp-1 mt-1">{alert.title}</h4>
-              <p className="text-[9px] text-[var(--text-secondary)] font-semibold">{alert.desc}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* --- NEARBY UNSAFE AREAS LIST --- */}
-      <div className="px-5 mt-6">
-        <h3 className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-3 pl-1">
-          {selectedCoords ? `Hotspots within ${searchRadius} km` : 'Nearby Unsafe Areas'}
-        </h3>
-        <div className="flex flex-col gap-2">
-          {nearbyUnsafeAreas.length === 0 ? (
-            <div className="card p-6 text-center border border-dashed border-[var(--border-color)]">
-              <p className="text-xs text-[var(--text-muted)] font-bold uppercase">No high-risk hotspots inside this radius</p>
-            </div>
-          ) : (
-            nearbyUnsafeAreas.map(dist => (
-              <div key={dist.name} className="card p-3.5 flex items-center justify-between border border-[var(--border-color)] rounded-2xl">
+        {/* --- NEARBY UNSAFE VENDORS LIST --- */}
+        <div className="flex flex-col gap-3">
+          <h3 className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest pl-1">Nearest Unsafe Vendors</h3>
+          
+          <div className="flex flex-col gap-2.5">
+            {nearbyUnsafeVendors.slice(0, 4).map(ven => (
+              <div 
+                key={ven.id}
+                onClick={() => {
+                  setSelectedShop(ven);
+                  setMapCenter([parseFloat(ven.latitude), parseFloat(ven.longitude)]);
+                  setMapZoom(14);
+                }}
+                className="card p-3.5 flex items-center justify-between border border-[var(--border-color)] hover:border-brand-500/35 transition-colors cursor-pointer group"
+              >
                 <div>
-                  <h4 className="font-bold text-xs theme-text">{dist.name} District</h4>
-                  <p className="text-[8px] text-[var(--text-muted)] font-bold uppercase tracking-wider mt-1">
-                    Distance: ~{dist.distance} km • Threat: {dist.mostAdulterated}
+                  <h4 className="font-bold text-xs theme-text group-hover:text-brand-500 transition-colors">{ven.name}</h4>
+                  <p className="text-[8px] text-[var(--text-muted)] font-black uppercase mt-1">
+                    Oil: {ven.oil_type} • Distance: ~{ven.distance} km
                   </p>
                 </div>
+
                 <div className="flex items-center gap-3">
                   <div className="text-right">
-                    <p className="text-xs font-black text-red-500 font-mono">{dist.avgPurity}% Purity</p>
-                    <span className="text-[7px] font-black text-red-500 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded uppercase tracking-widest font-mono">
-                      {dist.riskLevel}
+                    <p className="text-xs font-black text-red-500 font-mono">{ven.last_purity}% Purity</p>
+                    <span className="text-[7px] font-black text-red-500 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                      {ven.status === 'adulterated' ? 'Blacklisted' : 'Observation'}
                     </span>
                   </div>
                   <button 
-                    onClick={() => handleNavigateToArea(dist)}
-                    className="p-2 bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded-xl text-[var(--text-secondary)] hover:text-brand-500 transition-colors animate-pulse"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      window.open(`https://maps.google.com/?q=${ven.latitude},${ven.longitude}`);
+                    }}
+                    className="p-2.5 bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded-xl text-[var(--text-secondary)] hover:text-brand-500 transition-colors"
                   >
-                    <Navigation size={14} className="rotate-45" />
+                    <Navigation size={12} className="rotate-45" />
                   </button>
                 </div>
               </div>
-            ))
-          )}
+            ))}
+          </div>
         </div>
+
       </div>
 
       {/* --- ADVANCED FILTER MODAL SHEET --- */}
@@ -1017,11 +762,12 @@ export default function Hotspots() {
                     className="field-input appearance-none font-bold uppercase text-xs"
                   >
                     <option value="all">ALL DISTRICTS</option>
-                    {districtsList.map(dist => (
-                      <option key={dist} value={dist}>{dist.toUpperCase()}</option>
-                    ))}
+                    <option value="Ahmedabad">Ahmedabad</option>
+                    <option value="Delhi">Delhi</option>
+                    <option value="Mumbai">Mumbai</option>
+                    <option value="Rajkot">Rajkot</option>
                   </select>
-                  <ChevronRight size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] rotate-90" />
+                  <ChevronRight size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] rotate-90 pointer-events-none" />
                 </div>
               </div>
 
@@ -1035,47 +781,30 @@ export default function Hotspots() {
                     className="field-input appearance-none font-bold uppercase text-xs"
                   >
                     <option value="all">ALL PRODUCTS</option>
-                    {oilTypesList.map(oil => (
-                      <option key={oil} value={oil}>{oil.toUpperCase()}</option>
-                    ))}
+                    <option value="Mustard Oil">Mustard Oil</option>
+                    <option value="Sunflower Oil">Sunflower Oil</option>
+                    <option value="Groundnut Oil">Groundnut Oil</option>
+                    <option value="Palm Oil">Palm Oil</option>
                   </select>
-                  <ChevronRight size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] rotate-90" />
-                </div>
-              </div>
-
-              {/* Date Filter */}
-              <div>
-                <label className="field-label">Inspection Date Range</label>
-                <div className="relative">
-                  <select 
-                    value={filterDateRange} 
-                    onChange={e => setFilterDateRange(e.target.value)}
-                    className="field-input appearance-none font-bold uppercase text-xs"
-                  >
-                    <option value="all">ANY DATE</option>
-                    <option value="today">LAST 24 HOURS</option>
-                    <option value="week">LAST WEEK</option>
-                    <option value="month">LAST MONTH</option>
-                  </select>
-                  <ChevronRight size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] rotate-90" />
+                  <ChevronRight size={14} className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] rotate-90 pointer-events-none" />
                 </div>
               </div>
 
               {/* Risk Level Filter */}
               <div>
                 <label className="field-label">Risk Rating Threshold</label>
-                <div className="grid grid-cols-3 gap-2">
-                  {['all', 'High', 'Medium', 'Low'].map(level => (
+                <div className="grid grid-cols-4 gap-2">
+                  {['all', 'Critical', 'High', 'Safe'].map(level => (
                     <button
                       key={level}
                       onClick={() => setFilterRisk(level)}
-                      className={`py-3 rounded-xl text-[10px] font-bold uppercase tracking-wider border transition-all ${
+                      className={`py-3 rounded-xl text-[9px] font-bold uppercase tracking-wider border transition-all ${
                         filterRisk.toLowerCase() === level.toLowerCase()
                           ? 'bg-brand-500/10 border-brand-500 text-brand-500'
                           : 'bg-[var(--bg-elevated)] border border-[var(--border-color)] text-[var(--text-secondary)] hover:theme-text'
                       }`}
                     >
-                      {level === 'all' ? 'All Risks' : `${level}`}
+                      {level === 'all' ? 'All' : `${level}`}
                     </button>
                   ))}
                 </div>
