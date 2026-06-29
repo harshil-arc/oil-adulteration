@@ -14,8 +14,8 @@ import SelectOil from './pages/scan/SelectOil';
 import Analysis from './pages/scan/Analysis';
 import Calibrate from './pages/scan/Calibrate';
 import History from './pages/History';
-import Analytics from './pages/Analytics';
-import MapPage from './pages/MapPage';
+import Hotspots from './pages/Hotspots';
+import Community from './pages/Community';
 import Profile from './pages/Profile';
 import { AppProvider } from './context/AppContext';
 import { ReportsList, DeveloperTools } from './pages/ProfileSubScreens';
@@ -47,7 +47,8 @@ export default function App() {
                     <Routes>
                       <Route path="/" element={<Navigate to="/home" replace />} />
                       <Route path="/home" element={<Home />} />
-                      <Route path="/ngo-dashboard" element={<NgoDashboard />} />
+                      <Route path="/ngo-dashboard" element={<Navigate to="/community" replace />} />
+                      <Route path="/community" element={<Community />} />
                       <Route path="/scan" element={<QRLanding />} />
                       <Route path="/scan/bluetooth" element={<BluetoothScan />} />
                       <Route path="/scan/local" element={<LocalRouter />} />
@@ -56,10 +57,11 @@ export default function App() {
                       <Route path="/scan/readings/calibrate" element={<Calibrate />} />
                       <Route path="/scan/readings/select-oil" element={<SelectOil />} />
                       <Route path="/scan/readings/analysis" element={<Analysis />} />
-                      <Route path="/history" element={<Analytics />} />
-                      <Route path="/history/raw" element={<History />} />
+                      <Route path="/history" element={<Navigate to="/profile" replace />} />
+                      <Route path="/history/raw" element={<Navigate to="/profile" replace />} />
                       <Route path="/scan/:id" element={<ScanDetail />} />
-                      <Route path="/map" element={<MapPage />} />
+                      <Route path="/map" element={<Navigate to="/hotspots" replace />} />
+                      <Route path="/hotspots" element={<Hotspots />} />
                       <Route path="/profile" element={<Profile />} />
                       <Route path="/privacy" element={<PrivacySecurity />} />
                       <Route path="/privacy-security" element={<PrivacySecurity />} />

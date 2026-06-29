@@ -10,7 +10,7 @@ const defaultSettings = {
   notifications: true,
   language: 'en',
   connectionMethod: 'Bluetooth',
-  darkMode: false,
+  themeMode: 'system',
   appPin: null, // null means no lock
   dataSharing: false,
 };
@@ -28,7 +28,14 @@ export function AppProvider({ children }) {
   const [settings, setSettings] = useState(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
-      return saved ? { ...defaultSettings, ...JSON.parse(saved) } : defaultSettings;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.themeMode === undefined) {
+          parsed.themeMode = parsed.darkMode ? 'dark' : 'light';
+        }
+        return { ...defaultSettings, ...parsed };
+      }
+      return defaultSettings;
     } catch { return defaultSettings; }
   });
 
@@ -108,21 +115,42 @@ export function AppProvider({ children }) {
     };
   }, []);
 
-  // Sync Theme & Language with Root
+  // Sync Theme Mode with HTML Root
   useEffect(() => {
-    // 1. Theme Mode
-    if (settings.darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-    // CSS variables handle all color switching automatically
+    const applyTheme = () => {
+      const mode = settings.themeMode || 'system';
+      let isDark = false;
+      if (mode === 'dark') {
+        isDark = true;
+      } else if (mode === 'light') {
+        isDark = false;
+      } else {
+        isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      }
 
-    // 2. Multilingual Switch
+      if (isDark) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    };
+
+    applyTheme();
+
+    if ((settings.themeMode || 'system') === 'system') {
+      const media = window.matchMedia('(prefers-color-scheme: dark)');
+      const listener = () => applyTheme();
+      media.addEventListener('change', listener);
+      return () => media.removeEventListener('change', listener);
+    }
+  }, [settings.themeMode]);
+
+  // Sync Language
+  useEffect(() => {
     if (settings.language) {
       i18n.changeLanguage(settings.language);
     }
-  }, [settings.darkMode, settings.language]);
+  }, [settings.language]);
 
   const updateSetting = (key, value) => {
     setSettings(prev => {
