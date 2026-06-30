@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Shield, Smartphone, QrCode } from 'lucide-react';
-import ScanFlow from './ScanFlow';
+import ProtocolSelector from './scan/ProtocolSelector';
 
 export default function QRLanding() {
   const [searchParams] = useSearchParams();
@@ -77,7 +77,7 @@ export default function QRLanding() {
     );
   }
 
-  // Normal /scan UI (ScanFlow)
-  return <ScanFlow />;
+  // Normal /scan UI (ProtocolSelector)
+  return <ProtocolSelector />;
 }
 
