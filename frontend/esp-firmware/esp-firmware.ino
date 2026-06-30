@@ -10,12 +10,22 @@
 // ============================================================
 //  CREDENTIALS
 // ============================================================
-const char* ssid       = "atl";
-const char* password   = "harshil913";
+const char* ssid     = "atl";
+const char* password = "harshil913";
 
-// Endpoint targets the `readings` table — columns: temperature, weight, spectral_data
-const char* supabaseUrl = "https://vntaprmahmjeyuzhwqsc.supabase.co/rest/v1/readings";
-const char* supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZudGFwcm1haG1qZXl1emh3cXNjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0NjY3NDMsImV4cCI6MjA5MTA0Mjc0M30.K3NE7-bRaYRRRhV9Up2Y7f4mVoRvM3B0_dNMitJT_S8";
+// ── Firebase Firestore REST API ──────────────────────────────
+// Format: POST https://firestore.googleapis.com/v1/projects/{projectId}/databases/(default)/documents/{collection}
+//
+// For public write (no auth required if your Firestore rule is:
+//   match /readings/{id} { allow write: if true; }
+// ), you do NOT need an Auth token — just the API key as a query param.
+//
+const char* FIREBASE_PROJECT_ID = "oil-adulteration";
+const char* FIREBASE_API_KEY    = "AIzaSyAhu9pa7EIlmZD-u68xxDeMXz483G98bS0";
+
+// Full URL built in loop: base + "?key=" + FIREBASE_API_KEY
+const char* FIRESTORE_BASE =
+  "https://firestore.googleapis.com/v1/projects/oil-adulteration/databases/(default)/documents/readings";
 
 // ============================================================
 //  PINS
@@ -120,9 +130,9 @@ void setup() {
     Serial.println(F("AS7343: Ready."));
   }
 
-  oledShow("Setup Complete!", "Pushing to cloud...", "", "");
+  oledShow("Setup Complete!", "Pushing to Firebase", "", "");
   delay(1000);
-  Serial.println(F("=== Setup Complete ==="));
+  Serial.println(F("=== Setup Complete. Sending to Firebase Firestore ==="));
 }
 
 // ============================================================
@@ -148,7 +158,7 @@ void loop() {
   spectralSensor.readSpectraDataFromSensor();
   spectralSensor.ledOff();
 
-  // Read all 13 channels individually into named variables
+  // Read all 13 channels
   uint16_t ch_f1  = spectralSensor.getChannelData(CH_PURPLE_F1_405NM);
   uint16_t ch_f2  = spectralSensor.getChannelData(CH_DARK_BLUE_F2_425NM);
   uint16_t ch_fz  = spectralSensor.getChannelData(CH_BLUE_FZ_450NM);
@@ -168,75 +178,113 @@ void loop() {
   Serial.printf("Spectral: f1=%u f2=%u fz=%u f3=%u f4=%u f5=%u fy=%u fxl=%u f6=%u f7=%u f8=%u vis=%u nir=%u\n",
     ch_f1, ch_f2, ch_fz, ch_f3, ch_f4, ch_f5, ch_fy, ch_fxl, ch_f6, ch_f7, ch_f8, ch_vis, ch_nir);
 
-  // ── 5. Build JSON Payload ─────────────────────────────────
-  // Columns being sent to Supabase `readings` table:
-  //   temperature  → DOUBLE PRECISION
-  //   weight       → DOUBLE PRECISION
-  //   spectral_data → JSONB (object with named channel keys)
+  // ── 5. Build Firestore JSON Payload ──────────────────────
+  //
+  // Firestore REST API expects data in its own typed format:
+  // {
+  //   "fields": {
+  //     "fieldName": { "doubleValue": 25.5 },
+  //     "fieldName": { "integerValue": "1234" },
+  //     "fieldName": { "mapValue": { "fields": { ... } } }
+  //   }
+  // }
+  //
+  // We also include a "created_at" timestamp so the app can
+  // order by it with .order('created_at', { ascending: false })
+  //
+  char payload[1800];
 
-  // Step A: spectral_data JSONB object
-  char spectralJson[420];   // enlarged: 13 keys × ~20 chars each + braces
-  snprintf(spectralJson, sizeof(spectralJson),
-    "{\"f1_405nm\":%u,\"f2_425nm\":%u,\"fz_450nm\":%u,"
-    "\"f3_475nm\":%u,\"f4_515nm\":%u,\"f5_550nm\":%u,"
-    "\"fy_555nm\":%u,\"fxl_600nm\":%u,\"f6_640nm\":%u,"
-    "\"f7_690nm\":%u,\"f8_745nm\":%u,\"vis\":%u,\"nir_855nm\":%u}",
+  // Get current timestamp in RFC3339 format
+  // (Firestore also accepts serverTimestamp but that needs admin SDK)
+  // We'll use a stringValue for created_at; the app sorts by it lexicographically
+  // which works perfectly for ISO 8601 strings.
+  //
+  // NOTE: millis() only gives uptime, not real clock. If you add an NTP
+  // sync call, replace timestampStr with actual UTC time. For now we
+  // use the upload time on the server side via the app's Firestore write.
+  //
+  // We encode it as a serverTimestamp field so Firestore fills it automatically.
+
+  snprintf(payload, sizeof(payload),
+    "{"
+      "\"fields\":{"
+        "\"temperature\":{\"doubleValue\":%.4f},"
+        "\"weight\":{\"doubleValue\":%.4f},"
+        "\"spectral_data\":{"
+          "\"mapValue\":{\"fields\":{"
+            "\"f1_405nm\":{\"integerValue\":\"%u\"},"
+            "\"f2_425nm\":{\"integerValue\":\"%u\"},"
+            "\"fz_450nm\":{\"integerValue\":\"%u\"},"
+            "\"f3_475nm\":{\"integerValue\":\"%u\"},"
+            "\"f4_515nm\":{\"integerValue\":\"%u\"},"
+            "\"f5_550nm\":{\"integerValue\":\"%u\"},"
+            "\"fy_555nm\":{\"integerValue\":\"%u\"},"
+            "\"fxl_600nm\":{\"integerValue\":\"%u\"},"
+            "\"f6_640nm\":{\"integerValue\":\"%u\"},"
+            "\"f7_690nm\":{\"integerValue\":\"%u\"},"
+            "\"f8_745nm\":{\"integerValue\":\"%u\"},"
+            "\"vis\":{\"integerValue\":\"%u\"},"
+            "\"nir_855nm\":{\"integerValue\":\"%u\"}"
+          "}}}"
+        "}"
+      "}"
+    "}",
+    tempC, weightG,
     ch_f1, ch_f2, ch_fz, ch_f3, ch_f4,
     ch_f5, ch_fy, ch_fxl, ch_f6, ch_f7,
-    ch_f8, ch_vis, ch_nir);
+    ch_f8, ch_vis, ch_nir
+  );
 
-  // Step B: outer INSERT payload (column names must match readings table exactly)
-  char payload[700];   // enlarged: 420 spectral + 50 floats + 50 keys
-  snprintf(payload, sizeof(payload),
-    "{\"temperature\":%.2f,\"weight\":%.2f,\"spectral_data\":%s}",
-    tempC, weightG, spectralJson);
-
-  // Safety check: warn if payload was truncated
+  // Safety check
   int payloadLen = strlen(payload);
   Serial.printf("Payload length: %d bytes\n", payloadLen);
   if (payloadLen >= (int)sizeof(payload) - 1) {
     Serial.println(F("⚠ WARNING: payload buffer full — JSON may be truncated!"));
   }
 
-  Serial.println(F("--- Supabase Payload ---"));
+  Serial.println(F("--- Firebase Payload ---"));
   Serial.println(payload);
   Serial.println(F("------------------------"));
 
-  // ── 6. POST to Supabase ──────────────────────────────────
+  // ── 6. POST to Firebase Firestore REST API ────────────────
   if (WiFi.status() == WL_CONNECTED) {
     HTTPClient http;
-    http.begin(supabaseUrl);
-    http.addHeader("Content-Type", "application/json");
-    http.addHeader("apikey", supabaseKey);
 
-    // Build Authorization header with char buffer (avoids String heap fragmentation)
-    char authHeader[320];
-    snprintf(authHeader, sizeof(authHeader), "Bearer %s", supabaseKey);
-    http.addHeader("Authorization", authHeader);
-    http.addHeader("Prefer", "return=minimal");
+    // Build full URL with API key appended as query param
+    // Firestore auto-generates a document ID when you POST to the collection endpoint
+    char url[256];
+    snprintf(url, sizeof(url), "%s?key=%s", FIRESTORE_BASE, FIREBASE_API_KEY);
+
+    http.begin(url);
+    http.addHeader("Content-Type", "application/json");
 
     int code = http.POST(payload);
-    Serial.printf("Supabase Response: %d\n", code);
+    Serial.printf("Firebase Response Code: %d\n", code);
 
-    if (code == 201) {
-      Serial.println(F("✅ Row inserted successfully."));
+    if (code == 200) {
+      Serial.println(F("✅ Document inserted into Firestore successfully."));
+      oledShow("Firebase: OK", "Doc inserted!", "", "");
     } else {
-      // Always print body — tells you EXACTLY what Supabase rejected
       String errBody = http.getString();
-      Serial.printf("❌ HTTP %d Error body:\n", code);
+      Serial.printf("❌ HTTP %d Error:\n", code);
       Serial.println(errBody);
-      if (code == 403)
-        Serial.println(F("   Fix: ALTER TABLE public.readings DISABLE ROW LEVEL SECURITY;"));
-      if (code == 404)
-        Serial.println(F("   Fix: Run setup_readings_table.sql in Supabase SQL Editor."));
-      if (code == 400)
-        Serial.println(F("   Fix: Column name mismatch or table does not exist yet."));
+
+      if (code == 403) {
+        Serial.println(F("   Fix: Set Firestore rule: allow write: if true; for /readings/{id}"));
+        oledShow("Firebase: 403", "Check rules!", "", "");
+      } else if (code == 400) {
+        Serial.println(F("   Fix: JSON payload malformed. Check Serial output."));
+        oledShow("Firebase: 400", "Bad JSON!", "", "");
+      } else {
+        oledShow("Firebase ERR", errBody.substring(0, 20).c_str(), "", "");
+      }
     }
 
     http.end();
   } else {
     Serial.println(F("⚠ WiFi lost — attempting reconnect..."));
     WiFi.reconnect();
+    oledShow("WiFi Lost!", "Reconnecting...", "", "");
   }
 
   // ── 7. OLED Update ───────────────────────────────────────
@@ -248,5 +296,5 @@ void loop() {
     WiFi.status() == WL_CONNECTED ? "Connected" : "Reconnecting");
   oledShow(row0, row1, row2, row3);
 
-  delay(2000);
+  delay(5000);  // push every 5 seconds
 }

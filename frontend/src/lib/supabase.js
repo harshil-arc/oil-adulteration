@@ -1,8 +1,459 @@
-import { createClient } from '@supabase/supabase-js';
+import { initializeApp } from 'firebase/app';
+import { 
+  getFirestore, 
+  collection, 
+  doc, 
+  getDocs, 
+  getDoc, 
+  setDoc, 
+  addDoc, 
+  updateDoc, 
+  deleteDoc, 
+  query, 
+  where, 
+  orderBy, 
+  limit, 
+  onSnapshot 
+} from 'firebase/firestore';
+import { 
+  getAuth, 
+  signInWithEmailAndPassword, 
+  createUserWithEmailAndPassword, 
+  signOut as fbSignOut, 
+  onAuthStateChanged, 
+  updateProfile 
+} from 'firebase/auth';
+import { 
+  getStorage, 
+  ref, 
+  uploadBytes, 
+  getDownloadURL 
+} from 'firebase/storage';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+};
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
-  realtime: { params: { eventsPerSecond: 10 } },
-});
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
+const storage = getStorage(app);
+
+class QueryBuilder {
+  constructor(tableName) {
+    this.tableName = tableName;
+    this.filters = [];
+    this.orderField = null;
+    this.orderDirection = 'asc';
+    this.limitCount = null;
+    this.isSingle = false;
+  }
+
+  select(fields = '*') {
+    return this;
+  }
+
+  eq(field, value) {
+    this.filters.push({ field, op: '==', value });
+    return this;
+  }
+
+  neq(field, value) {
+    this.filters.push({ field, op: '!=', value });
+    return this;
+  }
+
+  lt(field, value) {
+    this.filters.push({ field, op: '<', value });
+    return this;
+  }
+
+  order(field, { ascending = true } = {}) {
+    this.orderField = field;
+    this.orderDirection = ascending ? 'asc' : 'desc';
+    return this;
+  }
+
+  limit(count) {
+    this.limitCount = count;
+    return this;
+  }
+
+  single() {
+    this.isSingle = true;
+    return this;
+  }
+
+  async then(resolve, reject) {
+    try {
+      const colRef = collection(db, this.tableName);
+      let q = colRef;
+      
+      const queryConstraints = [];
+      for (const f of this.filters) {
+        queryConstraints.push(where(f.field, f.op, f.value));
+      }
+      if (this.orderField) {
+        queryConstraints.push(orderBy(this.orderField, this.orderDirection));
+      }
+      if (this.limitCount) {
+        queryConstraints.push(limit(this.limitCount));
+      }
+      
+      if (queryConstraints.length > 0) {
+        q = query(colRef, ...queryConstraints);
+      }
+
+      const snap = await getDocs(q);
+      let data = [];
+      snap.forEach(docSnap => {
+        data.push({ id: docSnap.id, ...docSnap.data() });
+      });
+
+      if (this.isSingle) {
+        data = data.length > 0 ? data[0] : null;
+      }
+      resolve({ data, error: null });
+    } catch (err) {
+      console.error(`Error querying ${this.tableName}:`, err);
+      resolve({ data: null, error: err });
+    }
+  }
+
+  async insert(payload) {
+    try {
+      const colRef = collection(db, this.tableName);
+      const isArray = Array.isArray(payload);
+      const items = isArray ? payload : [payload];
+      const results = [];
+
+      for (const item of items) {
+        const docId = item.id || doc(colRef).id;
+        const record = { id: docId, created_at: new Date().toISOString(), ...item };
+        await setDoc(doc(colRef, docId), record);
+        results.push(record);
+      }
+
+      const returnedData = isArray ? results : results[0];
+      
+      return {
+        select: () => ({
+          single: () => Promise.resolve({ data: returnedData, error: null }),
+          then: (resolve) => resolve({ data: returnedData, error: null })
+        }),
+        then: (resolve) => resolve({ data: returnedData, error: null })
+      };
+    } catch (err) {
+      console.error(`Error inserting into ${this.tableName}:`, err);
+      return {
+        select: () => ({
+          single: () => Promise.resolve({ data: null, error: err }),
+          then: (resolve) => resolve({ data: null, error: err })
+        }),
+        then: (resolve) => resolve({ data: null, error: err })
+      };
+    }
+  }
+
+  async update(payload) {
+    try {
+      const colRef = collection(db, this.tableName);
+      let q = colRef;
+      const queryConstraints = [];
+      for (const f of this.filters) {
+        queryConstraints.push(where(f.field, f.op, f.value));
+      }
+      if (queryConstraints.length > 0) {
+        q = query(colRef, ...queryConstraints);
+      }
+      const snap = await getDocs(q);
+      
+      const updatedDocs = [];
+      for (const docSnap of snap.docs) {
+        const docRef = doc(db, this.tableName, docSnap.id);
+        const record = { ...payload, updated_at: new Date().toISOString() };
+        await updateDoc(docRef, record);
+        updatedDocs.push({ id: docSnap.id, ...docSnap.data(), ...record });
+      }
+
+      const returnedData = this.isSingle ? (updatedDocs.length > 0 ? updatedDocs[0] : null) : updatedDocs;
+      return { data: returnedData, error: null };
+    } catch (err) {
+      console.error(`Error updating ${this.tableName}:`, err);
+      return { data: null, error: err };
+    }
+  }
+
+  async delete() {
+    try {
+      const colRef = collection(db, this.tableName);
+      let q = colRef;
+      const queryConstraints = [];
+      for (const f of this.filters) {
+        queryConstraints.push(where(f.field, f.op, f.value));
+      }
+      if (queryConstraints.length > 0) {
+        q = query(colRef, ...queryConstraints);
+      }
+      const snap = await getDocs(q);
+
+      const deletedDocs = [];
+      for (const docSnap of snap.docs) {
+        await deleteDoc(doc(db, this.tableName, docSnap.id));
+        deletedDocs.push({ id: docSnap.id, ...docSnap.data() });
+      }
+
+      const returnedData = this.isSingle ? (deletedDocs.length > 0 ? deletedDocs[0] : null) : deletedDocs;
+      return { data: returnedData, error: null };
+    } catch (err) {
+      console.error(`Error deleting from ${this.tableName}:`, err);
+      return { data: null, error: err };
+    }
+  }
+
+  async upsert(payload, options = {}) {
+    try {
+      const colRef = collection(db, this.tableName);
+      const onConflict = options.onConflict || 'id';
+      const items = Array.isArray(payload) ? payload : [payload];
+      const results = [];
+
+      for (const item of items) {
+        let docId = item.id;
+        
+        if (!docId && item[onConflict]) {
+          const q = query(colRef, where(onConflict, '==', item[onConflict]));
+          const snap = await getDocs(q);
+          if (!snap.empty) {
+            docId = snap.docs[0].id;
+          }
+        }
+        
+        if (!docId) {
+          docId = doc(colRef).id;
+        }
+
+        const docRef = doc(db, this.tableName, docId);
+        const record = { id: docId, created_at: new Date().toISOString(), ...item };
+        await setDoc(docRef, record, { merge: true });
+        results.push(record);
+      }
+
+      const returnedData = Array.isArray(payload) ? results : results[0];
+      return { data: returnedData, error: null };
+    } catch (err) {
+      console.error(`Error upserting in ${this.tableName}:`, err);
+      return { data: null, error: err };
+    }
+  }
+}
+
+const channels = {};
+
+export const supabase = {
+  from: (tableName) => new QueryBuilder(tableName),
+  
+  channel: (channelName) => {
+    return {
+      on: (eventType, filter, callback) => {
+        const table = filter.table;
+        const colRef = collection(db, table);
+        
+        const unsubscribe = onSnapshot(colRef, (snapshot) => {
+          snapshot.docChanges().forEach((change) => {
+            const payload = {
+              eventType: change.type === 'added' ? 'INSERT' : change.type === 'modified' ? 'UPDATE' : 'DELETE',
+              new: { id: change.doc.id, ...change.doc.data() },
+              old: change.type === 'removed' ? { id: change.doc.id } : null
+            };
+            callback(payload);
+          });
+        });
+
+        if (!channels[channelName]) {
+          channels[channelName] = [];
+        }
+        channels[channelName].push(unsubscribe);
+
+        return {
+          subscribe: () => ({
+            unsubscribe: () => {
+              unsubscribe();
+            }
+          })
+        };
+      },
+      subscribe: () => {
+        return {
+          unsubscribe: () => {
+            if (channels[channelName]) {
+              channels[channelName].forEach(unsub => unsub());
+              delete channels[channelName];
+            }
+          }
+        };
+      }
+    };
+  },
+
+  removeChannel: (channelObj) => {
+    if (channelObj && typeof channelObj.unsubscribe === 'function') {
+      channelObj.unsubscribe();
+    }
+  },
+
+  auth: {
+    signUp: async ({ email, password, options }) => {
+      try {
+        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        const name = options?.data?.full_name || '';
+        if (name) {
+          await updateProfile(cred.user, { displayName: name });
+        }
+        const token = await cred.user.getIdToken();
+        const session = {
+          access_token: token,
+          user: {
+            id: cred.user.uid,
+            email: cred.user.email,
+            user_metadata: {
+              full_name: name
+            }
+          }
+        };
+        return { data: { session, user: session.user }, error: null };
+      } catch (err) {
+        return { data: { session: null, user: null }, error: err };
+      }
+    },
+
+    signInWithPassword: async ({ email, password }) => {
+      try {
+        const cred = await signInWithEmailAndPassword(auth, email, password);
+        const token = await cred.user.getIdToken();
+        const session = {
+          access_token: token,
+          user: {
+            id: cred.user.uid,
+            email: cred.user.email,
+            user_metadata: {
+              full_name: cred.user.displayName || ''
+            }
+          }
+        };
+        return { data: { session, user: session.user }, error: null };
+      } catch (err) {
+        return { data: { session: null, user: null }, error: err };
+      }
+    },
+
+    signOut: async () => {
+      try {
+        await fbSignOut(auth);
+        return { error: null };
+      } catch (err) {
+        return { error: err };
+      }
+    },
+
+    updateUser: async ({ data }) => {
+      try {
+        const user = auth.currentUser;
+        if (!user) throw new Error('No user logged in');
+        if (data?.full_name) {
+          await updateProfile(user, { displayName: data.full_name });
+        }
+        return {
+          data: {
+            user: {
+              id: user.uid,
+              email: user.email,
+              user_metadata: {
+                full_name: user.displayName || ''
+              }
+            }
+          },
+          error: null
+        };
+      } catch (err) {
+        return { data: { user: null }, error: err };
+      }
+    },
+
+    getSession: async () => {
+      try {
+        const user = auth.currentUser;
+        if (!user) return { data: { session: null }, error: null };
+        const token = await user.getIdToken();
+        const session = {
+          access_token: token,
+          user: {
+            id: user.uid,
+            email: user.email,
+            user_metadata: {
+              full_name: user.displayName || ''
+            }
+          }
+        };
+        return { data: { session }, error: null };
+      } catch (err) {
+        return { data: { session: null }, error: err };
+      }
+    },
+
+    onAuthStateChange: (callback) => {
+      const unsubscribe = onAuthStateChanged(auth, async (user) => {
+        if (user) {
+          const token = await user.getIdToken();
+          const session = {
+            access_token: token,
+            user: {
+              id: user.uid,
+              email: user.email,
+              user_metadata: {
+                full_name: user.displayName || ''
+              }
+            }
+          };
+          callback('SIGNED_IN', session);
+        } else {
+          callback('SIGNED_OUT', null);
+        }
+      });
+
+      return {
+        data: {
+          subscription: {
+            unsubscribe
+          }
+        }
+      };
+    }
+  },
+
+  storage: {
+    from: (bucketName) => {
+      return {
+        upload: async (filePath, file) => {
+          try {
+            const fileRef = ref(storage, `${bucketName}/${filePath}`);
+            await uploadBytes(fileRef, file);
+            return { data: { path: filePath }, error: null };
+          } catch (err) {
+            return { data: null, error: err };
+          }
+        },
+        getPublicUrl: (filePath) => {
+          return { data: { publicUrl: `https://firebasestorage.googleapis.com/v0/b/${firebaseConfig.storageBucket}/o/${encodeURIComponent(bucketName + '/' + filePath)}?alt=media` } };
+        }
+      };
+    }
+  }
+};

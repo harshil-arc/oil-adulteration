@@ -117,4 +117,21 @@ router.post('/analyze', (req, res) => {
   }
 });
 
+// POST /readings - Receive readings from ESP32 and save to readings collection
+router.post('/readings', async (req, res) => {
+  try {
+    const { temperature, weight, spectral_data } = req.body;
+    const { data, error } = await supabase.from('readings').insert({
+      temperature: parseFloat(temperature),
+      weight: parseFloat(weight),
+      spectral_data: typeof spectral_data === 'string' ? JSON.parse(spectral_data) : spectral_data
+    });
+    if (error) throw error;
+    res.status(201).json({ success: true, data });
+  } catch (err) {
+    console.error('Error saving readings:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router;
