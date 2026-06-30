@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { Shield, Smartphone, QrCode } from 'lucide-react';
-import ProtocolSelector from './scan/ProtocolSelector';
+import ScanFlow from './ScanFlow';
 
 export default function QRLanding() {
   const [searchParams] = useSearchParams();
@@ -45,7 +45,7 @@ export default function QRLanding() {
          </div>
          <h1 className="text-2xl font-black theme-text tracking-wider uppercase mb-2">Mobile Device Required</h1>
          <p className="text-sm text-gray-500 max-w-sm mb-8">
-           It looks like you scanned a PureOil product QR code from a desktop browser. Please scan the QR code using your mobile phone's camera to initiate hardware testing.
+            It looks like you scanned a PureOil product QR code from a desktop browser. Please scan the QR code using your mobile phone's camera to initiate hardware testing.
          </p>
          <button onClick={() => { setIsDesktop(false); setIsSplashActive(false); window.history.replaceState({}, '', '/scan'); }} className="btn-primary">
            Continue to App Anyway
@@ -77,6 +77,7 @@ export default function QRLanding() {
     );
   }
 
-  // Normal /scan UI (ProtocolSelector)
-  return <ProtocolSelector />;
+  // Normal /scan UI (ScanFlow)
+  return <ScanFlow />;
 }
+
