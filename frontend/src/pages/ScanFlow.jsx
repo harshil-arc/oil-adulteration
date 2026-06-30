@@ -1,12 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { Wifi, Bluetooth, Usb, CheckCircle2, XCircle, AlertTriangle, ChevronLeft, Droplets, RefreshCw, ShieldCheck, Globe, Zap } from 'lucide-react';
+import { Wifi, Bluetooth, Usb, CheckCircle2, XCircle, AlertTriangle, ChevronLeft, Droplets, RefreshCw, ShieldCheck, Globe, Zap, Cloud } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { socket } from '../lib/socket';
 import ErrorBoundary from '../components/ErrorBoundary';
 import BLEConnection from '../components/BLEConnection';
-import USBConnection from '../components/USBConnection';
 import { safeLocalFetch } from '../lib/sensorApi';
 
 export default function ScanFlow() {
@@ -129,7 +128,55 @@ export default function ScanFlow() {
       setScanResult(null);
       let poller;
 
-      if (deviceInfo?.ip) {
+      if (deviceInfo?.method === 'Supabase Cloud') {
+        let fetchedData = false;
+        poller = setInterval(async () => {
+          try {
+            const { data: row, error } = await supabase
+              .from('readings')
+              .select('*')
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .single();
+
+            if (!error && row && !fetchedData) {
+              fetchedData = true;
+              clearInterval(poller);
+              
+              setLocalLiveData({
+                tds_ppm: row.tds || 450,
+                temperature_c: row.temperature || row.temperature_c || 25,
+                ph: row.ph || 6.45,
+                density_gcm3: row.density || row.density_gcm3 || 0.908
+              });
+
+              setProgress(100);
+              
+              const apiUrl = import.meta.env.VITE_BACKEND_URL || `http://${window.location.hostname}:4000`;
+              fetch(`${apiUrl}/api/analyze`, {
+                 method: 'POST',
+                 headers: { 'Content-Type': 'application/json' },
+                 body: JSON.stringify({
+                    oil_type: selectedOilType,
+                    sensor_values: {
+                       temperature_c: row.temperature || row.temperature_c || 25,
+                       density_gcm3: row.density || row.density_gcm3 || 0.915,
+                       refractive_index: row.refractive_index || 1.470
+                    }
+                 })
+              }).then(res => res.json()).then(result => {
+                 setScanResult(result);
+                 setTimeout(() => setStep(4), 1000);
+              }).catch(err => {
+                 console.error("Analysis Failed", err);
+                 setStep(0);
+              });
+            }
+          } catch (e) {
+            console.error("Cloud polling error", e);
+          }
+        }, 2000);
+      } else if (deviceInfo?.ip) {
         // Real-time polling logic
         poller = setInterval(async () => {
           try {
@@ -272,15 +319,15 @@ export default function ScanFlow() {
 
             <div onClick={() => handleSelectMethod('usb')} className="card hover:border-purple-500/50 cursor-pointer transition-all active:scale-[0.98] group overflow-hidden relative">
               <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 transition-opacity">
-                 <Usb size={120} strokeWidth={1} />
+                 <Cloud size={120} strokeWidth={1} />
               </div>
               <div className="flex items-start gap-4 relative z-10">
                 <div className="p-3 bg-purple-500/10 rounded-2xl text-purple-500 group-hover:bg-purple-500 group-hover:text-white transition-colors">
-                  <Usb size={24} />
+                  <Cloud size={24} />
                 </div>
                 <div>
-                  <h3 className="theme-text font-bold text-lg">USB Serial Bridge</h3>
-                  <p className="text-gray-400 text-xs mt-1">High-speed reliable link via OTG cable. No lag or interference.</p>
+                  <h3 className="theme-text font-bold text-lg">Cloud Mode</h3>
+                  <p className="text-gray-400 text-xs mt-1">Fetches latest data pushed by the ESP32 to the Supabase cloud database.</p>
                 </div>
               </div>
             </div>
@@ -422,14 +469,38 @@ export default function ScanFlow() {
           </div>
         )}
 
-        {/* STEP 1C: USB */}
+        {/* STEP 1C: CLOUD MODE */}
         {step === '1c' && (
-          <ErrorBoundary>
-            <USBConnection 
-              onConnected={proceedToVerification}
-              onCancel={() => setStep(0)}
-            />
-          </ErrorBoundary>
+          <div className="flex flex-col flex-1 animate-fade-in text-center">
+            <div className="flex flex-col items-center py-12">
+              <div className="w-24 h-24 bg-purple-500/10 text-purple-500 rounded-full flex items-center justify-center mb-6 border border-purple-500/30 animate-pulse">
+                <Cloud size={48} />
+              </div>
+              <h3 className="theme-text font-black text-2xl mb-3">Supabase Cloud Link</h3>
+              <p className="text-sm text-gray-500 text-center max-w-[280px]">
+                Your ESP32 pushes sensor telemetry to the Supabase database. This mode fetches the latest readings from the cloud.
+              </p>
+            </div>
+            
+            <div className="mt-auto flex flex-col gap-3">
+              <button
+                onClick={() => {
+                  proceedToVerification({
+                    name: 'Supabase Cloud Database',
+                    method: 'Supabase Cloud',
+                    battery: 'N/A',
+                    firmware: 'Vite Database Client'
+                  });
+                }}
+                className="w-full bg-purple-600 hover:bg-purple-500 text-white font-black py-4 rounded-2xl transition-all uppercase tracking-widest text-sm"
+              >
+                Connect to Cloud
+              </button>
+              <button onClick={() => setStep(0)} className="w-full py-4 text-xs font-bold text-gray-500 hover:text-white transition-colors uppercase tracking-widest">
+                Cancel
+              </button>
+            </div>
+          </div>
         )}
 
         {/* STEP 2: VERIFICATION */}
