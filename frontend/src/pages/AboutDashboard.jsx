@@ -25,7 +25,7 @@ const SubScreenNav = ({ title }) => {
   );
 };
 
-const InfoCard = ({ title, children, icon: Icon, color = "text-[#C8952A]" }) => (
+const InfoCard = ({ title, children, icon: Icon, color = "text-brand-500" }) => (
   <div className="card border-[var(--border-color)] p-5 relative overflow-hidden group">
     <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
        {Icon && <Icon size={64} strokeWidth={1} className={color} />}
@@ -61,16 +61,14 @@ const StatusRow = ({ label, value, type = "default" }) => {
 const ActionButton = ({ label, icon: Icon, onClick, color = "bg-[var(--bg-elevated)]" }) => (
   <button 
     onClick={onClick}
-    className={`flex-1 flex flex-col items-center justify-center gap-2 p-4 rounded-3xl border border-[var(--border-color)] hover:border-[#C8952A] transition-all active:scale-95 ${color}`}
+    className={`flex-1 flex flex-col items-center justify-center gap-2 p-4 rounded-3xl border border-[var(--border-color)] hover:border-brand-500 transition-all active:scale-95 ${color}`}
   >
-    <div className="text-[#C8952A]">
+    <div className="text-brand-500">
        <Icon size={20} />
     </div>
     <span className="text-[10px] font-black uppercase tracking-widest theme-text">{label}</span>
   </button>
 );
-
-// --- Main Page ---
 
 export default function AboutDashboard() {
   const navigate = useNavigate();
@@ -148,22 +146,22 @@ export default function AboutDashboard() {
 
   return (
     <div className="flex flex-col min-h-screen bg-[var(--bg-page)] pb-20 animate-fade-in relative z-20 overflow-x-hidden">
-      <SubScreenNav title="System Dashboard" />
+      <SubScreenNav title="SpectraTrust System" />
 
       <div className="p-5 flex flex-col gap-6">
         
         {/* 1. HEADER SECTION */}
         <div className="flex flex-col items-center py-6 text-center">
-           <div className="w-20 h-20 bg-gradient-to-br from-[#f5c842] to-[#d4af37] text-black rounded-[2rem] flex flex-col items-center justify-center shadow-glow-gold mb-4 rotate-3">
+           <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-cyan-500 text-white rounded-[2rem] flex flex-col items-center justify-center shadow-lg mb-4 rotate-3">
               <Shield size={40} fill="currentColor" strokeWidth={1} />
            </div>
-           <h1 className="text-3xl font-black theme-text tracking-tighter">Pure<span className="text-[#C8952A]">Oil</span></h1>
-           <p className="text-[10px] font-black uppercase tracking-[0.4em] text-[var(--text-muted)] mt-1">Global Inspector Ecosystem</p>
+           <h1 className="text-3xl font-black theme-text tracking-tighter">Spectra<span className="text-brand-500">Trust</span></h1>
+           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-[var(--text-muted)] mt-1">AI-Powered Food Safety Intelligence Platform</p>
            
            <div className="flex gap-2 mt-4">
               <span className="bg-[var(--bg-elevated)] border border-[var(--border-color)] px-2.5 py-1 rounded-full text-[9px] font-bold theme-text tracking-widest uppercase">v2.4.0 (Stable)</span>
               <span className="bg-green-500/10 border border-green-500/20 px-2.5 py-1 rounded-full text-[9px] font-bold text-green-500 tracking-widest uppercase">Production</span>
-              <span className="bg-blue-500/10 border border-blue-500/20 px-2.5 py-1 rounded-full text-[9px] font-bold text-blue-500 tracking-widest uppercase">Firmaware v1.4.2</span>
+              <span className="bg-blue-500/10 border border-blue-500/20 px-2.5 py-1 rounded-full text-[9px] font-bold text-blue-500 tracking-widest uppercase">Firmware v1.4.2</span>
            </div>
         </div>
 
@@ -204,7 +202,7 @@ export default function AboutDashboard() {
               className="w-full flex items-center justify-between p-4 hover:bg-[var(--bg-elevated)] transition-colors group"
              >
                 <div className="flex items-center gap-3">
-                   <item.icon size={18} className="text-[#C8952A] group-hover:scale-110 transition-transform" />
+                   <item.icon size={18} className="text-brand-500 group-hover:scale-110 transition-transform" />
                    <span className="text-sm font-bold theme-text">{item.label}</span>
                 </div>
                 <ChevronLeft size={16} className="text-[var(--text-muted)] rotate-180" />
@@ -218,7 +216,7 @@ export default function AboutDashboard() {
            <div className="flex-1">
               <h4 className="text-amber-500 font-black text-[10px] uppercase tracking-widest mb-1">Standard Regulatory Warning</h4>
               <p className="text-amber-500/80 text-[10px] leading-relaxed">
-                This app is designed for indicative screening of edible and fuel oils in the field. Results provided by the PureOil optical spectrometry sensors are for preliminary assessment and do not constitute a certified certificate. Official enforcement requires laboratory verification per FSSAI / Bureau of Indian Standards (BIS) protocols.
+                This app is designed for indicative screening of edible and fuel oils in the field. Results provided by the SpectraTrust optical spectrometry sensors are for preliminary assessment and do not constitute a certified certificate. Official enforcement requires laboratory verification per FSSAI / Bureau of Indian Standards (BIS) protocols.
               </p>
            </div>
         </div>
@@ -265,7 +263,7 @@ export default function AboutDashboard() {
                  </div>
                  <button onClick={() => setShowDiagnostics(false)} className="p-2 bg-[var(--bg-elevated)] rounded-full text-[var(--text-muted)]">
                     <XCircle size={20} />
-                 </button>
+                  </button>
               </div>
 
               <div className="space-y-4 mb-8">
@@ -287,7 +285,7 @@ export default function AboutDashboard() {
               <button 
                 disabled={isAuditing}
                 onClick={runDiagnostics}
-                className="w-full h-16 bg-gradient-to-br from-[#f5c842] to-[#d4af37] text-black font-black uppercase tracking-[0.2em] rounded-2xl flex items-center justify-center gap-3 shadow-glow-gold disabled:opacity-50 transition-all hover:brightness-110 active:scale-95"
+                className="w-full h-16 bg-gradient-to-br from-blue-600 to-cyan-500 text-white font-black uppercase tracking-[0.2em] rounded-2xl flex items-center justify-center gap-3 shadow-lg disabled:opacity-50 transition-all hover:brightness-110 active:scale-95"
               >
                  {isAuditing ? <RefreshCw className="animate-spin" size={20} /> : <Zap size={20} fill="currentColor" />}
                  {isAuditing ? 'Auditing System' : 'Rerun Handshake'}

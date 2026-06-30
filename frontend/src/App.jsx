@@ -17,7 +17,9 @@ import History from './pages/History';
 import Hotspots from './pages/Hotspots';
 import Community from './pages/Community';
 import Profile from './pages/Profile';
+import Nutrition from './pages/Nutrition';
 import { AppProvider } from './context/AppContext';
+
 import { ReportsList, DeveloperTools } from './pages/ProfileSubScreens';
 import PrivacySecurity from './pages/PrivacySecurity';
 import AboutDashboard from './pages/AboutDashboard';
@@ -63,6 +65,7 @@ export default function App() {
                       <Route path="/map" element={<Navigate to="/hotspots" replace />} />
                       <Route path="/hotspots" element={<Hotspots />} />
                       <Route path="/profile" element={<Profile />} />
+                      <Route path="/nutrition" element={<Nutrition />} />
                       <Route path="/privacy" element={<PrivacySecurity />} />
                       <Route path="/privacy-security" element={<PrivacySecurity />} />
                       <Route path="/about" element={<AboutDashboard />} />

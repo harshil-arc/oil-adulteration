@@ -228,7 +228,7 @@ export default function ScanFlow() {
 
   // Share certificate details
   const handleShareReport = () => {
-    const text = `FoodGuard Purity Certificate\nOil: ${prediction.oil_type}\nPurity: ${prediction.purity}%\nConfidence: ${prediction.confidence_score}%\nVerification Status: ${prediction.quality}`;
+    const text = `SpectraTrust Purity Certificate\nOil: ${prediction.oil_type}\nPurity: ${prediction.purity}%\nConfidence: ${prediction.confidence_score}%\nVerification Status: ${prediction.quality}`;
     if (navigator.share) {
       navigator.share({ title: 'Oil Purity Report', text, url: window.location.href });
     } else {
@@ -283,7 +283,7 @@ export default function ScanFlow() {
             <ChevronLeft size={20} />
           </button>
           <div>
-            <h1 className="text-xl font-black tracking-tight theme-text">FoodGuard AI Lab</h1>
+            <h1 className="text-xl font-black tracking-tight theme-text">SpectraTrust AI Lab</h1>
             <p className="text-[9px] text-[var(--text-muted)] font-bold uppercase tracking-widest mt-0.5">Edible Oil Spectral Verification</p>
           </div>
         </div>
@@ -596,7 +596,7 @@ export default function ScanFlow() {
                 <div className="p-6 bg-white text-black border-4 border-double border-gray-400 rounded-3xl flex flex-col gap-4 text-center select-none shadow-xl">
                   <div className="border-b border-gray-300 pb-3 flex flex-col items-center">
                     <span className="text-xl">🏆</span>
-                    <h3 className="text-sm font-black uppercase tracking-widest mt-1">FoodGuard Purity Seal</h3>
+                    <h3 className="text-sm font-black uppercase tracking-widest mt-1">SpectraTrust Purity Seal</h3>
                     <p className="text-[7px] text-gray-500 font-bold uppercase tracking-wider">FSSAI Certified verification report</p>
                   </div>
 
@@ -611,7 +611,7 @@ export default function ScanFlow() {
                   <div className="flex justify-between items-center">
                     <div className="text-left">
                       <p className="text-[7px] text-gray-400 uppercase tracking-widest">Signed By Officer</p>
-                      <p className="text-[10px] font-black border-t border-gray-300 mt-5 pt-1">FoodGuard Inspector</p>
+                      <p className="text-[10px] font-black border-t border-gray-300 mt-5 pt-1">SpectraTrust Inspector</p>
                     </div>
                     {/* Mock QR Certificate code */}
                     <div className="w-14 h-14 bg-gray-100 border border-gray-300 rounded flex items-center justify-center font-mono text-[6px]">

@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Beaker, ShieldAlert, AlertTriangle, ShieldCheck, 
   MapPin, Bell, RefreshCw, ChevronDown, TrendingUp, TrendingDown,
-  Sparkles, Flame, X, User, Shield, Info, BookOpen, Clock
+  Sparkles, Flame, X, User, Shield, Info, BookOpen, Clock,
+  Plus, Calendar, Compass, Share2, Printer, ArrowRight, Award, HelpCircle, FileText,
+  Apple, ChevronRight
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { supabase } from '../lib/supabase';
@@ -48,12 +50,8 @@ export default function Home() {
   const navigate = useNavigate();
   const { profile } = useApp();
   
-  // Ref anchors for smooth scrolling
-  const personalRef = useRef(null);
-  const platformRef = useRef(null);
-  
-  // Active Tab View State
-  const [activeTab, setActiveTab] = useState('personal'); // 'personal' or 'platform'
+  // Active Tab View State (Segmented control)
+  const [activeTab, setActiveTab] = useState('personal'); // 'personal' or 'national'
 
   // Data State
   const [scans, setScans] = useState([]);
@@ -115,22 +113,6 @@ export default function Home() {
     if (text.includes('rajkot')) return 'Rajkot';
     if (text.includes('surat')) return 'Surat';
     if (text.includes('vadodara')) return 'Vadodara';
-    
-    if (item.latitude && item.longitude) {
-      const lat = parseFloat(item.latitude);
-      const lng = parseFloat(item.longitude);
-      let closest = 'Ahmedabad';
-      let minDistance = Infinity;
-      for (const [name, coords] of Object.entries(DISTRICT_COORDINATES)) {
-        const d = Math.pow(lat - coords[0], 2) + Math.pow(lng - coords[1], 2);
-        if (d < minDistance) {
-          minDistance = d;
-          closest = name;
-        }
-      }
-      return closest;
-    }
-    
     return 'Ahmedabad';
   };
 
@@ -138,76 +120,52 @@ export default function Home() {
     return name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase();
   };
 
-  // Smooth scroll handler
-  const handleScrollToSection = (section) => {
-    setActiveTab(section);
-    if (section === 'personal') {
-      personalRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    } else {
-      platformRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  };
-
-  // --- SECTION 1: PERSONAL ACTIVITY DATA (Isolate Scans by connected device 'ESP32_01') ---
-  const personalScans = useMemo(() => {
-    return scans.filter(s => s.device_id === 'ESP32_01');
+  // --- MY SPECTRATRUST DASHBOARD STATISTICS (Isolate user's activity) ---
+  const personalStats = useMemo(() => {
+    // Isolated scans (fallback seed if no scans logged yet)
+    const userScans = scans.filter(s => s.device_id === 'PUREOIL-ESP32-8842' || s.device_id === 'ESP32_01');
+    const totalScans = userScans.length > 0 ? userScans.length : 14;
+    
+    const puritySum = userScans.reduce((acc, val) => acc + parseFloat(val.purity || 0), 0);
+    const avgPurity = userScans.length > 0 ? Math.round(puritySum / userScans.length) : 94;
+    
+    const unsafeCount = userScans.filter(s => s.quality === 'Unsafe').length;
+    const finalUnsafe = userScans.length > 0 ? unsafeCount : 1;
+    
+    // Mock user statistics derived from user records
+    return {
+      samplesTested: totalScans,
+      avgPurity: avgPurity,
+      unsafeFound: finalUnsafe,
+      reportsSubmitted: finalUnsafe + 1,
+      trustedVendors: 4,
+      foodDonations: 6,
+      complaintStatus: '2 Resolved / 1 Pending',
+      safetyScore: Math.round(avgPurity * 0.9 + (totalScans * 0.5)),
+      contributionLevel: totalScans > 20 ? 'Gold Elite' : 'Silver Inspector'
+    };
   }, [scans]);
 
-  const personalStats = useMemo(() => {
-    const total = personalScans.length;
-    const puritySum = personalScans.reduce((acc, val) => acc + parseFloat(val.purity || 0), 0);
-    const avgPurity = total > 0 ? Math.round(puritySum / total) : 93;
-    const unsafeCount = personalScans.filter(s => s.quality === 'Unsafe').length;
-    const verifiedCases = Math.round(total * 0.2); // 20% of scans resulted in official recall files
-
-    return {
-      mySamples: total > 0 ? total : 24, // seed baseline fallback
-      myAvgPurity: avgPurity,
-      unsafeFound: unsafeCount > 0 ? unsafeCount : 2,
-      myReports: verifiedCases > 0 ? verifiedCases : 3
-    };
-  }, [personalScans]);
-
-  // --- SECTION 2: GLOBAL PLATFORM DATA ---
+  // --- NATIONAL FOOD INTELLIGENCE ---
   const platformStats = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const testedToday = scans.filter(s => {
-      const scanDate = new Date(s.timestamp || s.created_at);
-      return scanDate >= today;
-    }).length;
-
-    const liveTestedCount = testedToday > 0 ? 1254 + testedToday : 1254;
-
-    const totalPurity = scans.reduce((acc, val) => acc + parseFloat(val.purity || 90), 0);
-    const averagePurity = scans.length > 0 ? (totalPurity / scans.length).toFixed(1) : '91.7';
-
+    const totalSamplesVal = scans.length > 0 ? scans.length + 1150 : 1248;
+    const puritySum = scans.reduce((acc, val) => acc + parseFloat(val.purity || 90), 0);
+    const averagePurity = scans.length > 0 ? (puritySum / scans.length).toFixed(1) : '91.8';
+    
     const unsafeCount = scans.filter(s => s.quality === 'Unsafe').length;
-    const liveUnsafeCount = unsafeCount > 0 ? 184 + unsafeCount : 184;
-
-    const districtScores = {};
-    scans.forEach(s => {
-      const dist = getDistrictName(s);
-      if (!districtScores[dist]) districtScores[dist] = { puritySum: 0, count: 0, unsafe: 0 };
-      districtScores[dist].puritySum += parseFloat(s.purity || 0);
-      districtScores[dist].count += 1;
-      if (s.quality === 'Unsafe') districtScores[dist].unsafe += 1;
-    });
-
-    let activeHotspots = 12;
-    Object.entries(districtScores).forEach(([name, data]) => {
-      const avgP = data.puritySum / data.count;
-      const unsafeRatio = data.unsafe / data.count;
-      const risk = (100 - avgP) * 0.7 + unsafeRatio * 30;
-      if (risk > 30) activeHotspots += 1;
-    });
+    const finalUnsafe = unsafeCount > 0 ? unsafeCount + 114 : 118;
 
     return {
-      testedToday: liveTestedCount,
+      testedToday: totalSamplesVal,
       averagePurity: parseFloat(averagePurity),
-      unsafeCount: liveUnsafeCount,
-      activeHotspots
+      unsafeCount: finalUnsafe,
+      highRiskDistricts: 3,
+      trustedDistricts: 7,
+      mostReportedOil: 'Mustard Oil',
+      govAlerts: 4,
+      verifiedVendors: 48,
+      activeLabs: 14,
+      donationStats: '1.2 Tons surplus distributed'
     };
   }, [scans]);
 
@@ -238,13 +196,6 @@ export default function Home() {
       const adulteration = parseFloat(s.adulteration || (100 - purity));
       if (adulteration > list[dist].maxAdulteration) {
         list[dist].maxAdulteration = adulteration;
-      }
-
-      const date = new Date(s.timestamp || s.created_at);
-      const diffDays = Math.ceil(Math.abs(new Date() - date) / (1000 * 60 * 60 * 24));
-      if (diffDays > 7 && diffDays <= 14) {
-        list[dist].lastWeekPuritySum += purity;
-        list[dist].lastWeekCount += 1;
       }
     });
 
@@ -389,9 +340,7 @@ export default function Home() {
 
   // --- TIME BASED TRENDS ---
   const chartData = useMemo(() => {
-    const pointsCount = timeFilter === '24h' ? 24 : timeFilter === 'Week' ? 7 : timeFilter === 'Month' ? 30 : 12;
     const labels = [];
-    
     if (timeFilter === '24h') {
       for (let i = 0; i < 24; i++) labels.push({ name: `${i}:00`, score: 92 + Math.sin(i/2)*2 + (Math.random()-0.5) });
     } else if (timeFilter === 'Week') {
@@ -403,42 +352,24 @@ export default function Home() {
       const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
       months.forEach((m, idx) => labels.push({ name: m, score: Math.round(88 + idx * 0.4 + Math.sin(idx/2)*2.5) }));
     }
-
-    if (scans.length > 0) {
-      const latestScan = scans[0];
-      const latestPurity = parseFloat(latestScan.purity || 90);
-      if (labels.length > 0) {
-        labels[labels.length - 1].score = Math.round(latestPurity);
-      }
-    }
-
     return labels;
-  }, [timeFilter, scans]);
+  }, [timeFilter]);
 
-  // --- AI INSIGHTS ENGINE ---
-  const aiInsights = useMemo(() => {
-    const mustardOil = productAdulteration.find(p => p.name === 'Mustard Oil') || { trend: 18 };
-    const maxUnsafeDistrict = Object.values(districtData).sort((a,b) => b.unsafeSamples - a.unsafeSamples)[0] || { name: 'Ahmedabad' };
-    const groundnutOil = productAdulteration.find(p => p.name === 'Groundnut Oil') || { trend: -6 };
+  // --- SMART AI PLATFORM INSIGHTS ---
+  const aiInsights = useMemo(() => [
+    { id: 'ai-1', text: "Mustard oil adulteration has increased by 11% this week. Deviation flagged in ultraviolet spectrum bounds.", type: 'warning' },
+    { id: 'ai-2', text: "Ahmedabad remains the safest district based on verified scans. Average purity sits at 94.2%.", type: 'success' },
+    { id: 'ai-3', text: "Groundnut oil purity has improved over the last month across Western markets.", type: 'success' }
+  ], []);
 
-    return [
-      {
-        id: 'ai-1',
-        text: `Mustard oil adulteration reports increased by ${Math.abs(mustardOil.trend)}% this week. Primary deviation detected in UV light transmission ranges.`,
-        type: 'warning'
-      },
-      {
-        id: 'ai-2',
-        text: `${maxUnsafeDistrict.name} district logged the highest unsafe food sample count (${maxUnsafeDistrict.unsafeSamples}) today. Deploying inspector alert.`,
-        type: 'danger'
-      },
-      {
-        id: 'ai-3',
-        text: `Groundnut oil average purity level improved to ${groundnutOil.avgPurity}% compared to last month due to strict market inspections.`,
-        type: 'success'
-      }
-    ];
-  }, [productAdulteration, districtData]);
+  // --- LIVE ACTIVITY FEED ---
+  const activityFeed = useMemo(() => [
+    { text: "New complaint submitted in Surat", time: "2 minutes ago", type: "complaint" },
+    { text: "Vendor verified in Ahmedabad", time: "1 hour ago", type: "vendor" },
+    { text: "Government recall alert issued for Mustard Mix", time: "3 hours ago", type: "recall" },
+    { text: "Surplus Food donation completed (120 kg)", time: "5 hours ago", type: "donation" },
+    { text: "Certified Laboratory added in Rajkot", time: "1 day ago", type: "lab" }
+  ], []);
 
   return (
     <div className="flex flex-col min-h-screen theme-bg theme-text animate-fade-in pb-16">
@@ -446,11 +377,11 @@ export default function Home() {
       {/* --- HEADER --- */}
       <div className="px-5 pt-8 pb-4 border-b border-[var(--border-color)] bg-[var(--bg-card)] flex items-center justify-between sticky top-0 z-30">
         <div>
-          <h1 className="text-2xl font-black tracking-tight theme-text flex items-center gap-2">
-            <span>FoodGuard</span>
-            <span className="text-[10px] font-black tracking-widest bg-blue-500/10 text-blue-500 border border-blue-500/20 px-2 py-0.5 rounded-full">AI</span>
+          <h1 className="text-xl font-black tracking-tight theme-text flex items-center gap-1.5">
+            <span>SpectraTrust</span>
+            <span className="text-[8px] font-black tracking-widest bg-blue-500/10 text-blue-500 border border-blue-500/20 px-2 py-0.5 rounded-full">AI</span>
           </h1>
-          <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-widest mt-0.5">Real-Time Food Safety Intelligence Platform</p>
+          <p className="text-[9px] text-[var(--text-muted)] font-black uppercase tracking-widest mt-0.5">AI-Powered Food Safety Intelligence Platform</p>
         </div>
         
         <div className="flex items-center gap-3">
@@ -478,470 +409,314 @@ export default function Home() {
         </div>
       </div>
 
-      {/* --- SECTION: VIEW TOGGLE HEADER (SECTION 6) --- */}
-      <div className="p-4 bg-[var(--bg-card)] border-b border-[var(--border-color)] flex justify-around items-center sticky top-[73px] z-20 shadow-sm">
-        <button
-          onClick={() => handleScrollToSection('personal')}
-          className={`flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all border mx-2 flex items-center justify-center gap-2 ${
-            activeTab === 'personal'
-              ? 'bg-blue-500/10 text-blue-500 border-blue-500/30 font-extrabold shadow-sm'
-              : 'text-[var(--text-secondary)] border-transparent hover:bg-[var(--hover-bg)]'
-          }`}
-        >
-          <User size={14} />
-          <span>My Dashboard</span>
-        </button>
+      {/* --- SEGMENTED VIEW TOGGLE CONTROL --- */}
+      <div className="p-4 bg-[var(--bg-card)] border-b border-[var(--border-color)] flex justify-around items-center sticky top-[69px] z-20 shadow-sm">
+        <div className="w-full max-w-md bg-[var(--bg-elevated)] p-1 rounded-full border border-[var(--border-color)] flex">
+          <button
+            onClick={() => setActiveTab('personal')}
+            className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-full transition-all flex items-center justify-center gap-2 ${
+              activeTab === 'personal'
+                ? 'bg-blue-500 text-black font-extrabold shadow-md'
+                : 'text-[var(--text-secondary)] hover:theme-text'
+            }`}
+          >
+            <User size={12} />
+            <span>My Dashboard</span>
+          </button>
 
-        <button
-          onClick={() => handleScrollToSection('platform')}
-          className={`flex-1 py-3 text-xs font-black uppercase tracking-widest rounded-xl transition-all border mx-2 flex items-center justify-center gap-2 ${
-            activeTab === 'platform'
-              ? 'bg-green-500/10 text-green-500 border-green-500/30 font-extrabold shadow-sm'
-              : 'text-[var(--text-secondary)] border-transparent hover:bg-[var(--hover-bg)]'
-          }`}
-        >
-          <Shield size={14} />
-          <span>Platform Intelligence</span>
-        </button>
+          <button
+            onClick={() => setActiveTab('national')}
+            className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-full transition-all flex items-center justify-center gap-2 ${
+              activeTab === 'national'
+                ? 'bg-green-500 text-black font-extrabold shadow-md'
+                : 'text-[var(--text-secondary)] hover:theme-text'
+            }`}
+          >
+            <Shield size={12} />
+            <span>National Intelligence</span>
+          </button>
+        </div>
       </div>
 
       <div className="px-5 pt-6 flex flex-col gap-6">
 
         {/* ============================================================
-           👤 SECTION 1: PERSONAL USER DASHBOARD (Blue Accent)
+           👤 1. PERSONAL USER DASHBOARD VIEW
            ============================================================ */}
-        <div ref={personalRef} className="scroll-mt-36 flex flex-col gap-4">
-          <div className="border-l-4 border-blue-500 pl-3">
-            <h2 className="text-lg font-black theme-text uppercase tracking-wider flex items-center gap-2">
-              <User size={18} className="text-blue-500" />
-              <span>My Dashboard</span>
-            </h2>
-            <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-widest mt-0.5">Your personal food safety activity</p>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+        {activeTab === 'personal' && (
+          <div className="flex flex-col gap-5 animate-fade-in">
             
-            {/* Card 1: My Samples (Blue Accent) */}
-            <div className="card border-blue-500/20 bg-blue-500/[0.01] hover:border-blue-500/40 flex flex-col justify-between h-28 shadow-sm relative overflow-hidden group transition-all duration-300">
-              <div className="absolute top-0 right-0 p-3 text-blue-500/10 group-hover:text-blue-500/20 transition-colors">
-                <Beaker size={32} />
-              </div>
-              <div>
-                <p className="text-[8px] text-[var(--text-muted)] font-black uppercase tracking-wider">My Samples</p>
-                <h2 className="text-2xl font-black tracking-tight text-blue-500 font-mono mt-1">
-                  <CountUp end={personalStats.mySamples} />
-                </h2>
-              </div>
-              <p className="text-[7px] text-blue-500 font-bold uppercase tracking-wider">Personal scanned tests</p>
+            <div className="border-l-4 border-blue-500 pl-3">
+              <h2 className="text-base font-black theme-text uppercase tracking-wider">👤 My Dashboard</h2>
+              <p className="text-[9px] text-[var(--text-muted)] font-bold uppercase mt-0.5">Your personal food safety activity</p>
             </div>
 
-            {/* Card 2: My Average Purity (Blue Accent) */}
-            <div className="card border-blue-500/20 bg-blue-500/[0.01] hover:border-blue-500/40 flex flex-col justify-between h-28 shadow-sm relative overflow-hidden group transition-all duration-300">
-              <div>
-                <p className="text-[8px] text-[var(--text-muted)] font-black uppercase tracking-wider">My Average Purity</p>
-                <h2 className="text-2xl font-black tracking-tight text-blue-500 font-mono mt-1">
-                  <CountUp end={personalStats.myAvgPurity} suffix="%" />
-                </h2>
-              </div>
-              <div className="w-full bg-blue-500/10 h-1.5 rounded-full overflow-hidden">
-                <div 
-                  className="bg-blue-500 h-full rounded-full transition-all duration-1000"
-                  style={{ width: `${personalStats.myAvgPurity}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Card 3: Unsafe Samples I Found (Blue Accent) */}
-            <div className="card border-blue-500/20 bg-blue-500/[0.01] hover:border-blue-500/40 flex flex-col justify-between h-28 shadow-sm relative overflow-hidden group transition-all duration-300">
-              <div className="absolute top-0 right-0 p-3 text-blue-500/10 group-hover:text-blue-500/20 transition-colors">
-                <ShieldAlert size={32} />
-              </div>
-              <div>
-                <p className="text-[8px] text-[var(--text-muted)] font-black uppercase tracking-wider">Unsafe Samples I Found</p>
-                <h2 className="text-2xl font-black tracking-tight text-blue-500 font-mono mt-1">
-                  <CountUp end={personalStats.unsafeFound} />
-                </h2>
-              </div>
-              <p className="text-[7px] text-blue-500 font-bold uppercase tracking-wider">Actionable violations</p>
-            </div>
-
-            {/* Card 4: My Reports (Blue Accent) */}
-            <div className="card border-blue-500/20 bg-blue-500/[0.01] hover:border-blue-500/40 flex flex-col justify-between h-28 shadow-sm relative overflow-hidden group transition-all duration-300">
-              <div className="absolute top-0 right-0 p-3 text-blue-500/10 group-hover:text-blue-500/20 transition-colors">
-                <ShieldCheck size={32} />
-              </div>
-              <div>
-                <p className="text-[8px] text-[var(--text-muted)] font-black uppercase tracking-wider">My Verified Cases</p>
-                <h2 className="text-2xl font-black tracking-tight text-blue-500 font-mono mt-1">
-                  <CountUp end={personalStats.myReports} />
-                </h2>
-              </div>
-              <p className="text-[7px] text-blue-500 font-bold uppercase tracking-wider">FSSAI warning files</p>
-            </div>
-
-          </div>
-        </div>
-
-        {/* ============================================================
-           🌍 SECTION 2: PLATFORM DIVIDER
-           ============================================================ */}
-        <div className="py-4 flex flex-col items-center gap-1.5 text-center select-none">
-          <div className="w-24 h-1 bg-[var(--border-color)] rounded-full mb-1" />
-          <h3 className="text-xs font-black text-green-500 uppercase tracking-widest flex items-center gap-2">
-            <span>🌍 FoodGuard Intelligence</span>
-          </h3>
-          <p className="text-[8px] text-[var(--text-muted)] font-bold uppercase tracking-widest">National Food Safety Analytics</p>
-          <span className="text-[8px] text-[var(--text-muted)] italic font-semibold mt-0.5">"This information is generated from all FoodGuard users."</span>
-        </div>
-
-        {/* ============================================================
-           🌍 SECTION 3: FOODGUARD INTELLIGENCE (Green Accent)
-           ============================================================ */}
-        <div ref={platformRef} className="scroll-mt-36 flex flex-col gap-6">
-          
-          {/* Section 4: Information Badge */}
-          <div className="card p-4.5 bg-green-500/[0.02] border border-green-500/20 rounded-2xl flex gap-3.5 items-start">
-             <div className="w-8 h-8 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-500 shrink-0 mt-0.5">
-                <Info size={16} />
-             </div>
-             <div>
-                <h4 className="text-[10px] font-black text-green-500 uppercase tracking-wider">Platform Intelligence</h4>
-                <p className="text-[10px] text-[var(--text-secondary)] font-medium leading-relaxed mt-1">
-                   These insights are generated from anonymous data submitted by FoodGuard users across India. This helps authorities identify food safety trends and adulteration hotspots.
-                </p>
-             </div>
-          </div>
-
-          {/* National Overview Cards (Green Accent) */}
-          <div className="grid grid-cols-2 gap-4">
-            
-            {/* Card 1: Tested Samples Today */}
-            <div className="card border-green-500/20 bg-green-500/[0.01] flex flex-col justify-between h-28 shadow-sm relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-3 text-green-500/10 group-hover:text-green-500/20 transition-colors">
-                <Beaker size={32} />
-              </div>
-              <div>
-                <p className="text-[8px] text-[var(--text-muted)] font-black uppercase tracking-wider font-semibold">Total Samples Tested Today</p>
-                <h2 className="text-2xl font-black tracking-tight text-green-500 font-mono mt-1">
-                  <CountUp end={platformStats.testedToday} />
-                </h2>
-              </div>
-              <p className="text-[7px] text-green-500 font-bold uppercase tracking-wider flex items-center gap-0.5">
-                <TrendingUp size={8} /> +14.2% since yesterday
-              </p>
-            </div>
-
-            {/* Card 2: Average Purity */}
-            <div className="card border-green-500/20 bg-green-500/[0.01] flex flex-col justify-between h-28 shadow-sm relative overflow-hidden group">
-              <div>
-                <p className="text-[8px] text-[var(--text-muted)] font-black uppercase tracking-wider font-semibold">Average Purity</p>
-                <h2 className="text-2xl font-black tracking-tight text-green-500 font-mono mt-1">
-                  <CountUp end={platformStats.averagePurity} suffix="%" />
-                </h2>
-              </div>
-              <div className="w-full bg-green-500/10 h-1.5 rounded-full overflow-hidden">
-                <div 
-                  className="bg-green-500 h-full rounded-full transition-all duration-1000"
-                  style={{ width: `${platformStats.averagePurity}%` }}
-                />
-              </div>
-            </div>
-
-            {/* Card 3: Unsafe Samples */}
-            <div className="card border-green-500/20 bg-green-500/[0.01] flex flex-col justify-between h-28 shadow-sm relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-3 text-green-500/10 group-hover:text-green-500/20 transition-colors">
-                <ShieldAlert size={32} />
-              </div>
-              <div>
-                <p className="text-[8px] text-[var(--text-muted)] font-black uppercase tracking-wider font-semibold">Unsafe Samples Detected</p>
-                <h2 className="text-2xl font-black tracking-tight text-green-500 font-mono mt-1">
-                  <CountUp end={platformStats.unsafeCount} />
-                </h2>
-              </div>
-              <p className="text-[7px] text-red-500 font-bold uppercase tracking-wider">Critical recall active</p>
-            </div>
-
-            {/* Card 4: Active Hotspots */}
-            <div className="card border-green-500/20 bg-green-500/[0.01] flex flex-col justify-between h-28 shadow-sm relative overflow-hidden group">
-              <div className="absolute top-0 right-0 p-3 text-green-500/10 group-hover:text-green-500/20 transition-colors">
-                <Flame size={32} />
-              </div>
-              <div>
-                <p className="text-[8px] text-[var(--text-muted)] font-black uppercase tracking-wider font-semibold">Active Hotspot Zones</p>
-                <h2 className="text-2xl font-black tracking-tight text-green-500 font-mono mt-1">
-                  <CountUp end={platformStats.activeHotspots} />
-                </h2>
-              </div>
-              <p className="text-[7px] text-green-500 font-bold uppercase tracking-wider flex items-center gap-0.5">
-                <TrendingDown size={8} /> -2 zones resolved
-              </p>
-            </div>
-          </div>
-
-          {/* District Purity Analytics (Green Accent Progress bar) */}
-          <div className="card p-6 shadow-sm border border-green-500/10">
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="text-[10px] font-black text-green-500 uppercase tracking-widest leading-none">District Purity Analytics</h3>
-              <div className="relative">
-                <select 
-                  value={selectedDistrict}
-                  onChange={e => setSelectedDistrict(e.target.value)}
-                  className="bg-[var(--bg-elevated)] border border-[var(--border-color)] theme-text rounded-xl py-2 pl-4 pr-10 text-[10px] font-black uppercase tracking-wider outline-none appearance-none cursor-pointer"
-                >
-                  {Object.keys(DISTRICT_COORDINATES).sort().map(d => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
-                </select>
-                <ChevronDown size={12} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 border-b border-[var(--border-color)] pb-5 mb-5">
-              <div>
-                <p className="text-[8px] text-[var(--text-muted)] font-bold uppercase tracking-wider mb-1">Average Purity</p>
-                <h4 className={`text-2xl font-black font-mono ${selectedDistrictData.avgPurity >= 80 ? 'text-green-500' : selectedDistrictData.avgPurity >= 60 ? 'text-amber-500' : 'text-red-500'}`}>
-                  {selectedDistrictData.avgPurity}%
-                </h4>
-              </div>
-              <div>
-                <p className="text-[8px] text-[var(--text-muted)] font-bold uppercase tracking-wider mb-1">Total Samples</p>
-                <h4 className="text-2xl font-black font-mono theme-text">{selectedDistrictData.totalSamples}</h4>
-              </div>
-              <div>
-                <p className="text-[8px] text-[var(--text-muted)] font-bold uppercase tracking-wider mb-1">Unsafe Samples</p>
-                <h4 className="text-2xl font-black font-mono text-red-500">{selectedDistrictData.unsafeSamples}</h4>
-              </div>
-              <div>
-                <p className="text-[8px] text-[var(--text-muted)] font-bold uppercase tracking-wider mb-1">Max Adulteration</p>
-                <h4 className="text-2xl font-black font-mono text-orange-500">{selectedDistrictData.maxAdulteration}%</h4>
-              </div>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <div className="flex justify-between items-center text-[9px] font-bold text-[var(--text-muted)]">
-                <span className="uppercase tracking-widest">District Safety Status</span>
-                <span className={selectedDistrictData.trend >= 0 ? "text-green-500 flex items-center gap-0.5" : "text-red-500 flex items-center gap-0.5"}>
-                  {selectedDistrictData.trend >= 0 ? <TrendingUp size={10} /> : <TrendingDown size={10} />}
-                  {selectedDistrictData.trend >= 0 ? `+${selectedDistrictData.trend}%` : `${selectedDistrictData.trend}%`} vs last week
-                </span>
-              </div>
+            {/* Personal overview stats cards grid */}
+            <div className="grid grid-cols-2 gap-3.5">
               
-              <div className="w-full bg-[var(--bg-elevated)] h-2.5 rounded-full overflow-hidden">
-                <div 
-                  className={`h-full rounded-full transition-all duration-700 ${
-                    selectedDistrictData.avgPurity >= 80 ? 'bg-green-500' : selectedDistrictData.avgPurity >= 60 ? 'bg-amber-500' : 'bg-red-500'
-                  }`}
-                  style={{ width: `${selectedDistrictData.avgPurity}%` }}
-                />
+              <div className="card border-blue-500/10 bg-blue-500/[0.01] hover:border-blue-500/30 p-4 h-24 flex flex-col justify-between">
+                <span className="text-[7px] text-[var(--text-muted)] font-black uppercase tracking-wider">Samples Tested</span>
+                <h3 className="text-xl font-black text-blue-500 font-mono"><CountUp end={personalStats.samplesTested} /></h3>
+                <span className="text-[6px] text-blue-500 font-bold uppercase tracking-wider">Acquired scans</span>
+              </div>
+
+              <div className="card border-blue-500/10 bg-blue-500/[0.01] hover:border-blue-500/30 p-4 h-24 flex flex-col justify-between">
+                <span className="text-[7px] text-[var(--text-muted)] font-black uppercase tracking-wider">Average Purity</span>
+                <h3 className="text-xl font-black text-blue-500 font-mono"><CountUp end={personalStats.avgPurity} suffix="%" /></h3>
+                <span className="text-[6px] text-blue-500 font-bold uppercase tracking-wider">Standard match rating</span>
+              </div>
+
+              <div className="card border-blue-500/10 bg-blue-500/[0.01] hover:border-blue-500/30 p-4 h-24 flex flex-col justify-between">
+                <span className="text-[7px] text-[var(--text-muted)] font-black uppercase tracking-wider">Unsafe Found</span>
+                <h3 className="text-xl font-black text-red-500 font-mono"><CountUp end={personalStats.unsafeFound} /></h3>
+                <span className="text-[6px] text-red-500 font-bold uppercase tracking-wider">Adulteration confirmed</span>
+              </div>
+
+              <div className="card border-blue-500/10 bg-blue-500/[0.01] hover:border-blue-500/30 p-4 h-24 flex flex-col justify-between">
+                <span className="text-[7px] text-[var(--text-muted)] font-black uppercase tracking-wider">Reports Submitted</span>
+                <h3 className="text-xl font-black text-blue-500 font-mono"><CountUp end={personalStats.reportsSubmitted} /></h3>
+                <span className="text-[6px] text-blue-500 font-bold uppercase tracking-wider">FSSAI warning filings</span>
+              </div>
+
+              <div className="card border-blue-500/10 bg-blue-500/[0.01] hover:border-blue-500/30 p-4 h-24 flex flex-col justify-between">
+                <span className="text-[7px] text-[var(--text-muted)] font-black uppercase tracking-wider">Trusted Vendors</span>
+                <h3 className="text-xl font-black text-blue-500 font-mono"><CountUp end={personalStats.trustedVendors} /></h3>
+                <span className="text-[6px] text-blue-500 font-bold uppercase tracking-wider">Safe store audits</span>
+              </div>
+
+              <div className="card border-blue-500/10 bg-blue-500/[0.01] hover:border-blue-500/30 p-4 h-24 flex flex-col justify-between">
+                <span className="text-[7px] text-[var(--text-muted)] font-black uppercase tracking-wider">Food Donations</span>
+                <h3 className="text-xl font-black text-blue-500 font-mono"><CountUp end={personalStats.foodDonations} /></h3>
+                <span className="text-[6px] text-blue-500 font-bold uppercase tracking-wider">NGO surplus drops</span>
+              </div>
+
+            </div>
+
+            <div className="card border-blue-500/10 bg-blue-500/[0.01] p-4.5">
+              <span className="text-[8px] text-[var(--text-muted)] font-black uppercase tracking-wider block mb-1">Complaint Log Status</span>
+              <p className="text-xs font-bold theme-text">{personalStats.complaintStatus}</p>
+            </div>
+
+            {/* Personal Safety Score details */}
+            <div className="card p-5 border border-[var(--border-color)]">
+              <h3 className="text-[10px] font-black text-blue-500 uppercase tracking-widest border-b border-[var(--border-color)] pb-2 mb-4">My Contributor Statistics</h3>
+              <div className="grid grid-cols-2 gap-4 text-center">
+                <div>
+                  <p className="text-[8px] text-[var(--text-muted)] font-bold uppercase mb-0.5">Food Safety Score</p>
+                  <p className="text-2xl font-black text-blue-500 font-mono">{personalStats.safetyScore}</p>
+                </div>
+                <div>
+                  <p className="text-[8px] text-[var(--text-muted)] font-bold uppercase mb-0.5">Contribution Tier</p>
+                  <p className="text-xs font-black text-green-500 uppercase mt-2.5 flex items-center justify-center gap-1"><Award size={12} /> {personalStats.contributionLevel}</p>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Top Adulteration Hotspots */}
-          <div className="card p-6 shadow-sm border border-green-500/10">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-[10px] font-black text-green-500 uppercase tracking-widest leading-none">Top Adulteration Hotspots</h3>
-              <span className="text-[8px] font-black text-red-500 bg-red-500/10 border border-red-500/20 px-2 py-1 rounded-full uppercase tracking-wider">Urgent Focus</span>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              {topHotspots.map((hot, idx) => (
-                <div 
-                  key={hot.name} 
-                  onClick={() => navigate('/hotspots')}
-                  className="flex items-center justify-between p-3.5 bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded-2xl hover:border-green-500/35 transition-colors cursor-pointer group"
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs font-bold text-[var(--text-muted)] font-mono">#{idx+1}</span>
-                    <div>
-                      <h4 className="font-bold text-sm theme-text">{hot.name}</h4>
-                      <p className="text-[9px] text-[var(--text-muted)] font-bold uppercase tracking-wider mt-0.5">Most Detected: {hot.oilType}</p>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <div className="text-right">
-                      <p className="text-xs font-black text-red-400 font-mono">{hot.avgPurity}% Purity</p>
-                      <p className="text-[8px] text-[var(--text-muted)] font-bold uppercase tracking-widest mt-0.5">{hot.reportsCount} Reports</p>
-                    </div>
-                    <span className={`text-[8px] font-black px-2 py-1 rounded-md border tracking-wider ${hot.colorClass}`}>
-                      {hot.riskLevel}
-                    </span>
-                  </div>
+            {/* AI Nutrition Planner CTA Card */}
+            <div className="card p-5 border border-green-500/20 bg-green-500/[0.01] hover:border-green-500/40 cursor-pointer flex justify-between items-center transition-all" onClick={() => navigate('/nutrition')}>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center text-green-500">
+                  <Apple size={20} />
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Most Frequently Adulterated Products */}
-          <div className="flex flex-col gap-3">
-            <h3 className="text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest pl-1">Most Frequently Adulterated</h3>
-            
-            <div className="grid grid-cols-2 gap-3">
-              {productAdulteration.map(p => (
-                <div key={p.name} className="card p-4 flex flex-col justify-between gap-3 relative overflow-hidden group border border-green-500/10">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="font-bold text-sm theme-text tracking-tight leading-tight">{p.name}</h4>
-                      <p className="text-[9px] text-[var(--text-muted)] font-bold uppercase tracking-wider mt-0.5">{p.reports} Reports</p>
-                    </div>
-                    <div className={p.trend > 0 ? "text-red-500" : "text-green-500"}>
-                      {p.trend > 0 ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between items-end border-t border-[var(--border-color)]/50 pt-2 mt-1">
-                    <div>
-                      <p className="text-[7px] text-[var(--text-muted)] font-bold uppercase tracking-widest">Avg Purity</p>
-                      <p className={`text-base font-black font-mono ${p.avgPurity >= 75 ? 'text-green-500' : p.avgPurity >= 65 ? 'text-amber-500' : 'text-red-500'}`}>
-                        {p.avgPurity}%
-                      </p>
-                    </div>
-                    <span className={`text-[8px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${p.trend > 0 ? 'bg-red-500/10 text-red-400' : 'bg-green-500/10 text-green-400'}`}>
-                      {p.trend > 0 ? `+${p.trend}%` : `${p.trend}%`}
-                    </span>
-                  </div>
+                <div className="text-left">
+                  <h4 className="font-black text-xs theme-text uppercase tracking-wider">AI Nutrition & Meal Planner</h4>
+                  <p className="text-[8px] text-[var(--text-muted)] font-bold uppercase mt-0.5">Healthy meals & reduce food waste</p>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Repeat Offenders (Red Accent warning styling) */}
-          <div className="card p-6 shadow-sm border border-red-500/10 bg-red-500/[0.005]">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-[10px] font-black text-red-500 uppercase tracking-widest leading-none flex items-center gap-1.5">
-                <ShieldAlert size={14} className="text-red-500" />
-                <span>Repeat Offenders</span>
-              </h3>
-              <span className="text-[8px] font-black text-red-500 bg-red-500/10 border border-red-500/20 px-2.5 py-1 rounded-full uppercase tracking-wider animate-pulse">Critical Alert</span>
+              </div>
+              <ChevronRight size={16} className="text-green-500" />
             </div>
 
-            <div className="flex flex-col gap-3">
-              {repeatOffenders.map(off => (
-                <div 
-                  key={off.name}
-                  className="p-4 bg-[var(--bg-elevated)] border border-red-500/15 rounded-2xl flex flex-col gap-2 shadow-sm"
-                >
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h4 className="font-bold text-sm theme-text leading-none">{off.name}</h4>
-                      <p className="text-[9px] text-[var(--text-secondary)] font-bold uppercase tracking-wider mt-1.5 flex items-center gap-1">
-                        <MapPin size={10} className="text-red-500" /> {off.district}
-                      </p>
-                    </div>
-                    <span className={`text-[8px] font-black uppercase tracking-wider px-2 py-1 rounded border ${
-                      off.riskScore === 'Critical' ? 'text-red-500 bg-red-500/10 border-red-500/20' : 'text-amber-500 bg-amber-500/10 border-amber-500/20'
-                    }`}>
-                      {off.riskScore}
-                    </span>
+            {/* Weekly activity SVG chart representation */}
+            <div className="card p-5 border border-[var(--border-color)]">
+              <h3 className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-4">Weekly Scan Activity</h3>
+              <div className="h-28 flex items-end justify-between gap-3 px-2">
+                {[4, 8, 5, 12, 6, 9, 11].map((val, idx) => (
+                  <div key={idx} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
+                    <div className="w-full bg-blue-500 rounded-t-sm" style={{ height: `${(val / 15) * 100}%` }} />
+                    <span className="text-[7px] text-[var(--text-muted)] font-bold uppercase">Day {idx+1}</span>
                   </div>
-
-                  <div className="grid grid-cols-3 gap-2 bg-[var(--bg-card)] rounded-xl p-3 border border-[var(--border-color)] mt-1.5 text-center">
-                    <div>
-                      <p className="text-[7px] text-[var(--text-muted)] font-bold uppercase tracking-widest mb-0.5">Failed Tests</p>
-                      <p className="text-sm font-black text-red-500 font-mono">{off.failedTests}</p>
-                    </div>
-                    <div className="border-x border-[var(--border-color)]">
-                      <p className="text-[7px] text-[var(--text-muted)] font-bold uppercase tracking-widest mb-0.5">Latest Purity</p>
-                      <p className="text-sm font-black theme-text font-mono">{off.latestPurity}%</p>
-                    </div>
-                    <div>
-                      <p className="text-[7px] text-[var(--text-muted)] font-bold uppercase tracking-widest mb-0.5">Last Checked</p>
-                      <p className="text-[9px] font-bold text-[var(--text-secondary)] mt-0.5 truncate">{off.lastInspection}</p>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Time Based Purity Trends (Green Accent) */}
-          <div className="card p-6 shadow-sm border border-green-500/10">
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="text-[10px] font-black text-green-500 uppercase tracking-widest leading-none">Time Based Purity Trends</h3>
-              
-              <div className="flex bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded-lg p-0.5">
-                {['24h', 'Week', 'Month', 'Year'].map(filter => (
-                  <button
-                    key={filter}
-                    onClick={() => setTimeFilter(filter)}
-                    className={`px-2.5 py-1 text-[8px] font-black uppercase tracking-wider rounded-md transition-all ${
-                      timeFilter === filter 
-                        ? 'bg-green-500 text-black font-extrabold shadow-sm' 
-                        : 'text-[var(--text-secondary)] hover:theme-text'
-                    }`}
-                  >
-                    {filter}
-                  </button>
                 ))}
               </div>
             </div>
 
-            <div className="h-44 w-full mb-1">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData} margin={{ top: 5, right: 5, left: -25, bottom: 0 }}>
-                  <XAxis 
-                    dataKey="name" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fontSize: 8, fill: 'var(--text-muted)' }} 
-                    dy={10} 
-                  />
-                  <YAxis 
-                    domain={[50, 100]} 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fontSize: 8, fill: 'var(--text-muted)' }} 
-                  />
-                  <Tooltip
-                    cursor={{ stroke: 'rgba(34,197,94,0.1)', strokeWidth: 2 }}
-                    contentStyle={{ backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color)', borderRadius: '12px' }}
-                    itemStyle={{ color: '#22c55e', fontWeight: 'bold' }}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="score" 
-                    stroke="#22c55e" 
-                    strokeWidth={3}
-                    dot={{ r: 3, fill: 'var(--bg-page)', stroke: '#22c55e', strokeWidth: 1.5 }}
-                    activeDot={{ r: 5, fill: '#22c55e', stroke: '#fff' }}
-                    animationDuration={1200}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
           </div>
+        )}
 
-          {/* AI Insights */}
-          <div className="card p-6 shadow-sm border border-green-500/10 mb-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Sparkles size={16} className="text-green-500" />
-              <h3 className="text-[10px] font-black text-green-500 uppercase tracking-widest leading-none">Automated AI Insights</h3>
+        {/* ============================================================
+           🌍 2. NATIONAL INTELLIGENCE DASHBOARD VIEW
+           ============================================================ */}
+        {activeTab === 'national' && (
+          <div className="flex flex-col gap-5 animate-fade-in">
+            
+            <div className="border-l-4 border-green-500 pl-3">
+              <h2 className="text-base font-black theme-text uppercase tracking-wider">🌍 National Food Intelligence</h2>
+              <p className="text-[9px] text-[var(--text-muted)] font-bold uppercase mt-0.5">Anonymous insights generated from verified SpectraTrust users across India.</p>
             </div>
 
-            <div className="flex flex-col gap-3">
-              {aiInsights.map(insight => (
-                <div 
-                  key={insight.id}
-                  className="p-3.5 bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded-2xl flex gap-3 items-start"
-                >
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 border ${
-                    insight.type === 'danger' ? 'text-red-500 bg-red-500/10 border-red-500/20' :
-                    insight.type === 'warning' ? 'text-amber-500 bg-amber-500/10 border-amber-500/20' :
-                    'text-green-500 bg-green-500/10 border-green-500/20'
-                  }`}>
-                    {insight.type === 'danger' ? <ShieldAlert size={14} /> :
-                     insight.type === 'warning' ? <AlertTriangle size={14} /> :
-                     <ShieldCheck size={14} />}
+            {/* Platform Anonymity Info Banner */}
+            <div className="card p-4.5 bg-green-500/[0.02] border border-green-500/20 rounded-2xl flex gap-3.5 items-start">
+              <div className="w-8 h-8 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center text-green-500 shrink-0 mt-0.5">
+                <Info size={16} />
+              </div>
+              <div>
+                <h4 className="text-[10px] font-black text-green-500 uppercase tracking-wider">Platform Information</h4>
+                <p className="text-[10px] text-[var(--text-secondary)] font-medium leading-relaxed mt-1">
+                  These analytics are generated using anonymized data submitted by verified SpectraTrust users and are intended to improve food safety awareness and assist regulatory authorities.
+                </p>
+              </div>
+            </div>
+
+            {/* National Overview Stats Grid */}
+            <div className="grid grid-cols-2 gap-3.5">
+              
+              <div className="card border-green-500/10 bg-green-500/[0.01] p-4 h-24 flex flex-col justify-between">
+                <span className="text-[7px] text-[var(--text-muted)] font-black uppercase tracking-wider">Total Samples</span>
+                <h3 className="text-xl font-black text-green-500 font-mono"><CountUp end={platformStats.testedToday} /></h3>
+                <span className="text-[6px] text-green-500 font-bold uppercase tracking-wider">All-time scan registry</span>
+              </div>
+
+              <div className="card border-green-500/10 bg-green-500/[0.01] p-4 h-24 flex flex-col justify-between">
+                <span className="text-[7px] text-[var(--text-muted)] font-black uppercase tracking-wider">National Average Purity</span>
+                <h3 className="text-xl font-black text-green-500 font-mono"><CountUp end={platformStats.averagePurity} suffix="%" /></h3>
+                <span className="text-[6px] text-green-500 font-bold uppercase tracking-wider">Standard compliance baseline</span>
+              </div>
+
+              <div className="card border-green-500/10 bg-green-500/[0.01] p-4 h-24 flex flex-col justify-between">
+                <span className="text-[7px] text-[var(--text-muted)] font-black uppercase tracking-wider">High Risk Districts</span>
+                <h3 className="text-xl font-black text-red-500 font-mono"><CountUp end={platformStats.highRiskDistricts} /></h3>
+                <span className="text-[6px] text-red-500 font-bold uppercase tracking-wider">Urgent alerts</span>
+              </div>
+
+              <div className="card border-green-500/10 bg-green-500/[0.01] p-4 h-24 flex flex-col justify-between">
+                <span className="text-[7px] text-[var(--text-muted)] font-black uppercase tracking-wider">Most Reported Oil</span>
+                <h3 className="text-sm font-black theme-text uppercase mt-2.5 truncate">{platformStats.mostReportedOil}</h3>
+                <span className="text-[6px] text-[var(--text-muted)] font-bold uppercase tracking-wider">High contamination target</span>
+              </div>
+
+              <div className="card border-green-500/10 bg-green-500/[0.01] p-4 h-24 flex flex-col justify-between">
+                <span className="text-[7px] text-[var(--text-muted)] font-black uppercase tracking-wider">Government Alerts</span>
+                <h3 className="text-xl font-black text-orange-500 font-mono"><CountUp end={platformStats.govAlerts} /></h3>
+                <span className="text-[6px] text-orange-500 font-bold uppercase tracking-wider">Active recalls</span>
+              </div>
+
+              <div className="card border-green-500/10 bg-green-500/[0.01] p-4 h-24 flex flex-col justify-between">
+                <span className="text-[7px] text-[var(--text-muted)] font-black uppercase tracking-wider">Verified Vendors</span>
+                <h3 className="text-xl font-black text-green-500 font-mono"><CountUp end={platformStats.verifiedVendors} /></h3>
+                <span className="text-[6px] text-green-500 font-bold uppercase tracking-wider">Safety approved shops</span>
+              </div>
+
+            </div>
+
+            {/* Smart AI Insights */}
+            <div className="card p-5 border border-green-500/15 bg-green-500/[0.005]">
+              <div className="flex items-center gap-2 mb-4">
+                <Sparkles size={16} className="text-green-500" />
+                <h3 className="text-[10px] font-black text-green-500 uppercase tracking-widest leading-none">Smart AI Insights</h3>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                {aiInsights.map(insight => (
+                  <div key={insight.id} className="p-3.5 bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded-2xl flex gap-3.5 items-start">
+                    <div className="w-7 h-7 rounded-lg bg-green-500/10 border border-green-500/20 text-green-500 flex items-center justify-center shrink-0 mt-0.5">
+                      <ShieldCheck size={14} />
+                    </div>
+                    <p className="text-[11px] font-semibold leading-relaxed text-[var(--text-secondary)]">{insight.text}</p>
                   </div>
-                  <p className="text-[11px] font-semibold leading-relaxed text-[var(--text-secondary)]">
-                    {insight.text}
-                  </p>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
 
-        </div>
+            {/* District Purity Analytics */}
+            <div className="card p-6 shadow-sm border border-green-500/10">
+              <div className="flex items-center justify-between mb-5">
+                <h3 className="text-[10px] font-black text-green-500 uppercase tracking-widest leading-none">District Purity Analytics</h3>
+                <div className="relative">
+                  <select 
+                    value={selectedDistrict}
+                    onChange={e => setSelectedDistrict(e.target.value)}
+                    className="bg-[var(--bg-elevated)] border border-[var(--border-color)] theme-text rounded-xl py-2 pl-4 pr-10 text-[10px] font-black uppercase tracking-wider outline-none appearance-none cursor-pointer"
+                  >
+                    {Object.keys(DISTRICT_COORDINATES).sort().map(d => (
+                      <option key={d} value={d}>{d}</option>
+                    ))}
+                  </select>
+                  <ChevronDown size={12} className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 border-b border-[var(--border-color)] pb-5 mb-5">
+                <div>
+                  <p className="text-[8px] text-[var(--text-muted)] font-bold uppercase tracking-wider mb-1">Average Purity</p>
+                  <h4 className="text-2xl font-black font-mono text-green-500">{selectedDistrictData.avgPurity}%</h4>
+                </div>
+                <div>
+                  <p className="text-[8px] text-[var(--text-muted)] font-bold uppercase tracking-wider mb-1">Total Samples</p>
+                  <h4 className="text-2xl font-black font-mono theme-text">{selectedDistrictData.totalSamples}</h4>
+                </div>
+                <div>
+                  <p className="text-[8px] text-[var(--text-muted)] font-bold uppercase tracking-wider mb-1">Unsafe Samples</p>
+                  <h4 className="text-2xl font-black font-mono text-red-500">{selectedDistrictData.unsafeSamples}</h4>
+                </div>
+                <div>
+                  <p className="text-[8px] text-[var(--text-muted)] font-bold uppercase tracking-wider mb-1">Max Adulteration</p>
+                  <h4 className="text-2xl font-black font-mono text-orange-500">{selectedDistrictData.maxAdulteration}%</h4>
+                </div>
+              </div>
+            </div>
+
+            {/* Top Hotspots list */}
+            <div className="card p-6 border border-green-500/10">
+              <h3 className="text-[10px] font-black text-green-500 uppercase tracking-widest mb-4">Top Adulteration Hotspots</h3>
+              <div className="flex flex-col gap-3">
+                {topHotspots.map((hot, idx) => (
+                  <div key={hot.name} className="p-3.5 bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded-2xl flex items-center justify-between">
+                    <div>
+                      <h4 className="font-bold text-xs theme-text">#{idx+1} {hot.name}</h4>
+                      <p className="text-[8px] text-[var(--text-muted)] font-black uppercase mt-1">Primary concern: {hot.oilType}</p>
+                    </div>
+                    <span className="text-[10px] font-black text-red-500 font-mono">{hot.avgPurity}% Purity</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Repeat Offenders */}
+            <div className="card p-6 border border-red-500/10 bg-red-500/[0.005]">
+              <h3 className="text-[10px] font-black text-red-500 uppercase tracking-widest flex items-center gap-1.5 mb-4">
+                <ShieldAlert size={14} className="text-red-500" />
+                <span>Repeat Offenders</span>
+              </h3>
+              <div className="flex flex-col gap-3">
+                {repeatOffenders.map(off => (
+                  <div key={off.name} className="p-4 bg-[var(--bg-elevated)] border border-red-500/10 rounded-2xl flex justify-between items-center">
+                    <div>
+                      <h4 className="font-bold text-xs theme-text">{off.name}</h4>
+                      <p className="text-[8px] text-[var(--text-muted)] font-black uppercase mt-1">{off.district} • {off.failedTests} violations</p>
+                    </div>
+                    <span className="text-[9px] font-black text-red-500 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded uppercase">{off.riskScore}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Live Activity Feed timeline */}
+            <div className="card p-6 border border-green-500/10">
+              <h3 className="text-[10px] font-black text-green-500 uppercase tracking-widest mb-4">Live Platform Activity Feed</h3>
+              <div className="flex flex-col gap-4 relative pl-3.5 before:absolute before:left-[4px] before:top-2 before:bottom-2 before:w-[1.5px] before:bg-[var(--border-color)]">
+                {activityFeed.map((act, idx) => (
+                  <div key={idx} className="relative flex justify-between items-start gap-4">
+                    <span className="absolute -left-[14px] top-1.5 w-2 h-2 rounded-full bg-green-500 border border-[var(--bg-card)]" />
+                    <div>
+                      <p className="text-xs font-bold theme-text leading-tight">{act.text}</p>
+                      <p className="text-[8px] text-[var(--text-muted)] font-black uppercase tracking-wider mt-1">{act.time}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
+        )}
 
       </div>
 
@@ -958,8 +733,8 @@ export default function Home() {
 
             <div className="flex flex-col gap-3 mb-6">
               <div className="p-4 bg-[var(--bg-elevated)] border border-red-500/20 rounded-2xl">
-                <p className="text-xs font-bold text-red-500 uppercase tracking-widest">CRITICAL ALERT</p>
-                <p className="text-xs text-[var(--text-secondary)] mt-1 font-semibold">Ahmedabad Gold Refineries flagged as Heavily Adulterated (45% Purity).</p>
+                <p className="text-xs font-bold text-red-500 uppercase tracking-widest">CRITICAL RECALL</p>
+                <p className="text-xs text-[var(--text-secondary)] mt-1 font-semibold">Sharma Oil Traders flagged as Heavily Adulterated (61% Purity).</p>
                 <p className="text-[9px] text-[var(--text-muted)] mt-2">2 minutes ago</p>
               </div>
               
@@ -967,12 +742,6 @@ export default function Home() {
                 <p className="text-xs font-bold text-amber-500 uppercase tracking-widest">ALERT WARNING</p>
                 <p className="text-xs text-[var(--text-secondary)] mt-1 font-semibold">Mustard Oil purity trend is decreasing in Mumbai district.</p>
                 <p className="text-[9px] text-[var(--text-muted)] mt-2">1 hour ago</p>
-              </div>
-
-              <div className="p-4 bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded-2xl">
-                <p className="text-xs font-bold text-green-500 uppercase tracking-widest">SYSTEM OK</p>
-                <p className="text-xs text-[var(--text-secondary)] mt-1 font-semibold">All 13 spectral sensor links are operating normally.</p>
-                <p className="text-[9px] text-[var(--text-muted)] mt-2">4 hours ago</p>
               </div>
             </div>
 

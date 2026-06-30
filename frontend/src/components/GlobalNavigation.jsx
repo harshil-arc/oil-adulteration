@@ -1,7 +1,7 @@
 import { 
   X, Home, ScanLine, Clock, MapIcon, Users,
   BookOpen, FileText, User, Settings, Info,
-  LogOut, LayoutDashboard, Zap
+  LogOut, LayoutDashboard, Zap, Apple
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
@@ -16,6 +16,7 @@ export default function GlobalNavigation() {
     { id: 'scan', label: 'Oil Analysis', desc: 'Real-time Adulteration Check', icon: ScanLine, path: '/scan' },
     { id: 'hotspots', label: 'Safety Hotspots', desc: 'Interactive Adulteration Map', icon: MapIcon, path: '/hotspots' },
     { id: 'community', label: 'Community Rescue', desc: 'Food Donation & NGO Portal', icon: Users, path: '/community' },
+    { id: 'nutrition', label: 'AI Nutrition', desc: 'Smart Meal Planner & Pantry', icon: Apple, path: '/nutrition' },
     { id: 'learning', label: 'Learning Center', desc: 'Documentation & Guides', icon: BookOpen, path: '/learning' },
     { id: 'reports', label: 'System Reports', desc: 'Logs & Formal Analytics', icon: FileText, path: '/reports' },
     { id: 'profile', label: 'Profile Settings', desc: 'Inspector Identity & Config', icon: User, path: '/profile' },
@@ -42,7 +43,7 @@ export default function GlobalNavigation() {
                  <LayoutDashboard size={20} className="text-black" />
               </div>
               <div>
-                 <h2 className="text-sm font-black theme-text uppercase tracking-widest leading-none">FoodGuard Control</h2>
+                 <h2 className="text-sm font-black theme-text uppercase tracking-widest leading-none">SpectraTrust Control</h2>
                  <p className="text-[9px] text-[var(--text-muted)] font-bold uppercase tracking-widest mt-1">Universal Drawer</p>
               </div>
            </div>
