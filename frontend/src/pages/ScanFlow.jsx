@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Wifi, Bluetooth, Usb, CheckCircle2, XCircle, AlertTriangle, 
-  ChevronLeft, Droplets, RefreshCw, ShieldCheck, Globe, Zap, 
+  ChevronLeft, ChevronRight, Droplets, RefreshCw, ShieldCheck, Globe, Zap, 
   Sliders, Plus, Calendar, Compass, Share2, Printer, 
   ArrowRight, ShieldAlert, Award, Search, Info, HelpCircle, FileText
 } from 'lucide-react';
