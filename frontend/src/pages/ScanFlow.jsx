@@ -1,839 +1,644 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { 
-  Wifi, Bluetooth, Usb, CheckCircle2, XCircle, AlertTriangle, 
-  ChevronLeft, ChevronRight, Droplets, RefreshCw, ShieldCheck, Globe, Zap, 
-  Sliders, Plus, Calendar, Compass, Share2, Printer, 
-  ArrowRight, ShieldAlert, Award, Search, Info, HelpCircle, FileText
-} from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Wifi, Bluetooth, Usb, CheckCircle2, XCircle, AlertTriangle, ChevronLeft, Droplets, RefreshCw, ShieldCheck, Globe, Zap } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
-
-// Simple Circular Gauge Component
-function CircularGauge({ value, label, color = "stroke-brand-500", size = 120 }) {
-  const radius = size * 0.4;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (value / 100) * circumference;
-
-  return (
-    <div className="flex flex-col items-center justify-center relative" style={{ width: size, height: size }}>
-      <svg className="transform -rotate-90 w-full h-full">
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          className="stroke-[var(--border-color)] fill-none"
-          strokeWidth="6"
-        />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          className={`${color} fill-none transition-all duration-1000 ease-out`}
-          strokeWidth="8"
-          strokeDasharray={circumference}
-          strokeDashoffset={strokeDashoffset}
-          strokeLinecap="round"
-        />
-      </svg>
-      <div className="absolute flex flex-col items-center justify-center text-center">
-        <span className="text-xl font-black theme-text font-mono">{Math.round(value)}%</span>
-        <span className="text-[7px] text-[var(--text-muted)] font-black uppercase tracking-wider">{label}</span>
-      </div>
-    </div>
-  );
-}
+import { socket } from '../lib/socket';
+import ErrorBoundary from '../components/ErrorBoundary';
+import BLEConnection from '../components/BLEConnection';
+import USBConnection from '../components/USBConnection';
+import { safeLocalFetch } from '../lib/sensorApi';
 
 export default function ScanFlow() {
   const navigate = useNavigate();
-  const { profile } = useApp();
-
-  // Primary sub-page routing state
-  const [subView, setSubView] = useState('select_oil'); // select_oil, connect_device, verify_device, scanning, results, history, compare, trends
+  const { deviceStatus, liveData } = useApp();
   
-  // Connection states
-  const [connMode, setConnMode] = useState('wifi'); // 'wifi', 'ble', 'usb'
-  const [deviceStatus, setDeviceStatus] = useState('Disconnected'); // Connected, Disconnected, Connecting, Scanning, Error
-  const [deviceInfo, setDeviceInfo] = useState({
-    deviceId: 'PUREOIL-ESP32-8842',
-    firmware: 'v2.4.1',
-    battery: '82%',
-    signal: '-58 dBm',
-    lastSync: 'Just now'
-  });
+  // 0: MethodSelect, 1a: BLE, 1b: WiFi, 1c: USB, 2: Verification, 3: Scanning, 4: Results
+  const [step, setStep] = useState(0);
+  const [method, setMethod] = useState(null); 
+  const [loading, setLoading] = useState(false);
+  const [errorText, setErrorText] = useState(null);
+  const [deviceInfo, setDeviceInfo] = useState(null);
+  const [progress, setProgress] = useState(0);
+  const [scanResult, setScanResult] = useState(null);
+  const [localLiveData, setLocalLiveData] = useState(null);
+  const [selectedOilType, setSelectedOilType] = useState('Mustard Oil');
 
-  // Selection states
-  const [selectedOil, setSelectedOil] = useState('Mustard Oil');
-  const oilOptions = [
-    'Mustard Oil', 'Groundnut Oil', 'Sunflower Oil', 'Soybean Oil', 
-    'Coconut Oil', 'Palm Oil', 'Olive Oil', 'Sesame Oil'
-  ];
+  // --- Step 0: Selectors ---
+  const handleSelectMethod = (m) => {
+    setMethod(m);
+    setErrorText(null);
+    if (m === 'ble') setStep('1a');
+    else if (m === 'wifi') setStep('1b');
+    else if (m === 'usb') setStep('1c');
+  };
 
-  // Telemetry stream simulated states
-  const [telemetry, setTelemetry] = useState({
-    temperature: 24.5,
-    signalQuality: 98,
-    lightIntensity: 1250,
-    ph: 6.42,
-    density: 0.912,
-    spectral: [320, 410, 480, 560, 620, 710, 780, 840, 890, 940, 990] // AS7343 Wavelength bands
-  });
+  // --- WiFi Connection Logic (REAL PROBE) ---
+  const [wifiTab, setWifiTab] = useState('same');
+  const [wifiIp, setWifiIp] = useState('192.168.1.10');
+  const [isNetworkScanning, setIsNetworkScanning] = useState(false);
+  const [discoveredDevices, setDiscoveredDevices] = useState([]);
+  const [connectingDevice, setConnectingDevice] = useState(null);
 
-  // Animation text sequence
-  const [animationText, setAnimationText] = useState('Scanning spectrum...');
-  const [scanProgress, setScanProgress] = useState(0);
-
-  // Predictions states
-  const [prediction, setPrediction] = useState(null);
-  const [showCertificate, setShowCertificate] = useState(false);
-
-  // Vendor Linking State
-  const [vendorName, setVendorName] = useState('');
-  const [shopName, setShopName] = useState('');
-  const [city, setCity] = useState('Ahmedabad');
-  const [district, setDistrict] = useState('Ahmedabad');
-  const [vendorSavedMsg, setVendorSavedMsg] = useState('');
-
-  // History List
-  const [scanHistory, setScanHistory] = useState([]);
-  const [historySearch, setHistorySearch] = useState('');
-  const [selectedForCompare, setSelectedForCompare] = useState([]); // Array of 2 scan records
-
-  // Seed history fallback
-  useEffect(() => {
-    fetchHistory();
-  }, []);
-
-  const fetchHistory = async () => {
+  const scanNetwork = async () => {
+    setIsNetworkScanning(true);
+    setErrorText(null);
+    setDiscoveredDevices([]);
     try {
-      const { data, error } = await supabase
-        .from('analysis_results')
-        .select('*')
-        .order('timestamp', { ascending: false });
-
-      if (error) throw error;
-      setScanHistory(data || []);
-    } catch {
-      // Local fallback
-      const saved = localStorage.getItem('local_scan_history');
-      if (saved) {
-        setScanHistory(JSON.parse(saved));
+      const apiUrl = import.meta.env.VITE_BACKEND_URL || `http://${window.location.hostname}:4000`;
+      const res = await fetch(`${apiUrl}/api/network/scan`);
+      const data = await res.json();
+      if (data.devices && data.devices.length > 0) {
+        setDiscoveredDevices(data.devices);
       } else {
-        const seedHistory = [
-          { id: "scan-1", oil_type: "Mustard Oil", purity: 94.6, confidence_score: 98, temperature: 24.5, timestamp: new Date(Date.now() - 3600000).toISOString(), quality: "Safe", likely_adulterants: [], device_id: "PUREOIL-ESP32-8842" },
-          { id: "scan-2", oil_type: "Mustard Oil", purity: 42.1, confidence_score: 92, temperature: 26.1, timestamp: new Date(Date.now() - 86400000).toISOString(), quality: "Unsafe", likely_adulterants: ["Refined Palm Oil"], device_id: "PUREOIL-ESP32-8842" },
-          { id: "scan-3", oil_type: "Sunflower Oil", purity: 91.2, confidence_score: 95, temperature: 23.8, timestamp: new Date(Date.now() - 172800000).toISOString(), quality: "Safe", likely_adulterants: [], device_id: "PUREOIL-ESP32-8842" }
-        ];
-        localStorage.setItem('local_scan_history', JSON.stringify(seedHistory));
-        setScanHistory(seedHistory);
+        setErrorText(data.message || "No devices found on the local network.");
       }
+    } catch (err) {
+      setErrorText("Failed to contact local backend for network scan.");
+    } finally {
+      setIsNetworkScanning(false);
     }
   };
 
-  // Connect GATT simulation
-  const handleConnect = () => {
-    setDeviceStatus('Connecting');
-    setTimeout(() => {
-      setDeviceStatus('Connected');
-      setSubView('verify_device');
-    }, 1500);
-  };
-
-  // Scanning triggers
-  const handleStartScan = () => {
-    setSubView('scanning');
-    setScanProgress(0);
-    setDeviceStatus('Scanning');
-    
-    // Animation stages loop
-    const stages = [
-      { p: 20, t: 'Scanning spectrum...' },
-      { p: 40, t: 'Analyzing wavelength bands...' },
-      { p: 60, t: 'Comparing calibration database...' },
-      { p: 80, t: 'Running AI spectral model inference...' },
-      { p: 100, t: 'Generating purity confidence scores...' }
-    ];
-
-    stages.forEach((stage, idx) => {
-      setTimeout(() => {
-        setScanProgress(stage.p);
-        setAnimationText(stage.t);
-        
-        // Finalize scan result
-        if (stage.p === 100) {
-          setTimeout(() => {
-            const finalPurity = selectedOil === 'Palm Oil' ? 45.4 : 92.8;
-            const safetyStatus = finalPurity > 75 ? 'Safe' : 'Unsafe';
-            
-            const newScan = {
-              id: "scan-" + Math.floor(Math.random() * 9999),
-              oil_type: selectedOil,
-              purity: finalPurity,
-              confidence_score: 96,
-              temperature: 24.5,
-              timestamp: new Date().toISOString(),
-              quality: safetyStatus,
-              likely_adulterants: finalPurity < 75 ? ['Refined Palm Oil'] : [],
-              device_id: deviceInfo.deviceId,
-              inference_id: 'INF-' + Math.floor(Math.random() * 900000 + 100000)
-            };
-
-            setPrediction(newScan);
-            
-            // Save to database/local
-            saveScanRecord(newScan);
-            setDeviceStatus('Connected');
-            setSubView('results');
-          }, 600);
-        }
-      }, idx * 1000);
-    });
-  };
-
-  const saveScanRecord = async (record) => {
+  const connectToDevice = async (device) => {
+    setConnectingDevice(device);
+    setErrorText(null);
     try {
-      const { error } = await supabase.from('analysis_results').insert([record]);
-      if (error) throw error;
-      fetchHistory();
-    } catch {
-      const current = [record, ...scanHistory];
-      localStorage.setItem('local_scan_history', JSON.stringify(current));
-      setScanHistory(current);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      
+      const response = await safeLocalFetch(`http://${device.ip}/connect`, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      
+      const data = await response.json();
+      if (data.status !== 'ok') throw new Error("Handshake rejected");
+
+      proceedToVerification({
+        name: device.name,
+        ip: device.ip,
+        method: `WiFi (${device.ip})`,
+        battery: 'AC Power',
+        firmware: 'Embedded WebServer'
+      });
+    } catch (err) {
+      setErrorText(`Failed to connect to ${device.name}.`);
+    } finally {
+      setConnectingDevice(null);
     }
   };
 
-  // Vendor Trust Submission
-  const handleLinkVendor = async (e) => {
-    e.preventDefault();
-    if (!vendorName || !shopName) return;
-
-    const vendorRecord = {
-      name: vendorName,
-      shop_name: shopName,
-      city: city,
-      district: district,
-      last_purity: prediction.purity,
-      status: prediction.quality === 'Safe' ? 'safe' : 'adulterated',
-      updated_at: new Date().toISOString()
-    };
-
-    try {
-      const { error } = await supabase.from('shops').insert([vendorRecord]);
-      if (error) throw error;
-      setVendorSavedMsg('Vendor successfully linked and updated in Supabase!');
-    } catch {
-      setVendorSavedMsg('Linked successfully (local sync)!');
-    }
-  };
-
-  // Share certificate details
-  const handleShareReport = () => {
-    const text = `SpectraTrust Purity Certificate\nOil: ${prediction.oil_type}\nPurity: ${prediction.purity}%\nConfidence: ${prediction.confidence_score}%\nVerification Status: ${prediction.quality}`;
-    if (navigator.share) {
-      navigator.share({ title: 'Oil Purity Report', text, url: window.location.href });
-    } else {
-      alert(`Report Shared:\n${text}`);
-    }
-  };
-
-  // Compare selected 2 scans
-  const compareResult = useMemo(() => {
-    if (selectedForCompare.length !== 2) return null;
-    const [scanA, scanB] = selectedForCompare;
-    const purityDiff = scanB.purity - scanA.purity;
-    let trend = 'Stable';
-    if (purityDiff > 2) trend = 'Improved';
-    else if (purityDiff < -2) trend = 'Declined';
-
-    return {
-      purityDiff: purityDiff.toFixed(1),
-      tempDiff: (scanB.temperature - scanA.temperature).toFixed(1),
-      trend
-    };
-  }, [selectedForCompare]);
-
-  // Trends Summary computations
-  const trendStats = useMemo(() => {
-    const total = scanHistory.length;
-    if (total === 0) return { avgPurity: 92, mostScanned: 'Mustard Oil', suspiciousCount: 0 };
-    const puritySum = scanHistory.reduce((acc, s) => acc + s.purity, 0);
-    const suspicious = scanHistory.filter(s => s.quality === 'Unsafe').length;
+  const connectWiFi = async () => {
+    setLoading(true);
+    setErrorText(null);
     
-    return {
-      avgPurity: Math.round(puritySum / total),
-      mostScanned: 'Mustard Oil',
-      suspiciousCount: suspicious
-    };
-  }, [scanHistory]);
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000);
+      
+      const target = wifiTab === 'ap' ? '192.168.4.1' : wifiIp;
+      const response = await safeLocalFetch(`http://${target}/connect`, { signal: controller.signal })
+        .catch(e => { throw new Error(e.message || "Device not reachable. Check power and IP."); });
+
+      clearTimeout(timeoutId);
+      const data = await response.json();
+      if (data.status !== 'ok') throw new Error("Handshake rejected");
+
+      proceedToVerification({
+        name: data.deviceId || 'PureOil-ESP32',
+        ip: target,
+        method: `WiFi Direct (${target})`,
+        battery: 'AC Power',
+        firmware: 'Embedded WebServer'
+      });
+    } catch (err) {
+      setErrorText(err.message || "Failed to establish handshake with ESP32.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const proceedToVerification = (info) => {
+    setDeviceInfo(info);
+    setStep(2);
+  };
+
+  // --- Real-time Scanning Phase (POLLING SENSOR ENDPOINT) ---
+  useEffect(() => {
+    if (step === 3) {
+      setProgress(0);
+      setScanResult(null);
+      let poller;
+
+      if (deviceInfo?.ip) {
+        // Real-time polling logic
+        poller = setInterval(async () => {
+          try {
+            const res = await safeLocalFetch(`http://${deviceInfo.ip}/sensor`);
+            if (res.ok) {
+              const data = await res.json();
+              // data has adcValue, voltage, tds, temperature, timestamp
+              
+              setLocalLiveData({
+                tds_ppm: data.tds,
+                temperature_c: data.temperature,
+                ph: 6.45, // Map this correctly if available, mocked here if missing
+                density_gcm3: 0.908 // Map correctly if available
+              });
+              
+              setProgress(prev => {
+                const next = prev + 12;
+                if (next >= 100) {
+                  clearInterval(poller);
+                  
+                  // Trigger Analysis API
+                  const apiUrl = import.meta.env.VITE_BACKEND_URL || `http://${window.location.hostname}:4000`;
+                  fetch(`${apiUrl}/api/analyze`, {
+                     method: 'POST',
+                     headers: { 'Content-Type': 'application/json' },
+                     body: JSON.stringify({
+                        oil_type: selectedOilType,
+                        sensor_values: {
+                           temperature_c: data.temperature || 25,
+                           density_gcm3: data.density || 0.915,
+                           refractive_index: data.optical || data.tds || 1.470 
+                        }
+                     })
+                  }).then(res => res.json()).then(result => {
+                     setScanResult(result);
+                     setTimeout(() => setStep(4), 1000);
+                  }).catch(err => {
+                     console.error("Analysis Failed", err);
+                     setStep(0);
+                  });
+                  return 100;
+                }
+                return next;
+              });
+            }
+          } catch (e) {
+            console.error("Polling error", e);
+          }
+        }, 1000);
+      } else {
+        // Fallback for BLE/USB socket method
+        socket.on('new_reading', (data) => {
+          setProgress(100);
+          setScanResult(data.analysis);
+          setTimeout(() => setStep(4), 1000);
+        });
+      }
+
+      return () => {
+        if (poller) clearInterval(poller);
+        socket.off('new_reading');
+      };
+    }
+  }, [step, deviceInfo]);
+
+  // Update progress based on live sensor packets (for fallback)
+  useEffect(() => {
+    if (step === 3 && liveData && !deviceInfo?.ip) {
+      setProgress(prev => Math.min(prev + 12, 98));
+    }
+  }, [step, liveData, deviceInfo]);
+
+  const startScan = () => {
+    setStep(3);
+    setProgress(0);
+    setScanResult(null);
+  };
+
+  // ================= RENDERERS =================
 
   return (
-    <div className="flex flex-col min-h-screen theme-bg theme-text animate-fade-in pb-16 relative">
+    <div className="min-h-screen flex flex-col relative z-20 theme-bg">
       
-      {/* --- HEADER --- */}
-      <div className="px-5 pt-8 pb-5 border-b border-[var(--border-color)] bg-[var(--bg-card)] sticky top-0 z-30 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={() => {
-              if (subView === 'results') setSubView('select_oil');
-              else if (subView === 'history' || subView === 'compare' || subView === 'trends') setSubView('select_oil');
-              else navigate('/home');
-            }} 
-            className="p-2 rounded-full bg-[var(--bg-elevated)] theme-text"
-          >
+      {/* Dynamic Header */}
+      {step < 3 && (
+        <div className="flex items-center gap-3 p-5 border-b border-[var(--border-color)]">
+          <button onClick={() => { step === 0 ? navigate('/home') : setStep(0) }} className="p-2 rounded-full bg-[var(--bg-elevated)] theme-text">
             <ChevronLeft size={20} />
           </button>
-          <div>
-            <h1 className="text-xl font-black tracking-tight theme-text">SpectraTrust AI Lab</h1>
-            <p className="text-[9px] text-[var(--text-muted)] font-bold uppercase tracking-widest mt-0.5">Edible Oil Spectral Verification</p>
+          <div className="flex flex-col">
+            <h1 className="theme-text font-bold tracking-widest uppercase text-[10px]">
+              {step === 0 ? 'Connection Hub' : step === 2 ? 'Verification' : 'Device Bridge'}
+            </h1>
+            <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">
+              Level 4 Secured Link
+            </p>
           </div>
         </div>
+      )}
 
-        {/* Top View Selector Buttons */}
-        <div className="flex gap-2">
-          <button 
-            onClick={() => setSubView('history')}
-            className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase border transition-all ${
-              subView === 'history' ? 'bg-brand-500/10 border-brand-500 text-brand-500' : 'bg-[var(--bg-elevated)] border-[var(--border-color)] text-[var(--text-secondary)]'
-            }`}
-          >
-            History
-          </button>
-          <button 
-            onClick={() => setSubView('trends')}
-            className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase border transition-all ${
-              subView === 'trends' ? 'bg-brand-500/10 border-brand-500 text-brand-500' : 'bg-[var(--bg-elevated)] border-[var(--border-color)] text-[var(--text-secondary)]'
-            }`}
-          >
-            Trends
-          </button>
-        </div>
-      </div>
-
-      <div className="px-5 pt-6 flex flex-col gap-6">
-
-        {/* ============================================================
-           1. STEP: SELECT REFERENCE OIL TYPE
-           ============================================================ */}
-        {subView === 'select_oil' && (
-          <div className="flex flex-col gap-5 animate-fade-in">
-            <div className="border-l-4 border-brand-500 pl-3">
-              <h2 className="text-base font-black theme-text uppercase tracking-wider">1. Select Oil Profile</h2>
-              <p className="text-[9px] text-[var(--text-muted)] font-bold uppercase mt-0.5">Select the target chemical matrix profile</p>
+      <div className="flex-1 p-5 flex flex-col pt-safe">
+        
+        {/* STEP 0: SELECTION */}
+        {step === 0 && (
+          <div className="animate-fade-in flex flex-col gap-4">
+            <div className="mb-4">
+               <h2 className="text-2xl font-black theme-text mb-1">Pair Sensor</h2>
+               <p className="text-gray-500 text-sm">Select your hardware communication protocol.</p>
             </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              {oilOptions.map(oil => (
-                <div 
-                  key={oil}
-                  onClick={() => {
-                    setSelectedOil(oil);
-                    setSubView('connect_device');
-                  }}
-                  className={`card p-4 hover:border-brand-500/40 cursor-pointer transition-all flex items-center justify-between ${
-                    selectedOil === oil ? 'border-brand-500 bg-brand-500/5' : ''
-                  }`}
-                >
-                  <div className="flex items-center gap-2.5">
-                    <Droplets size={16} className={selectedOil === oil ? "text-brand-500" : "text-[var(--text-secondary)]"} />
-                    <span className="text-xs font-bold theme-text">{oil}</span>
-                  </div>
-                  <ChevronRight size={14} className="text-[var(--text-muted)]" />
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ============================================================
-           2. STEP: DEVICE CONNECTION STATUS
-           ============================================================ */}
-        {subView === 'connect_device' && (
-          <div className="flex flex-col gap-5 animate-fade-in">
-            <div className="border-l-4 border-brand-500 pl-3">
-              <h2 className="text-base font-black theme-text uppercase tracking-wider">2. Pair Handheld Sensor</h2>
-              <p className="text-[9px] text-[var(--text-muted)] font-bold uppercase mt-0.5">Establish hardware link bridge</p>
-            </div>
-
-            {/* Connection Method Selectors */}
-            <div className="grid grid-cols-3 gap-2 bg-[var(--bg-elevated)] p-1.5 border border-[var(--border-color)] rounded-2xl">
-              {['wifi', 'ble', 'usb'].map(mode => (
-                <button
-                  key={mode}
-                  onClick={() => setConnMode(mode)}
-                  className={`py-2 text-[9px] font-black uppercase tracking-wider rounded-xl transition-all ${
-                    connMode === mode ? 'bg-brand-500 text-black shadow-sm' : 'text-[var(--text-secondary)] hover:theme-text'
-                  }`}
-                >
-                  {mode}
-                </button>
-              ))}
-            </div>
-
-            {/* Status card */}
-            <div className="card p-5 border border-[var(--border-color)] flex flex-col gap-4">
-              <div className="flex justify-between items-center pb-3 border-b border-[var(--border-color)]/60">
-                <span className="text-[8px] font-black text-[var(--text-muted)] uppercase tracking-wider">Device Status</span>
-                <span className={`text-[8px] font-black uppercase px-2.5 py-0.5 rounded border tracking-wider ${
-                  deviceStatus === 'Connected' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
-                  deviceStatus === 'Connecting' ? 'bg-amber-500/10 text-amber-500 border-amber-500/20 animate-pulse' :
-                  'bg-red-500/10 text-red-500 border-red-500/20'
-                }`}>
-                  {deviceStatus}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 text-xs text-[var(--text-secondary)]">
-                <div>
-                  <p className="text-[7px] text-[var(--text-muted)] font-bold uppercase">Device Model ID</p>
-                  <p className="font-bold font-mono mt-0.5">{deviceInfo.deviceId}</p>
-                </div>
-                <div>
-                  <p className="text-[7px] text-[var(--text-muted)] font-bold uppercase">Firmware</p>
-                  <p className="font-bold mt-0.5">{deviceInfo.firmware}</p>
-                </div>
-                <div>
-                  <p className="text-[7px] text-[var(--text-muted)] font-bold uppercase">Battery Power</p>
-                  <p className="font-bold mt-0.5 text-green-500">{deviceInfo.battery}</p>
-                </div>
-                <div>
-                  <p className="text-[7px] text-[var(--text-muted)] font-bold uppercase">RSSI Strength</p>
-                  <p className="font-bold font-mono mt-0.5 text-brand-500">{deviceInfo.signal}</p>
-                </div>
-              </div>
-
-              {deviceStatus !== 'Connected' ? (
-                <button 
-                  onClick={handleConnect}
-                  className="btn-primary w-full py-4 text-xs font-black uppercase tracking-widest rounded-xl mt-2 flex items-center justify-center gap-1.5 shadow-lg"
-                >
-                  <span>CONNECT VIA {connMode.toUpperCase()}</span>
-                  <ArrowRight size={14} />
-                </button>
-              ) : (
-                <button 
-                  onClick={() => setDeviceStatus('Disconnected')}
-                  className="w-full py-4 bg-red-500/10 text-red-500 border border-red-500/25 hover:bg-red-500/20 rounded-xl text-xs font-black uppercase tracking-widest transition-all"
-                >
-                  DISCONNECT LINK
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* ============================================================
-           3. STEP: VERIFICATION & BOTTLE PLACEMENT
-           ============================================================ */}
-        {subView === 'verify_device' && (
-          <div className="flex flex-col gap-5 animate-fade-in">
-            <div className="border-l-4 border-brand-500 pl-3">
-              <h2 className="text-base font-black theme-text uppercase tracking-wider">3. Sample Alignment</h2>
-              <p className="text-[9px] text-[var(--text-muted)] font-bold uppercase mt-0.5">Align oil sample with spectral probe</p>
-            </div>
-
-            <div className="card p-5 border border-[var(--border-color)]">
-              <div className="flex flex-col gap-4 text-xs text-[var(--text-secondary)] font-medium">
-                <div className="flex gap-3 items-start">
-                  <span className="w-5 h-5 rounded-full bg-brand-500/10 text-brand-500 flex-shrink-0 flex items-center justify-center font-black">1</span>
-                  <p>Place the clear glass vial filled with <strong>{selectedOil}</strong> into the hardware chamber.</p>
-                </div>
-                <div className="flex gap-3 items-start border-y border-[var(--border-color)]/60 py-3">
-                  <span className="w-5 h-5 rounded-full bg-brand-500/10 text-brand-500 flex-shrink-0 flex items-center justify-center font-black">2</span>
-                  <p>Close the optical shield lid to prevent external ambient light interference.</p>
-                </div>
-                <div className="flex gap-3 items-start">
-                  <span className="w-5 h-5 rounded-full bg-brand-500/10 text-brand-500 flex-shrink-0 flex items-center justify-center font-black">3</span>
-                  <p>Verify that the device status indicator shows <strong>Connected (Secure GATT link)</strong>.</p>
-                </div>
-              </div>
-            </div>
-
-            <button 
-              onClick={handleStartScan}
-              className="btn-primary w-full py-4 text-xs font-black uppercase tracking-widest rounded-xl shadow-lg flex items-center justify-center gap-1.5"
-            >
-              <span>Verify & Start scan</span>
-              <Droplets size={14} />
-            </button>
-          </div>
-        )}
-
-        {/* ============================================================
-           4. STEP: SCANNING ANIMATION IN PROGRESS
-           ============================================================ */}
-        {subView === 'scanning' && (
-          <div className="flex flex-col items-center justify-center py-10 gap-6 animate-fade-in">
-            {/* Pulsing ring animation */}
-            <div className="relative w-44 h-44 flex items-center justify-center mb-8">
-              <div className="absolute inset-0 bg-brand-500/10 rounded-full animate-ping opacity-35" />
-              <div className="absolute inset-4 bg-brand-500/20 rounded-full animate-pulse" />
-              <div className="w-24 h-24 bg-gradient-to-br from-brand-500 to-yellow-600 text-black rounded-full flex items-center justify-center z-10 shadow-glow-gold">
-                <Droplets size={42} fill="currentColor" className="animate-bounce" />
-              </div>
-            </div>
-
-            <div className="text-center w-full flex flex-col gap-2">
-              <h3 className="text-lg font-black theme-text uppercase tracking-wider">{animationText}</h3>
-              <div className="w-full bg-[var(--bg-elevated)] h-2 rounded-full overflow-hidden border border-[var(--border-color)]">
-                <div 
-                  className="bg-brand-500 h-full rounded-full transition-all duration-300"
-                  style={{ width: `${scanProgress}%` }}
-                />
-              </div>
-              <p className="text-[10px] text-[var(--text-muted)] font-black tracking-widest uppercase mt-2">Data Acquisition: {scanProgress}%</p>
-            </div>
-
-            {/* Live wavelength stream simulation graphs */}
-            <div className="w-full card p-4 border border-[var(--border-color)]">
-              <p className="text-[7px] text-[var(--text-muted)] font-black uppercase tracking-widest mb-3">Live Telemetry Spectral Stream</p>
-              
-              <div className="flex items-end justify-between h-20 gap-1.5 pl-1.5">
-                {telemetry.spectral.map((val, idx) => {
-                  const barHeight = Math.min(100, Math.round((val / 1100) * 100));
-                  return (
-                    <div key={idx} className="flex-1 flex flex-col items-center gap-1">
-                      <div 
-                        className="w-full bg-brand-500/80 rounded-t-sm transition-all duration-300" 
-                        style={{ height: `${barHeight}%` }}
-                      />
-                      <span className="text-[6px] font-mono text-[var(--text-muted)]">F{idx+1}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ============================================================
-           5. STEP: SCAN PREDICTIONS RESULT SCREEN
-           ============================================================ */}
-        {subView === 'results' && prediction && (
-          <div className="flex flex-col gap-5 animate-slide-up">
             
-            {/* Top overview stats cards */}
-            <div className="grid grid-cols-2 gap-4">
-              
-              <div className="card p-4 flex flex-col items-center justify-center gap-2 border border-[var(--border-color)]">
-                <CircularGauge value={prediction.purity} label="Purity Score" color={prediction.purity > 75 ? "stroke-green-500" : "stroke-red-500"} />
+            <div onClick={() => handleSelectMethod('wifi')} className="card hover:border-[#d4af37]/50 cursor-pointer transition-all active:scale-[0.98] group overflow-hidden relative">
+              <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 transition-opacity">
+                 <Globe size={120} strokeWidth={1} />
               </div>
-
-              <div className="card p-4 flex flex-col items-center justify-center gap-2 border border-[var(--border-color)]">
-                <CircularGauge value={prediction.confidence_score} label="Model Confidence" color="stroke-blue-500" />
+              <div className="flex items-start gap-4 relative z-10">
+                <div className="p-3 bg-[#d4af37]/10 rounded-2xl text-[#d4af37] group-hover:bg-[#d4af37] group-hover:text-[#0a0a0a] transition-colors">
+                  <Wifi size={24} />
+                </div>
+                <div>
+                  <h3 className="theme-text font-bold text-lg">Local Area Network</h3>
+                  <p className="text-gray-400 text-xs mt-1">Direct IP or Local Router sync. Most stable for long sessions.</p>
+                </div>
               </div>
-
             </div>
 
-            {/* Status card */}
-            <div className={`card p-4.5 border text-center ${
-              prediction.quality === 'Safe' ? 'border-green-500 bg-green-500/[0.01]' : 'border-red-500 bg-red-500/[0.01]'
-            }`}>
-              <h3 className={`text-lg font-black uppercase tracking-wider ${prediction.quality === 'Safe' ? 'text-green-500' : 'text-red-500'}`}>
-                {prediction.quality === 'Safe' ? 'Standard Safe Oil' : 'Contaminated / Adulterated'}
-              </h3>
-              <p className="text-[9px] text-[var(--text-muted)] font-bold uppercase mt-1">Classification Status Result</p>
-            </div>
-
-            {/* AI Explanation Box */}
-            <div className="card p-5 border border-[var(--border-color)] bg-[var(--bg-elevated)]">
-              <h4 className="text-[10px] font-black text-brand-500 uppercase tracking-widest border-b border-[var(--border-color)] pb-2 mb-3">AI Decision Explanation</h4>
-              <p className="text-xs text-[var(--text-secondary)] leading-relaxed">
-                The spectral signature deviates from the expected {prediction.oil_type} reference profile by {Math.round(100 - prediction.purity)}%. 
-                {prediction.quality === 'Safe' 
-                  ? ` The sample wavelength transmission matches pure standard datasets. Confidence is high.`
-                  : ` The model detected absorption characteristics similar to palm oil mixes. Purity threshold violated.`
-                }
-              </p>
-            </div>
-
-            {/* Link Vendor Form */}
-            <div className="card p-5 border border-[var(--border-color)]">
-              <h4 className="text-[10px] font-black theme-text uppercase tracking-widest border-b border-[var(--border-color)] pb-2 mb-4">Link Vendor Information</h4>
-              <form onSubmit={handleLinkVendor} className="flex flex-col gap-3.5">
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="field-label">Vendor Name</label>
-                    <input required value={vendorName} onChange={e => setVendorName(e.target.value)} type="text" placeholder="e.g. Ramesh" className="field-input" />
-                  </div>
-                  <div>
-                    <label className="field-label">Shop Name</label>
-                    <input required value={shopName} onChange={e => setShopName(e.target.value)} type="text" placeholder="e.g. Ramesh Kirana" className="field-input" />
-                  </div>
+            <div onClick={() => handleSelectMethod('ble')} className="card hover:border-blue-500/50 cursor-pointer transition-all active:scale-[0.98] group overflow-hidden relative">
+              <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 transition-opacity">
+                 <Bluetooth size={120} strokeWidth={1} />
+              </div>
+              <div className="flex items-start gap-4 relative z-10">
+                <div className="p-3 bg-blue-500/10 rounded-2xl text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-colors">
+                  <Bluetooth size={24} />
                 </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="field-label">City</label>
-                    <input required value={city} onChange={e => setCity(e.target.value)} type="text" className="field-input" />
-                  </div>
-                  <div>
-                    <label className="field-label">District</label>
-                    <input required value={district} onChange={e => setDistrict(e.target.value)} type="text" className="field-input" />
-                  </div>
+                <div>
+                  <h3 className="theme-text font-bold text-lg">Web Bluetooth</h3>
+                  <p className="text-gray-400 text-xs mt-1">Wire-free pairing via GATT. Best for portable field tests.</p>
                 </div>
-
-                {vendorSavedMsg && (
-                  <p className="text-[10px] font-bold text-green-500 pl-1">{vendorSavedMsg}</p>
-                )}
-
-                <button type="submit" className="w-full py-3 bg-[var(--bg-elevated)] border border-[var(--border-color)] text-[var(--text-secondary)] hover:theme-text rounded-xl text-[9px] font-black uppercase tracking-widest">
-                  Save Vendor details
-                </button>
-              </form>
+              </div>
             </div>
 
-            {/* Certificate Preview and download options */}
-            <div className="card p-5 border border-[var(--border-color)] flex flex-col gap-4">
-              <button 
-                onClick={() => setShowCertificate(!showCertificate)}
-                className="w-full py-3.5 bg-brand-500 text-black font-black uppercase tracking-widest text-[10px] rounded-xl flex items-center justify-center gap-1.5 shadow-lg active:scale-98"
-              >
-                <Printer size={12} />
-                <span>{showCertificate ? 'Hide Certificate Preview' : 'Generate Digital Certificate'}</span>
-              </button>
+            <div onClick={() => handleSelectMethod('usb')} className="card hover:border-purple-500/50 cursor-pointer transition-all active:scale-[0.98] group overflow-hidden relative">
+              <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 transition-opacity">
+                 <Usb size={120} strokeWidth={1} />
+              </div>
+              <div className="flex items-start gap-4 relative z-10">
+                <div className="p-3 bg-purple-500/10 rounded-2xl text-purple-500 group-hover:bg-purple-500 group-hover:text-white transition-colors">
+                  <Usb size={24} />
+                </div>
+                <div>
+                  <h3 className="theme-text font-bold text-lg">USB Serial Bridge</h3>
+                  <p className="text-gray-400 text-xs mt-1">High-speed reliable link via OTG cable. No lag or interference.</p>
+                </div>
+              </div>
+            </div>
 
-              {showCertificate && (
-                <div className="p-6 bg-white text-black border-4 border-double border-gray-400 rounded-3xl flex flex-col gap-4 text-center select-none shadow-xl">
-                  <div className="border-b border-gray-300 pb-3 flex flex-col items-center">
-                    <span className="text-xl">🏆</span>
-                    <h3 className="text-sm font-black uppercase tracking-widest mt-1">SpectraTrust Purity Seal</h3>
-                    <p className="text-[7px] text-gray-500 font-bold uppercase tracking-wider">FSSAI Certified verification report</p>
-                  </div>
+            <div className="mt-8 p-4 bg-amber-500/5 border border-amber-500/10 rounded-2xl flex gap-3">
+               <AlertTriangle size={20} className="text-amber-500 flex-shrink-0" />
+               <p className="text-[10px] text-gray-500 font-medium leading-relaxed">
+                 Some protocols like <strong>WebUSB</strong> and <strong>Bluetooth</strong> require a secure HTTPS connection and a modern browser like Chrome or Edge.
+               </p>
+            </div>
+          </div>
+        )}
 
-                  <div className="text-left text-xs flex flex-col gap-2 border-b border-gray-300 pb-3">
-                    <p><strong>Oil Wavelength Reference:</strong> {prediction.oil_type}</p>
-                    <p><strong>Purity Verification Index:</strong> {prediction.purity}%</p>
-                    <p><strong>Calibration Score:</strong> {prediction.confidence_score}%</p>
-                    <p><strong>Scan Timestamp:</strong> {new Date(prediction.timestamp).toLocaleString()}</p>
-                    <p><strong>Assigned Sensor Link ID:</strong> {prediction.device_id}</p>
-                  </div>
+        {/* STEP 1A: BLUETOOTH */}
+        {step === '1a' && (
+          <ErrorBoundary>
+            <BLEConnection 
+              onConnected={proceedToVerification}
+              onCancel={() => setStep(0)} 
+            />
+          </ErrorBoundary>
+        )}
 
-                  <div className="flex justify-between items-center">
-                    <div className="text-left">
-                      <p className="text-[7px] text-gray-400 uppercase tracking-widest">Signed By Officer</p>
-                      <p className="text-[10px] font-black border-t border-gray-300 mt-5 pt-1">SpectraTrust Inspector</p>
+        {/* STEP 1B: WIFI */}
+        {step === '1b' && (
+          <div className="flex flex-col flex-1 animate-fade-in">
+             <div className="flex w-full border border-[var(--border-color)] bg-[var(--bg-card)] rounded-full p-1 mb-6">
+                <button onClick={() => setWifiTab('same')} className={`flex-1 py-2 text-xs font-bold rounded-full transition-colors ${wifiTab === 'same' ? 'bg-[var(--bg-elevated)] theme-text' : 'text-gray-500'}`}>Local Router</button>
+                <button onClick={() => setWifiTab('ap')} className={`flex-1 py-2 text-xs font-bold rounded-full transition-colors ${wifiTab === 'ap' ? 'bg-[var(--bg-elevated)] theme-text' : 'text-gray-500'}`}>Direct Hotspot</button>
+             </div>
+
+             {wifiTab === 'same' ? (
+                <div className="card border-[#333] flex flex-col gap-4 bg-[#0a0a0a]">
+                  {!isNetworkScanning && discoveredDevices.length === 0 && !connectingDevice && (
+                    <div className="flex flex-col items-center py-8">
+                       <Wifi size={48} className="text-gray-600 mb-4" />
+                       <h3 className="theme-text font-bold text-center mb-2">Scan Local Network</h3>
+                       <p className="text-xs text-gray-500 text-center mb-4">Finds nearby ESP sensors connected to your current WiFi router.</p>
+                       
+                       <div className="w-full bg-[#1c1c1c] p-4 rounded-xl border border-[#333] mb-6 text-left">
+                         <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest mb-2">How to Connect</p>
+                         <ol className="text-xs text-gray-500 flex flex-col gap-2 font-medium list-decimal pl-4">
+                           <li>Power on your ESP module.</li>
+                           <li>Ensure it is connected to the same WiFi network as this device.</li>
+                           <li>Tap <strong>Scan Now</strong> to discover nearby sensors.</li>
+                           <li>Select your device from the list to pair.</li>
+                         </ol>
+                       </div>
+
+                       <button onClick={scanNetwork} className="btn-primary w-full shadow-glow-teal bg-teal-600 hover:bg-teal-500 border-0">
+                         <span className="flex items-center justify-center gap-2 font-black tracking-widest text-sm text-white">
+                           <RefreshCw size={16} /> SCAN NOW
+                         </span>
+                       </button>
                     </div>
-                    {/* Mock QR Certificate code */}
-                    <div className="w-14 h-14 bg-gray-100 border border-gray-300 rounded flex items-center justify-center font-mono text-[6px]">
-                      QR_VERIFY
-                    </div>
-                  </div>
+                  )}
 
+                  {isNetworkScanning && (
+                    <div className="flex flex-col items-center py-10 relative overflow-hidden">
+                       <div className="absolute inset-0 bg-teal-500/10 rounded-full animate-ping opacity-20 w-32 h-32 m-auto" />
+                       <div className="w-16 h-16 bg-teal-500/20 text-teal-400 rounded-full flex items-center justify-center relative z-10 animate-pulse border border-teal-500/30">
+                         <Wifi size={24} />
+                       </div>
+                       <p className="mt-6 text-teal-400 text-xs font-black uppercase tracking-widest animate-pulse">Scanning for nearby devices...</p>
+                    </div>
+                  )}
+
+                  {!isNetworkScanning && discoveredDevices.length > 0 && !connectingDevice && (
+                    <div className="flex flex-col gap-3">
+                       <div className="flex justify-between items-end mb-2 border-b border-[#333] pb-2">
+                          <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Discovered Modules</span>
+                          <span className="text-teal-500 text-[10px] font-black bg-teal-500/10 px-2 py-1 rounded">{discoveredDevices.length} FOUND</span>
+                       </div>
+                       
+                       {discoveredDevices.map((dev, i) => (
+                         <div 
+                           key={i} 
+                           onClick={() => connectToDevice(dev)}
+                           className="bg-[#1c1c1c] border border-[#333] hover:border-teal-500/50 p-4 rounded-xl cursor-pointer transition-all active:scale-[0.98] flex justify-between items-center group relative overflow-hidden"
+                         >
+                           <div className="absolute left-0 top-0 bottom-0 w-1 bg-teal-500/0 group-hover:bg-teal-500 transition-colors" />
+                           <div>
+                             <h4 className="text-white font-bold text-sm tracking-wide">{dev.name}</h4>
+                             <p className="text-[10px] text-gray-500 font-mono mt-1">{dev.ip}</p>
+                           </div>
+                           <div className="flex items-center gap-2">
+                             <div className="flex gap-0.5 items-end h-4">
+                               <div className="w-1 bg-teal-500 rounded-full" style={{ height: '40%' }} />
+                               <div className="w-1 bg-teal-500 rounded-full" style={{ height: '60%' }} />
+                               <div className={`w-1 rounded-full ${dev.rssi > -70 ? 'bg-teal-500' : 'bg-[#333]'}`} style={{ height: '80%' }} />
+                               <div className={`w-1 rounded-full ${dev.rssi > -50 ? 'bg-teal-500' : 'bg-[#333]'}`} style={{ height: '100%' }} />
+                             </div>
+                             <span className="text-[9px] text-teal-500 font-black">{dev.rssi} dBm</span>
+                           </div>
+                         </div>
+                       ))}
+
+                       <button onClick={scanNetwork} className="mt-4 py-3 text-[10px] font-bold text-gray-500 hover:text-white transition-colors uppercase tracking-widest flex items-center justify-center gap-2">
+                         <RefreshCw size={14} /> Rescan Network
+                       </button>
+                    </div>
+                  )}
+
+                  {connectingDevice && (
+                    <div className="flex flex-col items-center py-10">
+                       <div className="w-16 h-16 bg-amber-500/10 text-amber-500 rounded-full flex items-center justify-center animate-spin-slow border-t-2 border-amber-500 mb-6 shadow-glow-amber">
+                         <RefreshCw size={24} />
+                       </div>
+                       <p className="text-amber-500 text-xs font-black uppercase tracking-widest">Connecting to {connectingDevice.name}...</p>
+                    </div>
+                  )}
+                </div>
+             ) : (
+                <div className="card flex flex-col gap-4 p-5">
+                  <h3 className="theme-text font-bold text-sm">Direct Hotspot Mode:</h3>
+                  <ol className="text-xs text-gray-500 flex flex-col gap-4 font-medium">
+                    <li className="flex gap-3 items-start"><span className="w-5 h-5 rounded-full bg-[#d4af37]/10 text-[#d4af37] flex-shrink-0 flex items-center justify-center font-bold">1</span> Power on the handheld sensor unit</li>
+                    <li className="flex gap-3 items-start"><span className="w-5 h-5 rounded-full bg-[#d4af37]/10 text-[#d4af37] flex-shrink-0 flex items-center justify-center font-bold">2</span> Connect your phone to: <span className="text-white font-mono bg-[#1c1c1c] px-2 rounded border border-[#333]">PureOil-Sensor</span></li>
+                    <li className="flex gap-3 items-start"><span className="w-5 h-5 rounded-full bg-[#d4af37]/10 text-[#d4af37] flex-shrink-0 flex items-center justify-center font-bold">3</span> The device IP will be <span className="text-white font-mono bg-[#1c1c1c] px-2 rounded border border-[#333]">192.168.4.1</span></li>
+                  </ol>
                   <button 
-                    onClick={() => window.print()}
-                    className="w-full mt-3 py-2.5 bg-black text-white rounded-lg text-[9px] font-black uppercase tracking-widest active:scale-98"
+                    onClick={connectWiFi} 
+                    disabled={loading}
+                    className="btn-primary mt-4 border-0"
                   >
-                    Print Report Certificate
+                    {loading ? <RefreshCw size={18} className="animate-spin" /> : 'VERIFY HOTSPOT'}
                   </button>
+                </div>
+             )}
+              {errorText && (
+                <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl flex items-start gap-3 mt-6 animate-shake">
+                   <XCircle size={18} className="text-red-500 mt-0.5" />
+                   <div>
+                     <p className="text-[10px] font-bold text-red-500 uppercase tracking-widest">Handshake Failed</p>
+                     <p className="text-white text-xs font-medium">{errorText}</p>
+                   </div>
                 </div>
               )}
+          </div>
+        )}
 
-              {/* Action options */}
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                <button 
-                  onClick={handleShareReport}
-                  className="py-3 bg-[#121214] text-white border border-[#26262a] rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-1 hover:theme-text"
+        {/* STEP 1C: USB */}
+        {step === '1c' && (
+          <ErrorBoundary>
+            <USBConnection 
+              onConnected={proceedToVerification}
+              onCancel={() => setStep(0)}
+            />
+          </ErrorBoundary>
+        )}
+
+        {/* STEP 2: VERIFICATION */}
+        {step === 2 && (
+          <div className="flex flex-col flex-1 animate-fade-in">
+             <div className="flex flex-col items-center justify-center py-10 relative">
+               <div className="absolute top-0 w-32 h-32 bg-green-500/20 rounded-full blur-3xl" />
+               <div className="w-20 h-20 bg-green-500/10 text-green-500 rounded-full flex items-center justify-center mb-4 border border-green-500/30 relative z-10 shadow-glow-green">
+                 <ShieldCheck size={40} />
+               </div>
+               <h2 className="theme-text font-black text-2xl">Device verified!</h2>
+               <p className="text-green-500 text-[10px] uppercase tracking-widest font-black mt-2 bg-green-500/10 px-3 py-1 rounded-full">Secure Link Established</p>
+             </div>
+
+             <div className="card flex flex-col gap-4 mb-8">
+                <div className="flex justify-between border-b border-[#333] pb-4">
+                  <span className="text-gray-500 text-[10px] uppercase font-bold tracking-widest">Bridge Protocol</span>
+                  <span className="text-white font-black text-sm">{deviceInfo?.method}</span>
+                </div>
+                <div className="flex justify-between border-b border-[#333] pb-4">
+                  <span className="text-gray-500 text-[10px] uppercase font-bold tracking-widest">Hardware ID</span>
+                  <span className="text-white font-mono text-sm">PUREOIL-SN-8842</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500 text-[10px] uppercase font-bold tracking-widest">GATT Pipeline</span>
+                  <span className="text-green-500 font-bold text-sm">READY</span>
+                </div>
+             </div>
+             <div className="card flex flex-col gap-3 mb-6 bg-[#0a0a0a] border-[#333]">
+                <h3 className="theme-text font-bold text-sm">Target Oil Profile</h3>
+                <p className="text-gray-500 text-[10px] uppercase font-bold tracking-widest">Select the reference chemistry</p>
+                <select 
+                  value={selectedOilType} 
+                  onChange={(e) => setSelectedOilType(e.target.value)}
+                  className="w-full bg-[#1c1c1c] border border-[#333] text-teal-500 font-bold p-4 rounded-xl focus:border-teal-500 transition-colors outline-none focus:ring-1 focus:ring-teal-500/50 appearance-none shadow-glow-teal"
                 >
-                  <Share2 size={10} />
-                  <span>Share report</span>
+                  <option value="Mustard Oil">Mustard Oil Reference</option>
+                  <option value="Sunflower Oil">Sunflower Oil Reference</option>
+                  <option value="Coconut Oil">Coconut Oil Reference</option>
+                  <option value="Olive Oil">Olive Oil Reference</option>
+                </select>
+             </div>
+
+             <div className="mt-auto flex flex-col gap-4">
+                <button onClick={startScan} className="btn-primary w-full py-5 text-lg shadow-glow-gold rounded-[25px]">
+                  INITIATE MOLECULAR SCAN
                 </button>
-
-                {prediction.quality === 'Unsafe' && (
-                  <button 
-                    onClick={() => {
-                      alert('Prefilling complaint records inside Safety Protection...');
-                      navigate('/community');
-                    }}
-                    className="py-3 bg-red-500/10 text-red-500 border border-red-500/25 rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-1 hover:bg-red-500/20"
-                  >
-                    <ShieldAlert size={10} />
-                    <span>Report Adulteration</span>
-                  </button>
-                )}
-              </div>
-            </div>
+                <div className="flex items-center justify-center gap-2 text-[10px] text-gray-600 font-bold uppercase tracking-widest">
+                   <ShieldCheck size={12} />
+                   End-to-End Encrypted Data Stream
+                </div>
+             </div>
           </div>
         )}
 
-        {/* ============================================================
-           6. SUB-VIEW: SCAN HISTORY & COMPARISON
-           ============================================================ */}
-        {subView === 'history' && (
-          <div className="flex flex-col gap-5 animate-fade-in">
-            <div className="border-l-4 border-brand-500 pl-3">
-              <h2 className="text-base font-black theme-text uppercase tracking-wider">Acquisition Log History</h2>
-              <p className="text-[9px] text-[var(--text-muted)] font-bold uppercase mt-0.5">Browse past lab scans</p>
-            </div>
-
-            {/* Compare panel status */}
-            {selectedForCompare.length > 0 && (
-              <div className="card p-4.5 border border-brand-500/35 bg-brand-500/[0.02] flex items-center justify-between">
-                <div>
-                  <p className="text-[9px] font-black text-brand-500 uppercase tracking-widest">Compare Mode</p>
-                  <p className="text-xs text-[var(--text-secondary)] font-medium mt-1">Selected {selectedForCompare.length} of 2 scans</p>
+        {/* STEP 3: SCANNING (Fullscreen) */}
+        {step === 3 && (
+          <div className="absolute inset-0 theme-bg z-[100] flex flex-col items-center justify-between p-6 pb-20 animate-fade-in">
+             <div className="w-full flex justify-between items-center mb-8">
+                <div className="flex items-center gap-2">
+                   <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                   <span className="text-[10px] text-gray-500 font-black uppercase tracking-widest line-clamp-1">Hardware Link Active</span>
                 </div>
-                {selectedForCompare.length === 2 && (
-                  <button 
-                    onClick={() => setSubView('compare')}
-                    className="py-2 px-4 bg-brand-500 text-black text-[9px] font-black uppercase tracking-widest rounded-lg active:scale-95"
-                  >
-                    Compare Scans
-                  </button>
-                )}
-              </div>
-            )}
+                <div className="px-2 py-1 bg-[#1c1c1c] rounded-lg border border-[#333]">
+                   <span className="text-[9px] text-[#d4af37] font-black uppercase tracking-widest">7-Param Sensor Model</span>
+                </div>
+             </div>
 
-            <div className="flex flex-col gap-3">
-              {scanHistory.map(rec => {
-                const isSelected = selectedForCompare.some(s => s.id === rec.id);
-                return (
-                  <div key={rec.id} className="card p-4 flex flex-col gap-3 border border-[var(--border-color)]">
-                    <div className="flex justify-between items-start">
+             <div className="flex flex-col items-center">
+                <div className="relative w-64 h-64 flex items-center justify-center mb-16">
+                  <div className="absolute inset-0 bg-[#d4af37]/10 rounded-full animate-scan-gold opacity-30" />
+                  <div className="absolute inset-4 bg-[#d4af37]/20 rounded-full animate-scan-gold opacity-50" style={{animationDelay: '1s'}} />
+                  <div className="w-32 h-32 bg-gradient-to-br from-[#f5c842] to-[#d4af37] text-[#0a0a0a] rounded-full flex items-center justify-center z-10 shadow-glow-gold relative overflow-hidden transition-transform duration-300 scale-110">
+                    <Droplets size={54} fill="currentColor" strokeWidth={1} className="animate-pulse" />
+                  </div>
+                </div>
+
+                <div className="text-center mb-8">
+                   <h2 className="text-2xl font-black text-white mb-2 uppercase tracking-tighter">Probing Telemetry</h2>
+                   <p className="text-gray-500 text-[10px] uppercase font-bold tracking-[0.2em] animate-pulse">Analyzing Lipid Structure...</p>
+                </div>
+             </div>
+             
+             <div className="w-full card border-[#333] bg-[#0f0f0f] relative overflow-hidden mb-8 p-0">
+                <div className="h-1 bg-gradient-to-r from-transparent via-[#d4af37] to-transparent w-full" />
+                <div className="p-5 flex flex-col gap-4">
+                  <div className="flex justify-between items-end">
+                     <div>
+                       <p className="text-[9px] text-gray-600 font-black uppercase tracking-widest mb-1">Transmission Progress</p>
+                       <p className="text-4xl font-black text-white">{progress}%</p>
+                     </div>
+                     <div className="bg-[#1c1c1c] px-3 py-2 rounded-xl border border-[#333] flex items-center gap-2">
+                        <RefreshCw size={14} className="text-[#d4af37] animate-spin-slow" />
+                        <span className="text-[10px] text-white font-mono">RX_STREAMING</span>
+                     </div>
+                  </div>
+                  <div className="w-full h-1.5 bg-[#1c1c1c] rounded-full overflow-hidden">
+                     <div className="h-full bg-gradient-to-r from-[#d4af37] to-yellow-600 transition-all duration-500" style={{width: `${progress}%`}} />
+                  </div>
+                </div>
+             </div>
+
+                <div className="grid grid-cols-4 gap-3 w-full">
+                 <div className="flex flex-col items-center gap-1">
+                    <p className="text-[8px] text-gray-600 font-bold uppercase">pH</p>
+                    <p className="text-xs text-white font-mono font-bold">{(localLiveData || liveData)?.ph?.toFixed(1) || '---'}</p>
+                 </div>
+                 <div className="flex flex-col items-center gap-1 border-x border-[#333]">
+                    <p className="text-[8px] text-gray-600 font-bold uppercase">Density</p>
+                    <p className="text-xs text-white font-mono font-bold">{(localLiveData || liveData)?.density_gcm3?.toFixed(2) || '---'}</p>
+                 </div>
+                 <div className="flex flex-col items-center gap-1 border-r border-[#333]">
+                    <p className="text-[8px] text-gray-600 font-bold uppercase">Temp</p>
+                    <p className="text-xs text-white font-mono font-bold">{(localLiveData || liveData)?.temperature_c?.toFixed(1) || '---'}</p>
+                 </div>
+                 <div className="flex flex-col items-center gap-1">
+                    <p className="text-[8px] text-gray-600 font-bold uppercase">TDS</p>
+                    <p className="text-xs text-white font-mono font-bold">{(localLiveData || liveData)?.tds_ppm || '---'}</p>
+                 </div>
+              </div>
+          </div>
+        )}
+
+        {/* STEP 4: RESULTS */}
+        {step === 4 && scanResult && (
+           <div className="flex flex-col flex-1 animate-slide-up pb-10">
+              <div className="flex flex-col items-center justify-center py-6 text-center">
+                 {scanResult.quality !== 'Unsafe' ? (
+                   <>
+                     <div className="w-24 h-24 bg-green-500/10 text-green-500 rounded-full flex items-center justify-center mb-6 shadow-glow-green border border-green-500/30">
+                        <CheckCircle2 size={48} />
+                     </div>
+                     <h2 className="text-3xl font-black theme-text mb-1">Purity Confirmed</h2>
+                     <p className="text-green-500 font-bold uppercase tracking-[0.2em] text-[10px] bg-green-500/5 px-4 py-1.5 rounded-full border border-green-500/10">Standard Compliant</p>
+                   </>
+                 ) : (
+                   <>
+                     <div className="w-24 h-24 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center mb-6 shadow-glow-red border border-red-500/30">
+                        <AlertTriangle size={48} />
+                     </div>
+                     <h2 className="text-3xl font-black theme-text mb-1">Contamination!</h2>
+                     <p className="text-red-500 font-bold uppercase tracking-[0.2em] text-[10px] bg-red-500/5 px-4 py-1.5 rounded-full border border-red-500/10">Adulterants Detected</p>
+                   </>
+                 )}
+              </div>
+
+              <div className="card flex flex-col gap-5 mb-8 p-6">
+                 <div className="flex justify-between items-center pb-3 border-b border-[#333]">
+                   <h3 className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Sensor Analysis Wrap</h3>
+                   <span className="text-[9px] text-[#d4af37] font-bold">SHA-256 Verified</span>
+                 </div>
+                 
+                 {scanResult.quality === 'Unsafe' && (
+                    <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl flex items-start gap-3 shadow-glow-red/10">
+                      <AlertTriangle size={20} className="text-red-500 mt-0.5 flex-shrink-0" />
                       <div>
-                        <h4 className="font-bold text-sm theme-text">{rec.oil_type}</h4>
-                        <p className="text-[8px] text-[var(--text-muted)] font-mono uppercase mt-1">{new Date(rec.timestamp).toLocaleString()}</p>
-                      </div>
-                      
-                      <div className="text-right">
-                        <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${
-                          rec.quality === 'Safe' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'
-                        }`}>
-                          {rec.quality}
-                        </span>
-                        <p className="text-[10px] font-black theme-text font-mono mt-1">{rec.purity}% Purity</p>
+                        <p className="text-[10px] font-black text-red-500 uppercase tracking-widest mb-1">Likely Substances</p>
+                        <p className="text-white font-bold text-sm leading-tight">{scanResult.likely_adulterants?.join(', ') || 'Unknown Contaminant'}</p>
                       </div>
                     </div>
+                 )}
 
-                    <div className="flex justify-between items-center border-t border-[var(--border-color)]/50 pt-3 mt-1 text-[9px]">
-                      <button 
-                        onClick={() => {
-                          if (isSelected) {
-                            setSelectedForCompare(prev => prev.filter(s => s.id !== rec.id));
-                          } else {
-                            if (selectedForCompare.length >= 2) return alert('Select only 2 scans to compare.');
-                            setSelectedForCompare(prev => [...prev, rec]);
-                          }
-                        }}
-                        className={`px-3 py-1.5 rounded-lg border text-[8px] font-black uppercase tracking-wider transition-all ${
-                          isSelected ? 'bg-brand-500 text-black border-brand-500' : 'bg-[var(--bg-elevated)] border-[var(--border-color)] text-[var(--text-secondary)]'
-                        }`}
-                      >
-                        {isSelected ? '✓ Selected' : 'Compare Scan'}
-                      </button>
-
-                      <button 
-                        onClick={() => navigate(`/scan/${rec.id}`)}
-                        className="text-brand-500 font-bold uppercase tracking-wider flex items-center gap-0.5"
-                      >
-                        View Details <ChevronRight size={10} />
-                      </button>
+                 <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-[#1c1c1c] p-4 rounded-2xl border border-[#333]">
+                      <p className="text-[9px] text-gray-500 uppercase font-black tracking-widest mb-1">Density Map</p>
+                      <p className="text-white font-mono font-black text-xl">{scanResult.sensor_snapshot?.density_gcm3?.toFixed(3) || '0.000'} <span className="text-[10px] text-gray-600 font-bold ml-1">g/cm³</span></p>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+                    <div className="bg-[#1c1c1c] p-4 rounded-2xl border border-[#333]">
+                      <p className="text-[9px] text-gray-500 uppercase font-black tracking-widest mb-1">Purity Index</p>
+                      <div className="flex items-baseline gap-1">
+                        <p className={`font-mono font-black text-xl ${scanResult.purity > 90 ? 'text-green-500' : scanResult.purity > 70 ? 'text-[#d4af37]' : 'text-red-500'}`}>{scanResult.purity?.toFixed(1) || '0.0'}</p>
+                        <span className="text-[10px] text-gray-600 font-black">%</span>
+                      </div>
+                    </div>
+                 </div>
 
-        {/* --- COMPARE SCREEN --- */}
-        {subView === 'compare' && selectedForCompare.length === 2 && (
-          <div className="flex flex-col gap-5 animate-fade-in">
-            <div className="border-l-4 border-brand-500 pl-3">
-              <h2 className="text-base font-black theme-text uppercase tracking-wider">Scan Comparison Result</h2>
-              <p className="text-[9px] text-[var(--text-muted)] font-bold uppercase mt-0.5">Side-by-side analysis comparison</p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="card p-4 border border-[var(--border-color)] text-center">
-                <p className="text-[8px] text-[var(--text-muted)] font-black uppercase tracking-widest mb-1">Scan A</p>
-                <h4 className="text-xs font-black theme-text">{selectedForCompare[0].oil_type}</h4>
-                <p className="text-lg font-black text-brand-500 font-mono mt-2">{selectedForCompare[0].purity}%</p>
-                <p className="text-[8px] text-gray-500 font-mono mt-1">{new Date(selectedForCompare[0].timestamp).toLocaleDateString()}</p>
+                 <div className="bg-[#1c1c1c]/50 p-4 rounded-2xl flex flex-col gap-2">
+                    <div className="flex justify-between text-[10px]">
+                       <span className="text-gray-500 font-bold uppercase tracking-widest">Molecular TDS</span>
+                       <span className="text-white font-mono">{scanResult.sensor_snapshot?.tds_ppm || '0'} PPM</span>
+                    </div>
+                    <div className="flex justify-between text-[10px]">
+                       <span className="text-gray-500 font-bold uppercase tracking-widest">Turbidity Factor</span>
+                       <span className="text-white font-mono">{scanResult.sensor_snapshot?.turbidity_ntu?.toFixed(1) || '0.0'} NTU</span>
+                    </div>
+                 </div>
               </div>
 
-              <div className="card p-4 border border-[var(--border-color)] text-center">
-                <p className="text-[8px] text-[var(--text-muted)] font-black uppercase tracking-widest mb-1">Scan B</p>
-                <h4 className="text-xs font-black theme-text">{selectedForCompare[1].oil_type}</h4>
-                <p className="text-lg font-black text-brand-500 font-mono mt-2">{selectedForCompare[1].purity}%</p>
-                <p className="text-[8px] text-gray-500 font-mono mt-1">{new Date(selectedForCompare[1].timestamp).toLocaleDateString()}</p>
+              <div className="mt-auto flex flex-col gap-3 px-2">
+                 {scanResult.quality === 'Unsafe' ? (
+                   <button 
+                    onClick={() => navigate('/home')}
+                    className="w-full bg-red-600 hover:bg-red-700 text-white font-black py-4 rounded-[20px] shadow-glow-red border-0 uppercase tracking-widest text-sm"
+                   >
+                     FILE ENFORCEMENT REPORT
+                   </button>
+                 ) : (
+                   <button 
+                    onClick={() => navigate('/home')}
+                    className="btn-primary w-full py-4 text-sm font-black tracking-widest"
+                   >
+                     GENERATE DIGITAL CERTIFICATE
+                   </button>
+                 )}
+                 <button onClick={() => setStep(0)} className="btn-secondary w-full py-4 text-sm flex items-center justify-center gap-2 border-[#333]">
+                   <RefreshCw size={16} /> NEW INSPECTION
+                 </button>
               </div>
-            </div>
-
-            {/* Trends assessment */}
-            {compareResult && (
-              <div className="card p-5 border border-[var(--border-color)] bg-[var(--bg-elevated)] flex flex-col gap-3">
-                <div className="flex justify-between items-center border-b border-[var(--border-color)] pb-3.5 mb-2">
-                  <span className="text-[9px] font-black text-[var(--text-muted)] uppercase tracking-wider">Comparison Metrics</span>
-                  <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded border ${
-                    compareResult.trend === 'Improved' ? 'bg-green-500/10 text-green-500 border-green-500/20' :
-                    compareResult.trend === 'Declined' ? 'bg-red-500/10 text-red-500 border-red-500/20' :
-                    'bg-gray-500/10 text-gray-400 border-gray-500/20'
-                  }`}>{compareResult.trend} Purity</span>
-                </div>
-
-                <div className="flex justify-between text-xs font-semibold">
-                  <span className="text-[var(--text-muted)] font-bold uppercase tracking-wider text-[10px]">Purity Variance</span>
-                  <span className={parseFloat(compareResult.purityDiff) >= 0 ? "text-green-500" : "text-red-500"}>
-                    {parseFloat(compareResult.purityDiff) >= 0 ? `+${compareResult.purityDiff}` : compareResult.purityDiff}%
-                  </span>
-                </div>
-
-                <div className="flex justify-between text-xs font-semibold">
-                  <span className="text-[var(--text-muted)] font-bold uppercase tracking-wider text-[10px]">Temperature Variance</span>
-                  <span>{compareResult.tempDiff}°C</span>
-                </div>
-              </div>
-            )}
-
-            <button 
-              onClick={() => {
-                setSelectedForCompare([]);
-                setSubView('history');
-              }}
-              className="w-full py-4 bg-[var(--bg-elevated)] border border-[var(--border-color)] text-[var(--text-secondary)] font-black uppercase tracking-widest text-xs rounded-xl hover:theme-text transition-colors"
-            >
-              Reset Comparison selection
-            </button>
-          </div>
-        )}
-
-        {/* --- TRENDS SCREEN --- */}
-        {subView === 'trends' && (
-          <div className="flex flex-col gap-5 animate-fade-in">
-            <div className="border-l-4 border-brand-500 pl-3">
-              <h2 className="text-base font-black theme-text uppercase tracking-wider">Spectral Trend Analysis</h2>
-              <p className="text-[9px] text-[var(--text-muted)] font-bold uppercase mt-0.5">Aggregate laboratory stats summary</p>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3 text-center">
-              <div className="card p-4 border border-[var(--border-color)]">
-                <p className="text-[7px] text-[var(--text-muted)] font-black uppercase tracking-widest mb-1">Avg Purity</p>
-                <h4 className="text-lg font-black text-brand-500 font-mono">{trendStats.avgPurity}%</h4>
-              </div>
-              <div className="card p-4 border border-[var(--border-color)]">
-                <p className="text-[7px] text-[var(--text-muted)] font-black uppercase tracking-widest mb-1">Most Scanned</p>
-                <h4 className="text-[10px] font-black theme-text leading-tight mt-1 truncate">{trendStats.mostScanned}</h4>
-              </div>
-              <div className="card p-4 border border-[var(--border-color)]">
-                <p className="text-[7px] text-[var(--text-muted)] font-black uppercase tracking-widest mb-1">Unsafe Alerts</p>
-                <h4 className="text-lg font-black text-red-500 font-mono">{trendStats.suspiciousCount}</h4>
-              </div>
-            </div>
-
-            {/* Purity trends history graph preview */}
-            <div className="card p-5 border border-[var(--border-color)] flex flex-col gap-4">
-              <h4 className="text-[10px] font-black text-brand-500 uppercase tracking-widest">Purity levels over time</h4>
-              
-              <div className="h-32 w-full flex items-end justify-between gap-2.5 pl-2 pb-2">
-                {[88, 92, 91, 95, 93, 96, 94].map((p, idx) => (
-                  <div key={idx} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end">
-                    <div className="w-full bg-brand-500 rounded-t-sm" style={{ height: `${p}%` }} />
-                    <span className="text-[7px] text-[var(--text-muted)] font-bold uppercase">Day {idx+1}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+           </div>
         )}
 
       </div>
