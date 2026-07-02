@@ -1,7 +1,14 @@
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getDevices, getNetworkInfo } from '../lib/api';
 import { useTranslation } from 'react-i18next';
+import { 
+  Globe, Check, Copy, Radio, RefreshCw, ChevronLeft, 
+  Bell, Ruler, HelpCircle, MessageCircle, BookOpen, ChevronRight 
+} from 'lucide-react';
 
 export default function SettingsPage() {
+  const [notificationsOn, setNotificationsOn] = useState(true);
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [device, setDevice] = useState(null);

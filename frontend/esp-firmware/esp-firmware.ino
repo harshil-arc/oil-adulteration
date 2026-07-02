@@ -6,6 +6,7 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 #include "HX711.h"
+#include <time.h>
 
 // ============================================================
 //  CREDENTIALS
@@ -91,6 +92,10 @@ void setup() {
   oledShow("WiFi Connected!", ipBuf, "", "");
   delay(1000);
 
+  // Configure NTP for Firestore timestamps
+  configTime(0, 0, "pool.ntp.org", "time.nist.gov");
+  Serial.println(F("NTP client configured."));
+
   // MLX90614
   if (!mlx.begin()) {
     Serial.println(F("MLX90614: Not Found!"));
@@ -173,43 +178,35 @@ void loop() {
   uint16_t ch_vis = spectralSensor.getChannelData(CH_VIS_1);
   uint16_t ch_nir = spectralSensor.getChannelData(CH_NIR_855NM);
 
-  // ── 4. Serial Debug ──────────────────────────────────────
-  Serial.printf("Temp: %.2f°C | Weight: %.2fg\n", tempC, weightG);
+  // ── 4. Get NTP Time ──────────────────────────────────────
+  struct tm timeinfo;
+  char timeBuf[30] = "";
+  if (getLocalTime(&timeinfo)) {
+    strftime(timeBuf, sizeof(timeBuf), "%Y-%m-%dT%H:%M:%SZ", &timeinfo);
+  } else {
+    // Fallback if not synchronized yet
+    snprintf(timeBuf, sizeof(timeBuf), "2026-06-30T22:42:00Z");
+  }
+
+  // ── 5. Serial Debug ──────────────────────────────────────
+  Serial.printf("Time: %s | Temp: %.2f°C | Weight: %.2fg\n", timeBuf, tempC, weightG);
   Serial.printf("Spectral: f1=%u f2=%u fz=%u f3=%u f4=%u f5=%u fy=%u fxl=%u f6=%u f7=%u f8=%u vis=%u nir=%u\n",
     ch_f1, ch_f2, ch_fz, ch_f3, ch_f4, ch_f5, ch_fy, ch_fxl, ch_f6, ch_f7, ch_f8, ch_vis, ch_nir);
 
-  // ── 5. Build Firestore JSON Payload ──────────────────────
+  // ── 6. Build Firestore JSON Payload ──────────────────────
   //
-  // Firestore REST API expects data in its own typed format:
-  // {
-  //   "fields": {
-  //     "fieldName": { "doubleValue": 25.5 },
-  //     "fieldName": { "integerValue": "1234" },
-  //     "fieldName": { "mapValue": { "fields": { ... } } }
-  //   }
-  // }
-  //
-  // We also include a "created_at" timestamp so the app can
-  // order by it with .order('created_at', { ascending: false })
+  // Firestore REST API expects data in its own typed format.
+  // We close fields under mapValue, mapValue itself, spectral_data, fields, and the root document.
+  // That requires exactly 5 closing braces at the end (after closing the individual channel's fields).
   //
   char payload[1800];
-
-  // Get current timestamp in RFC3339 format
-  // (Firestore also accepts serverTimestamp but that needs admin SDK)
-  // We'll use a stringValue for created_at; the app sorts by it lexicographically
-  // which works perfectly for ISO 8601 strings.
-  //
-  // NOTE: millis() only gives uptime, not real clock. If you add an NTP
-  // sync call, replace timestampStr with actual UTC time. For now we
-  // use the upload time on the server side via the app's Firestore write.
-  //
-  // We encode it as a serverTimestamp field so Firestore fills it automatically.
 
   snprintf(payload, sizeof(payload),
     "{"
       "\"fields\":{"
         "\"temperature\":{\"doubleValue\":%.4f},"
         "\"weight\":{\"doubleValue\":%.4f},"
+        "\"created_at\":{\"stringValue\":\"%s\"},"
         "\"spectral_data\":{"
           "\"mapValue\":{\"fields\":{"
             "\"f1_405nm\":{\"integerValue\":\"%u\"},"
@@ -225,11 +222,11 @@ void loop() {
             "\"f8_745nm\":{\"integerValue\":\"%u\"},"
             "\"vis\":{\"integerValue\":\"%u\"},"
             "\"nir_855nm\":{\"integerValue\":\"%u\"}"
-          "}}}"
+          "}}"
         "}"
       "}"
     "}",
-    tempC, weightG,
+    tempC, weightG, timeBuf,
     ch_f1, ch_f2, ch_fz, ch_f3, ch_f4,
     ch_f5, ch_fy, ch_fxl, ch_f6, ch_f7,
     ch_f8, ch_vis, ch_nir
@@ -246,12 +243,11 @@ void loop() {
   Serial.println(payload);
   Serial.println(F("------------------------"));
 
-  // ── 6. POST to Firebase Firestore REST API ────────────────
+  // ── 7. POST to Firebase Firestore REST API ────────────────
   if (WiFi.status() == WL_CONNECTED) {
     HTTPClient http;
 
     // Build full URL with API key appended as query param
-    // Firestore auto-generates a document ID when you POST to the collection endpoint
     char url[256];
     snprintf(url, sizeof(url), "%s?key=%s", FIRESTORE_BASE, FIREBASE_API_KEY);
 
@@ -287,7 +283,7 @@ void loop() {
     oledShow("WiFi Lost!", "Reconnecting...", "", "");
   }
 
-  // ── 7. OLED Update ───────────────────────────────────────
+  // ── 8. OLED Update ───────────────────────────────────────
   char row0[22], row1[22], row2[22], row3[22];
   snprintf(row0, sizeof(row0), "Oil Adulteration Sys");
   snprintf(row1, sizeof(row1), "Temp:   %.2f C", tempC);

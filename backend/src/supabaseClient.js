@@ -12,8 +12,19 @@ const firebaseConfig = {
   measurementId: process.env.FIREBASE_MEASUREMENT_ID
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+let app, db;
+
+if (firebaseConfig.apiKey) {
+  try {
+    app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    console.log("Firebase initialized successfully in backend.");
+  } catch (err) {
+    console.error("Failed to initialize Firebase in backend:", err);
+  }
+} else {
+  console.warn("Firebase API key is missing. Firebase services will not be initialized in the backend.");
+}
 
 class QueryBuilder {
   constructor(tableName) {
@@ -62,6 +73,9 @@ class QueryBuilder {
 
   async then(resolve, reject) {
     try {
+      if (!db) {
+        throw new Error("Firestore is not initialized in the backend. Verify FIREBASE_API_KEY.");
+      }
       const colRef = collection(db, this.tableName);
       let q = colRef;
       
@@ -98,6 +112,9 @@ class QueryBuilder {
 
   async insert(payload) {
     try {
+      if (!db) {
+        throw new Error("Firestore is not initialized in the backend. Verify FIREBASE_API_KEY.");
+      }
       const colRef = collection(db, this.tableName);
       const isArray = Array.isArray(payload);
       const items = isArray ? payload : [payload];
@@ -133,6 +150,9 @@ class QueryBuilder {
 
   async update(payload) {
     try {
+      if (!db) {
+        throw new Error("Firestore is not initialized in the backend. Verify FIREBASE_API_KEY.");
+      }
       const colRef = collection(db, this.tableName);
       let q = colRef;
       const queryConstraints = [];
@@ -162,6 +182,9 @@ class QueryBuilder {
 
   async delete() {
     try {
+      if (!db) {
+        throw new Error("Firestore is not initialized in the backend. Verify FIREBASE_API_KEY.");
+      }
       const colRef = collection(db, this.tableName);
       let q = colRef;
       const queryConstraints = [];
@@ -189,6 +212,9 @@ class QueryBuilder {
 
   async upsert(payload, options = {}) {
     try {
+      if (!db) {
+        throw new Error("Firestore is not initialized in the backend. Verify FIREBASE_API_KEY.");
+      }
       const colRef = collection(db, this.tableName);
       const onConflict = options.onConflict || 'id';
       const items = Array.isArray(payload) ? payload : [payload];

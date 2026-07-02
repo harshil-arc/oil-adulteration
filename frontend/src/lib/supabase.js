@@ -30,21 +30,36 @@ import {
   getDownloadURL 
 } from 'firebase/storage';
 
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
+const getEnv = (key) => {
+  return typeof import.meta !== 'undefined' && import.meta.env ? import.meta.env[key] : undefined;
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
-const storage = getStorage(app);
+const firebaseConfig = {
+  apiKey: getEnv('VITE_FIREBASE_API_KEY'),
+  authDomain: getEnv('VITE_FIREBASE_AUTH_DOMAIN'),
+  databaseURL: getEnv('VITE_FIREBASE_DATABASE_URL'),
+  projectId: getEnv('VITE_FIREBASE_PROJECT_ID'),
+  storageBucket: getEnv('VITE_FIREBASE_STORAGE_BUCKET'),
+  messagingSenderId: getEnv('VITE_FIREBASE_MESSAGING_SENDER_ID'),
+  appId: getEnv('VITE_FIREBASE_APP_ID'),
+  measurementId: getEnv('VITE_FIREBASE_MEASUREMENT_ID')
+};
+
+let app, db, auth, storage;
+
+if (firebaseConfig.apiKey) {
+  try {
+    app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    auth = getAuth(app);
+    storage = getStorage(app);
+    console.log("Firebase initialized successfully in SpectraTrust frontend.");
+  } catch (err) {
+    console.error("Failed to initialize Firebase:", err);
+  }
+} else {
+  console.warn("Firebase API key is missing. Firebase database and auth features will not be initialized. Please check VITE_FIREBASE_API_KEY in your env configuration.");
+}
 
 class QueryBuilder {
   constructor(tableName) {
@@ -93,6 +108,9 @@ class QueryBuilder {
 
   async then(resolve, reject) {
     try {
+      if (!db) {
+        throw new Error("Firestore is not initialized. Please verify your Firebase environment variables.");
+      }
       const colRef = collection(db, this.tableName);
       let q = colRef;
       
@@ -129,6 +147,9 @@ class QueryBuilder {
 
   async insert(payload) {
     try {
+      if (!db) {
+        throw new Error("Firestore is not initialized. Please verify your Firebase environment variables.");
+      }
       const colRef = collection(db, this.tableName);
       const isArray = Array.isArray(payload);
       const items = isArray ? payload : [payload];
@@ -164,6 +185,9 @@ class QueryBuilder {
 
   async update(payload) {
     try {
+      if (!db) {
+        throw new Error("Firestore is not initialized. Please verify your Firebase environment variables.");
+      }
       const colRef = collection(db, this.tableName);
       let q = colRef;
       const queryConstraints = [];
@@ -193,6 +217,9 @@ class QueryBuilder {
 
   async delete() {
     try {
+      if (!db) {
+        throw new Error("Firestore is not initialized. Please verify your Firebase environment variables.");
+      }
       const colRef = collection(db, this.tableName);
       let q = colRef;
       const queryConstraints = [];
@@ -220,6 +247,9 @@ class QueryBuilder {
 
   async upsert(payload, options = {}) {
     try {
+      if (!db) {
+        throw new Error("Firestore is not initialized. Please verify your Firebase environment variables.");
+      }
       const colRef = collection(db, this.tableName);
       const onConflict = options.onConflict || 'id';
       const items = Array.isArray(payload) ? payload : [payload];
@@ -263,6 +293,14 @@ export const supabase = {
   channel: (channelName) => {
     return {
       on: (eventType, filter, callback) => {
+        if (!db) {
+          console.warn("Firestore not initialized. Cannot listen to realtime channel:", channelName);
+          return {
+            subscribe: () => ({
+              unsubscribe: () => {}
+            })
+          };
+        }
         const table = filter.table;
         const colRef = collection(db, table);
         
@@ -312,6 +350,9 @@ export const supabase = {
   auth: {
     signUp: async ({ email, password, options }) => {
       try {
+        if (!auth) {
+          throw new Error("Firebase Auth is not initialized. Please verify your Firebase environment variables.");
+        }
         const cred = await createUserWithEmailAndPassword(auth, email, password);
         const name = options?.data?.full_name || '';
         if (name) {
@@ -336,6 +377,9 @@ export const supabase = {
 
     signInWithPassword: async ({ email, password }) => {
       try {
+        if (!auth) {
+          throw new Error("Firebase Auth is not initialized. Please verify your Firebase environment variables.");
+        }
         const cred = await signInWithEmailAndPassword(auth, email, password);
         const token = await cred.user.getIdToken();
         const session = {
@@ -356,6 +400,9 @@ export const supabase = {
 
     signOut: async () => {
       try {
+        if (!auth) {
+          throw new Error("Firebase Auth is not initialized. Please verify your Firebase environment variables.");
+        }
         await fbSignOut(auth);
         return { error: null };
       } catch (err) {
@@ -365,6 +412,9 @@ export const supabase = {
 
     updateUser: async ({ data }) => {
       try {
+        if (!auth) {
+          throw new Error("Firebase Auth is not initialized. Please verify your Firebase environment variables.");
+        }
         const user = auth.currentUser;
         if (!user) throw new Error('No user logged in');
         if (data?.full_name) {
@@ -389,6 +439,9 @@ export const supabase = {
 
     getSession: async () => {
       try {
+        if (!auth) {
+          return { data: { session: null }, error: null };
+        }
         const user = auth.currentUser;
         if (!user) return { data: { session: null }, error: null };
         const token = await user.getIdToken();
@@ -409,6 +462,16 @@ export const supabase = {
     },
 
     onAuthStateChange: (callback) => {
+      if (!auth) {
+        console.warn("Firebase Auth not initialized. Registering dummy AuthStateChange listener.");
+        return {
+          data: {
+            subscription: {
+              unsubscribe: () => {}
+            }
+          }
+        };
+      }
       const unsubscribe = onAuthStateChanged(auth, async (user) => {
         if (user) {
           const token = await user.getIdToken();
@@ -443,6 +506,9 @@ export const supabase = {
       return {
         upload: async (filePath, file) => {
           try {
+            if (!storage) {
+              throw new Error("Firebase Storage is not initialized. Please verify your Firebase environment variables.");
+            }
             const fileRef = ref(storage, `${bucketName}/${filePath}`);
             await uploadBytes(fileRef, file);
             return { data: { path: filePath }, error: null };
@@ -451,7 +517,8 @@ export const supabase = {
           }
         },
         getPublicUrl: (filePath) => {
-          return { data: { publicUrl: `https://firebasestorage.googleapis.com/v0/b/${firebaseConfig.storageBucket}/o/${encodeURIComponent(bucketName + '/' + filePath)}?alt=media` } };
+          const bucket = firebaseConfig.storageBucket || 'oil-adulteration.firebasestorage.app';
+          return { data: { publicUrl: `https://firebasestorage.googleapis.com/v0/b/${bucket}/o/${encodeURIComponent(bucketName + '/' + filePath)}?alt=media` } };
         }
       };
     }
