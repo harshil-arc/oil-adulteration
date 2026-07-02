@@ -75,16 +75,25 @@ if (initResult.ok) {
     console.error("Failed to initialize Firebase:", err);
   }
 } else {
+  // Diagnose WHY env vars are missing — most common cause: dev server started before .env existed.
+  console.error(
+    "%c[Firebase] Environment variables not detected by Vite.\n" +
+    "Missing: " + initResult.missing + "\n" +
+    "Loaded env (sanitized): " + JSON.stringify({
+      VITE_FIREBASE_API_KEY: import.meta.env.VITE_FIREBASE_API_KEY ? import.meta.env.VITE_FIREBASE_API_KEY.slice(0, 6) + '...' : '(empty)',
+      VITE_FIREBASE_AUTH_DOMAIN: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '(empty)',
+      VITE_FIREBASE_PROJECT_ID: import.meta.env.VITE_FIREBASE_PROJECT_ID || '(empty)',
+      VITE_BACKEND_URL: import.meta.env.VITE_BACKEND_URL || '(empty)',
+    }) + "\n" +
+    "FIX: 1) Confirm frontend/.env exists with VITE_FIREBASE_* keys\n" +
+    "     2) STOP and RESTART `npm run dev` (Vite reads .env ONLY at startup)\n" +
+    "     3) If running `vite build`/`vite preview`, rebuild so env is baked in",
+    "color: #ff6b6b; font-weight: bold;"
+  );
   firebaseInitError = new Error(
     `Firebase Auth is not initialized. Please verify your Firebase environment variables. Missing: ${initResult.missing}. ` +
     `Make sure frontend/.env exists and contains valid VITE_FIREBASE_* values, then RESTART the dev server (Vite only reads .env on startup).`
   );
-  console.error(firebaseInitError.message);
-  console.error("Read values:", {
-    apiKey: firebaseConfig.apiKey ? `${firebaseConfig.apiKey.slice(0, 6)}...` : '(empty)',
-    authDomain: firebaseConfig.authDomain || '(empty)',
-    projectId: firebaseConfig.projectId || '(empty)',
-  });
 }
 
 const ensureAuth = () => {
