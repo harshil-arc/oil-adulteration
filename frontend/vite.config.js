@@ -2,9 +2,20 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { VitePWA } from 'vite-plugin-pwa'
 import { fileURLToPath } from 'url'
-import { dirname } from 'path'
+import { dirname, resolve } from 'path'
+import fs from 'fs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
+
+// Auto-create .env from .env.example if it does not exist
+const envPath = resolve(__dirname, '.env')
+if (!fs.existsSync(envPath)) {
+  const examplePath = resolve(__dirname, '.env.example')
+  if (fs.existsSync(examplePath)) {
+    fs.copyFileSync(examplePath, envPath)
+    console.log('[Vite config] Auto-created .env from .env.example')
+  }
+}
 
 export default defineConfig({
   envDir: __dirname,

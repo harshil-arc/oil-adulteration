@@ -24,7 +24,8 @@ import {
   updateProfile,
   signInWithPopup,
   GoogleAuthProvider,
-  OAuthProvider
+  OAuthProvider,
+  sendPasswordResetEmail
 } from 'firebase/auth';
 import { 
   getStorage, 
@@ -48,10 +49,18 @@ let app, db, auth, storage;
 let firebaseInitError = null;
 
 const validateFirebaseConfig = () => {
-  const required = ['apiKey', 'authDomain', 'projectId'];
+  const envMapping = {
+    apiKey: 'VITE_FIREBASE_API_KEY',
+    authDomain: 'VITE_FIREBASE_AUTH_DOMAIN',
+    projectId: 'VITE_FIREBASE_PROJECT_ID',
+    storageBucket: 'VITE_FIREBASE_STORAGE_BUCKET',
+    messagingSenderId: 'VITE_FIREBASE_MESSAGING_SENDER_ID',
+    appId: 'VITE_FIREBASE_APP_ID'
+  };
+  const required = Object.keys(envMapping);
   const missing = required.filter(key => !firebaseConfig[key]);
   if (missing.length > 0) {
-    const formatted = missing.map(k => `VITE_FIREBASE_${k.replace(/[A-Z]/g, l => `_${l}`).toUpperCase()}`).join(', ');
+    const formatted = missing.map(key => envMapping[key]);
     return { ok: false, missing: formatted };
   }
   return { ok: true };
@@ -78,7 +87,7 @@ if (initResult.ok) {
   // Diagnose WHY env vars are missing — most common cause: dev server started before .env existed.
   console.error(
     "%c[Firebase] Environment variables not detected by Vite.\n" +
-    "Missing: " + initResult.missing + "\n" +
+    "Missing: " + initResult.missing.join(', ') + "\n" +
     "Loaded env (sanitized): " + JSON.stringify({
       VITE_FIREBASE_API_KEY: import.meta.env.VITE_FIREBASE_API_KEY ? import.meta.env.VITE_FIREBASE_API_KEY.slice(0, 6) + '...' : '(empty)',
       VITE_FIREBASE_AUTH_DOMAIN: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '(empty)',
@@ -91,7 +100,7 @@ if (initResult.ok) {
     "color: #ff6b6b; font-weight: bold;"
   );
   firebaseInitError = new Error(
-    `Firebase Auth is not initialized. Please verify your Firebase environment variables. Missing: ${initResult.missing}. ` +
+    `Firebase Auth is not initialized. Please verify your Firebase environment variables. Missing: ${initResult.missing.join(', ')}. ` +
     `Make sure frontend/.env exists and contains valid VITE_FIREBASE_* values, then RESTART the dev server (Vite only reads .env on startup).`
   );
 }
@@ -564,6 +573,16 @@ export const supabase = {
           }
         }
       };
+    },
+
+    resetPasswordForEmail: async (email, { redirectTo } = {}) => {
+      try {
+        const authInstance = ensureAuth();
+        await sendPasswordResetEmail(authInstance, email, redirectTo ? { url: redirectTo } : undefined);
+        return { data: {}, error: null };
+      } catch (err) {
+        return { data: null, error: err };
+      }
     }
   },
 
@@ -591,4 +610,4 @@ export const supabase = {
   }
 };
 
-export { auth, db, storage };
+export { auth, db, storage, initResult, firebaseInitError };

@@ -209,6 +209,10 @@ export function AppProvider({ children }) {
     await supabase.auth.signOut();
   };
 
+  const resetPassword = async (email) => {
+    return await supabase.auth.resetPasswordForEmail(email);
+  };
+
   return (
     <AppContext.Provider value={{ 
       settings, updateSetting, 
@@ -216,7 +220,7 @@ export function AppProvider({ children }) {
       deviceStatus, liveData,
       isMenuOpen, setMenuOpen,
       session, user, loadingSession,
-      login, signup, loginWithGoogle, logout
+      login, signup, loginWithGoogle, logout, resetPassword
     }}>
       {children}
     </AppContext.Provider>
