@@ -15,13 +15,16 @@ import {
   limit, 
   onSnapshot 
 } from 'firebase/firestore';
-import { 
-  getAuth, 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  signOut as fbSignOut, 
-  onAuthStateChanged, 
-  updateProfile 
+import {
+  getAuth,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut as fbSignOut,
+  onAuthStateChanged,
+  updateProfile,
+  signInWithPopup,
+  GoogleAuthProvider,
+  OAuthProvider
 } from 'firebase/auth';
 import { 
   getStorage, 
@@ -42,17 +45,21 @@ const firebaseConfig = {
 };
 
 let app, db, auth, storage;
+let firebaseInitError = null;
 
 const validateFirebaseConfig = () => {
   const required = ['apiKey', 'authDomain', 'projectId'];
   const missing = required.filter(key => !firebaseConfig[key]);
   if (missing.length > 0) {
     const formatted = missing.map(k => `VITE_FIREBASE_${k.replace(/[A-Z]/g, l => `_${l}`).toUpperCase()}`).join(', ');
-    throw new Error(`Firebase Auth is not initialized. Please verify your Firebase environment variables. Missing: ${formatted}`);
+    return { ok: false, missing: formatted };
   }
+  return { ok: true };
 };
 
-if (firebaseConfig.apiKey) {
+const initResult = validateFirebaseConfig();
+
+if (initResult.ok) {
   try {
     if (getApps().length === 0) {
       app = initializeApp(firebaseConfig);
@@ -64,11 +71,31 @@ if (firebaseConfig.apiKey) {
     storage = getStorage(app);
     console.log("Firebase initialized successfully in SpectraTrust frontend.");
   } catch (err) {
+    firebaseInitError = err;
     console.error("Failed to initialize Firebase:", err);
   }
 } else {
-  console.warn("Firebase API key is missing. Firebase database and auth features will not be initialized. Please check VITE_FIREBASE_API_KEY in your env configuration.");
+  firebaseInitError = new Error(
+    `Firebase Auth is not initialized. Please verify your Firebase environment variables. Missing: ${initResult.missing}. ` +
+    `Make sure frontend/.env exists and contains valid VITE_FIREBASE_* values, then RESTART the dev server (Vite only reads .env on startup).`
+  );
+  console.error(firebaseInitError.message);
+  console.error("Read values:", {
+    apiKey: firebaseConfig.apiKey ? `${firebaseConfig.apiKey.slice(0, 6)}...` : '(empty)',
+    authDomain: firebaseConfig.authDomain || '(empty)',
+    projectId: firebaseConfig.projectId || '(empty)',
+  });
 }
+
+const ensureAuth = () => {
+  if (!auth) {
+    const msg = firebaseInitError
+      ? firebaseInitError.message
+      : "Firebase Auth is not initialized. Please verify your Firebase environment variables.";
+    throw new Error(msg);
+  }
+  return auth;
+};
 
 class QueryBuilder {
   constructor(tableName) {
@@ -359,10 +386,8 @@ export const supabase = {
   auth: {
     signUp: async ({ email, password, options }) => {
       try {
-        if (!auth) {
-          throw new Error("Firebase Auth is not initialized. Please verify your Firebase environment variables.");
-        }
-        const cred = await createUserWithEmailAndPassword(auth, email, password);
+        const authInstance = ensureAuth();
+        const cred = await createUserWithEmailAndPassword(authInstance, email, password);
         const name = options?.data?.full_name || '';
         if (name) {
           await updateProfile(cred.user, { displayName: name });
@@ -386,10 +411,8 @@ export const supabase = {
 
     signInWithPassword: async ({ email, password }) => {
       try {
-        if (!auth) {
-          throw new Error("Firebase Auth is not initialized. Please verify your Firebase environment variables.");
-        }
-        const cred = await signInWithEmailAndPassword(auth, email, password);
+        const authInstance = ensureAuth();
+        const cred = await signInWithEmailAndPassword(authInstance, email, password);
         const token = await cred.user.getIdToken();
         const session = {
           access_token: token,
@@ -407,12 +430,39 @@ export const supabase = {
       }
     },
 
+    signInWithOAuth: async ({ provider, options } = {}) => {
+      try {
+        const authInstance = ensureAuth();
+        let providerInstance;
+        const providerName = (provider || 'google').toLowerCase();
+        if (providerName === 'google') {
+          providerInstance = new GoogleAuthProvider();
+        } else {
+          providerInstance = new OAuthProvider(providerName);
+        }
+        providerInstance.setCustomParameters({ prompt: 'select_account' });
+        const cred = await signInWithPopup(authInstance, providerInstance);
+        const token = await cred.user.getIdToken();
+        const session = {
+          access_token: token,
+          user: {
+            id: cred.user.uid,
+            email: cred.user.email,
+            user_metadata: {
+              full_name: cred.user.displayName || ''
+            }
+          }
+        };
+        return { data: { session, user: session.user, redirectUrl: options?.redirectTo || null }, error: null };
+      } catch (err) {
+        return { data: { session: null, user: null, redirectUrl: null }, error: err };
+      }
+    },
+
     signOut: async () => {
       try {
-        if (!auth) {
-          throw new Error("Firebase Auth is not initialized. Please verify your Firebase environment variables.");
-        }
-        await fbSignOut(auth);
+        const authInstance = ensureAuth();
+        await fbSignOut(authInstance);
         return { error: null };
       } catch (err) {
         return { error: err };
@@ -421,10 +471,8 @@ export const supabase = {
 
     updateUser: async ({ data }) => {
       try {
-        if (!auth) {
-          throw new Error("Firebase Auth is not initialized. Please verify your Firebase environment variables.");
-        }
-        const user = auth.currentUser;
+        const authInstance = ensureAuth();
+        const user = authInstance.currentUser;
         if (!user) throw new Error('No user logged in');
         if (data?.full_name) {
           await updateProfile(user, { displayName: data.full_name });
