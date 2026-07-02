@@ -1,4 +1,4 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, getApps, getApp } from 'firebase/app';
 import { 
   getFirestore, 
   collection, 
@@ -43,9 +43,22 @@ const firebaseConfig = {
 
 let app, db, auth, storage;
 
+const validateFirebaseConfig = () => {
+  const required = ['apiKey', 'authDomain', 'projectId'];
+  const missing = required.filter(key => !firebaseConfig[key]);
+  if (missing.length > 0) {
+    const formatted = missing.map(k => `VITE_FIREBASE_${k.replace(/[A-Z]/g, l => `_${l}`).toUpperCase()}`).join(', ');
+    throw new Error(`Firebase Auth is not initialized. Please verify your Firebase environment variables. Missing: ${formatted}`);
+  }
+};
+
 if (firebaseConfig.apiKey) {
   try {
-    app = initializeApp(firebaseConfig);
+    if (getApps().length === 0) {
+      app = initializeApp(firebaseConfig);
+    } else {
+      app = getApp();
+    }
     db = getFirestore(app);
     auth = getAuth(app);
     storage = getStorage(app);
@@ -520,3 +533,5 @@ export const supabase = {
     }
   }
 };
+
+export { auth, db, storage };
