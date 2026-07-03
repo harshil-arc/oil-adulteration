@@ -34,15 +34,24 @@ import {
   getDownloadURL 
 } from 'firebase/storage';
 
+const sanitizeEnv = (val, fallback) => {
+  if (!val) return fallback;
+  const str = String(val).trim().replace(/^["']|["']$/g, '');
+  if (!str || str === 'undefined' || str === 'null' || str === 'EMPTY') {
+    return fallback;
+  }
+  return str;
+};
+
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyAhu9pa7EIlmZD-u68xxDeMXz483G98bS0",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "oil-adulteration.firebaseapp.com",
-  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL || "https://oil-adulteration-default-rtdb.firebaseio.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "oil-adulteration",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "oil-adulteration.firebasestorage.app",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "44023760630",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:44023760630:web:ffc4f6828e47d496e44ed7",
-  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-1T3CQ37R69"
+  apiKey: sanitizeEnv(import.meta.env.VITE_FIREBASE_API_KEY, "AIzaSyAhu9pa7EIlmZD-u68xxDeMXz483G98bS0"),
+  authDomain: sanitizeEnv(import.meta.env.VITE_FIREBASE_AUTH_DOMAIN, "oil-adulteration.firebaseapp.com"),
+  databaseURL: sanitizeEnv(import.meta.env.VITE_FIREBASE_DATABASE_URL, "https://oil-adulteration-default-rtdb.firebaseio.com"),
+  projectId: sanitizeEnv(import.meta.env.VITE_FIREBASE_PROJECT_ID, "oil-adulteration"),
+  storageBucket: sanitizeEnv(import.meta.env.VITE_FIREBASE_STORAGE_BUCKET, "oil-adulteration.firebasestorage.app"),
+  messagingSenderId: sanitizeEnv(import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID, "44023760630"),
+  appId: sanitizeEnv(import.meta.env.VITE_FIREBASE_APP_ID, "1:44023760630:web:ffc4f6828e47d496e44ed7"),
+  measurementId: sanitizeEnv(import.meta.env.VITE_FIREBASE_MEASUREMENT_ID, "G-1T3CQ37R69")
 };
 
 let app, db, auth, storage;
