@@ -37,7 +37,15 @@ import {
 const sanitizeEnv = (val, fallback) => {
   if (!val) return fallback;
   const str = String(val).trim().replace(/^["']|["']$/g, '');
-  if (!str || str === 'undefined' || str === 'null' || str === 'EMPTY') {
+  if (
+    !str || 
+    str === 'undefined' || 
+    str === 'null' || 
+    str === 'EMPTY' ||
+    str.includes('your_api_key_here') ||
+    str.includes('YOUR_') ||
+    (fallback.startsWith('AIza') && !str.startsWith('AIza'))
+  ) {
     return fallback;
   }
   return str;
