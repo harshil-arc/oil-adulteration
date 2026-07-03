@@ -38,7 +38,7 @@ export default function Nutrition() {
   const navigate = useNavigate();
   const { profile } = useApp();
 
-  // Active Tab View: 'dashboard', 'planner', 'workout', 'recovery', 'pantry', 'leftovers', 'analytics'
+  // Active Tab View: 'workout', 'dashboard', 'planner', 'recovery', 'pantry', 'analytics'
   const [activeTab, setActiveTab] = useState('workout');
   
   // Health & Fitness Profile State
@@ -78,6 +78,12 @@ export default function Nutrition() {
   // Water Intake State
   const [waterCups, setWaterCups] = useState(10); // 2500ml
 
+  // Pantry Items State
+  const [pantryItems, setPantryItems] = useState([
+    'Paneer', 'Whole Wheat Atta', 'Oats', 'Milk', 'Eggs', 'Moong Dal', 'Turmeric', 'Mustard Oil'
+  ]);
+  const [newPantryInput, setNewPantryInput] = useState('');
+
   // Calculated BMI
   const calculatedBMI = useMemo(() => {
     if (!healthProfile.height || !healthProfile.weight) return 22.5;
@@ -94,7 +100,7 @@ export default function Nutrition() {
 
   // Calculate Base Nutrition Targets
   const targets = useMemo(() => {
-    const { weight, height, age, gender, activityLevel, goals } = healthProfile;
+    const { weight, height, age, gender } = healthProfile;
     let bmr = 10 * weight + 6.25 * height - 5 * age + (gender === 'Male' ? 5 : -161);
     let targetCalories = Math.round(bmr * 1.55) + 350;
     const targetProtein = Math.round(weight * 1.8);
@@ -148,8 +154,19 @@ export default function Nutrition() {
     );
   };
 
+  const addPantryItem = () => {
+    if (newPantryInput.trim() && !pantryItems.includes(newPantryInput.trim())) {
+      setPantryItems([...pantryItems, newPantryInput.trim()]);
+      setNewPantryInput('');
+    }
+  };
+
+  const removePantryItem = (item) => {
+    setPantryItems(pantryItems.filter(i => i !== item));
+  };
+
   return (
-    <div className="flex flex-col min-h-screen theme-bg theme-text animate-fade-in pb-24">
+    <div className="flex flex-col min-h-screen theme-bg theme-text animate-fade-in pb-28">
       
       {/* ── TOP HEADER ── */}
       <div className="px-5 pt-8 pb-4 border-b border-[var(--border-color)] bg-[var(--bg-card)] sticky top-0 z-30 shadow-md">
@@ -157,9 +174,9 @@ export default function Nutrition() {
           <div>
             <div className="flex items-center gap-2 mb-1">
               <Sparkles size={16} className="text-[#d4af37]" />
-              <span className="text-xs font-black uppercase tracking-widest text-[#d4af37]">FOOD 360 AI FITNESS COACH</span>
+              <span className="text-xs font-black uppercase tracking-widest text-[#d4af37]">FOOD 360 AI NUTRITION & FITNESS COACH</span>
             </div>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">AI Workout & Health Planner</h1>
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">AI Nutrition & Workout Hub</h1>
           </div>
 
           <div className="flex items-center gap-2">
@@ -167,22 +184,22 @@ export default function Nutrition() {
               onClick={() => setExerciseLibraryOpen(true)}
               className="px-3.5 py-2 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/30 text-xs font-bold hover:bg-purple-500/20"
             >
-              📚 Exercise Library
+              📚 Library
             </button>
             <button
               onClick={() => setIsEditingProfile(!isEditingProfile)}
               className="px-3 py-2 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-color)] text-xs font-bold text-gray-300"
             >
-              ⚙️ Profile
+              ⚙️ Config
             </button>
           </div>
         </div>
       </div>
 
-      {/* ── PROMINENT MEDICAL DISCLAIMER BANNER ── */}
-      <div className="bg-amber-500/10 border-b border-amber-500/30 px-5 py-2.5 text-[11px] text-amber-300 font-bold flex items-center justify-center gap-2 text-center">
+      {/* ── MEDICAL DISCLAIMER BANNER ── */}
+      <div className="bg-amber-500/10 border-b border-amber-500/30 px-5 py-2 text-[11px] text-amber-300 font-bold flex items-center justify-center gap-2 text-center">
         <Shield size={14} className="shrink-0 text-amber-400" />
-        <span>Medical Disclaimer: Exercise and nutrition recommendations are for general guidance and do not replace professional medical advice.</span>
+        <span>Medical Disclaimer: Recommendations are for guidance and do not replace medical advice.</span>
       </div>
 
       {/* ── SUB-NAVIGATION TAB BAR ── */}
@@ -192,7 +209,7 @@ export default function Nutrition() {
             onClick={() => setActiveTab('workout')}
             className={`py-2.5 rounded-xl transition-all ${activeTab === 'workout' ? 'bg-[#d4af37] text-black font-black shadow-glow-gold' : 'text-gray-400 hover:text-white'}`}
           >
-            🏋️ Workout Planner
+            🏋️ Workout
           </button>
           <button
             onClick={() => setActiveTab('dashboard')}
@@ -210,7 +227,7 @@ export default function Nutrition() {
             onClick={() => setActiveTab('recovery')}
             className={`py-2.5 rounded-xl transition-all ${activeTab === 'recovery' ? 'bg-[#d4af37] text-black font-black shadow-glow-gold' : 'text-gray-400 hover:text-white'}`}
           >
-            💧 Water & Recovery
+            💧 Water
           </button>
           <button
             onClick={() => setActiveTab('pantry')}
@@ -227,11 +244,10 @@ export default function Nutrition() {
         </div>
       </div>
 
-      {/* ── WORKOUT PLANNER REDESIGNED TAB ── */}
+      {/* ── 1. WORKOUT PLANNER TAB ────────────────────────────────────────────── */}
       {activeTab === 'workout' && (
         <div className="px-5 pt-6 max-w-5xl mx-auto w-full space-y-6">
           
-          {/* TOP HERO SECTION: TODAY'S WORKOUT SUMMARY */}
           <div className="card p-6 rounded-3xl border border-[#d4af37]/40 bg-gradient-to-r from-[var(--bg-card)] via-[var(--bg-elevated)] to-[#d4af37]/10 space-y-4 relative overflow-hidden shadow-2xl">
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <div>
@@ -248,7 +264,6 @@ export default function Nutrition() {
               </button>
             </div>
 
-            {/* 6 Key Stats Grid */}
             <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 text-center text-xs pt-2">
               <div className="bg-[var(--bg-card)] p-3 rounded-2xl border border-[var(--border-color)]">
                 <span className="text-[9px] text-gray-400 font-bold block">Duration</span>
@@ -277,17 +292,13 @@ export default function Nutrition() {
             </div>
           </div>
 
-          {/* AI RATIONALE BANNER: "Why did AI recommend this workout?" */}
           <div className="bg-[var(--bg-elevated)] p-4 rounded-2xl border border-[var(--border-color)] space-y-1.5">
             <h4 className="text-xs font-black uppercase text-[#d4af37] tracking-wider flex items-center gap-1.5">
               <Bot size={16} /> Why did AI recommend this workout?
             </h4>
-            <p className="text-xs text-gray-300 leading-relaxed italic">
-              "{aiRationale}"
-            </p>
+            <p className="text-xs text-gray-300 leading-relaxed italic">"{aiRationale}"</p>
           </div>
 
-          {/* 7-DAY WEEKLY CALENDAR CAROUSEL */}
           <div className="space-y-2">
             <span className="text-xs font-bold text-gray-400 block uppercase tracking-wider">Weekly Schedule & Day Selector</span>
             <div className="grid grid-cols-7 gap-1 text-center text-xs">
@@ -308,7 +319,6 @@ export default function Nutrition() {
             </div>
           </div>
 
-          {/* PROFESSIONAL EXPANDABLE EXERCISE CARDS */}
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <h3 className="text-sm font-black text-white uppercase tracking-wider">Prescribed Exercise Routine</h3>
@@ -351,11 +361,9 @@ export default function Nutrition() {
                       </div>
                     </div>
 
-                    {/* EXPANDABLE DETAILS VIEW */}
                     {isExpanded && (
                       <div className="pt-3 border-t border-[var(--border-color)] space-y-3 text-xs bg-[var(--bg-elevated)] p-4 rounded-2xl">
                         <p className="text-gray-300 leading-relaxed"><strong>Description:</strong> {ex.description}</p>
-                        
                         <div>
                           <strong className="text-white block mb-1">How to Perform:</strong>
                           <ol className="list-decimal list-inside space-y-1 text-gray-300">
@@ -364,7 +372,6 @@ export default function Nutrition() {
                             ))}
                           </ol>
                         </div>
-
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
                           <p className="text-amber-400 font-semibold">⚠️ Common Mistakes: {ex.commonMistakes.join(', ')}</p>
                           <p className="text-purple-400 font-semibold">🫁 Breathing: {ex.breathingTechnique}</p>
@@ -376,45 +383,190 @@ export default function Nutrition() {
               })}
             </div>
           </div>
-
-          {/* FOOD 360 UNIQUE FEATURE: POST-WORKOUT MEAL ↔ PANTRY SYNCHRONIZATION CARD */}
-          <div className="card p-5 rounded-3xl border border-emerald-500/30 bg-emerald-500/5 space-y-3">
-            <div className="flex justify-between items-center border-b border-emerald-500/20 pb-2">
-              <h4 className="text-xs font-black uppercase text-emerald-400 tracking-wider flex items-center gap-1.5">
-                <Utensils size={16} /> Post-Workout Meal ↔ Pantry Synchronization
-              </h4>
-              <span className="text-[10px] font-bold text-emerald-300 bg-emerald-500/10 px-2.5 py-0.5 rounded">
-                Target: {postWorkoutSync.proteinTargetGrams}g Protein
-              </span>
-            </div>
-
-            <p className="text-xs text-gray-300 leading-relaxed">
-              "{postWorkoutSync.nutritionSummary}"
-            </p>
-
-            <div className="bg-[var(--bg-card)] p-3 rounded-2xl border border-[var(--border-color)] flex justify-between items-center text-xs">
-              <div>
-                <h5 className="font-black text-white">{postWorkoutSync.recommendedMealName}</h5>
-                <p className="text-[10px] text-gray-400">Available in Pantry: {postWorkoutSync.matchedPantryIngredients.join(', ')}</p>
-              </div>
-              <button onClick={() => setActiveTab('planner')} className="text-xs font-bold text-[#d4af37]">
-                View Recipe →
-              </button>
-            </div>
-          </div>
-
-          {/* FUTURE-READY WEARABLE PLACEHOLDERS (COMING SOON) */}
-          <div className="card p-4 rounded-2xl border border-gray-800 bg-gray-900/40 text-xs text-gray-400 flex flex-wrap items-center justify-between gap-2">
-            <span className="font-bold text-gray-300">⌚ Smartwatch & Fitness Band Sync</span>
-            <span className="text-[10px] font-black bg-gray-800 text-amber-400 px-2.5 py-1 rounded-lg border border-amber-500/30">
-              Coming Soon in v2.0
-            </span>
-          </div>
-
         </div>
       )}
 
-      {/* ── MODALS & FLOATING BUTTONS ── */}
+      {/* ── 2. DASHBOARD OVERVIEW TAB ─────────────────────────────────────────── */}
+      {activeTab === 'dashboard' && (
+        <div className="px-5 pt-6 max-w-5xl mx-auto w-full space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="card p-5 rounded-3xl border border-emerald-500/30 bg-emerald-500/10 space-y-1">
+              <span className="text-xs font-bold text-emerald-400 uppercase">Daily Calorie Target</span>
+              <p className="text-3xl font-black text-white font-mono">{targets.targetCalories} <span className="text-xs text-gray-400 font-normal">kcal</span></p>
+              <p className="text-[10px] text-gray-400">Based on BMR & Goal: {healthProfile.goal}</p>
+            </div>
+
+            <div className="card p-5 rounded-3xl border border-blue-500/30 bg-blue-500/10 space-y-1">
+              <span className="text-xs font-bold text-blue-400 uppercase">Daily Protein Target</span>
+              <p className="text-3xl font-black text-white font-mono">{targets.targetProtein} <span className="text-xs text-gray-400 font-normal">grams</span></p>
+              <p className="text-[10px] text-gray-400">1.8g per kg bodyweight ({healthProfile.weight} kg)</p>
+            </div>
+
+            <div className="card p-5 rounded-3xl border border-purple-500/30 bg-purple-500/10 space-y-1">
+              <span className="text-xs font-bold text-purple-400 uppercase">BMI Status</span>
+              <p className="text-3xl font-black text-white font-mono">{calculatedBMI} <span className={`text-xs font-bold ${bmiCategory.color}`}>({bmiCategory.label})</span></p>
+              <p className="text-[10px] text-gray-400">Height: {healthProfile.height} cm • Weight: {healthProfile.weight} kg</p>
+            </div>
+          </div>
+
+          <div className="card p-6 rounded-3xl border border-[var(--border-color)] space-y-4">
+            <h3 className="text-sm font-black text-white uppercase tracking-wider">Health Profile Summary</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+              <div className="bg-[var(--bg-elevated)] p-3 rounded-2xl">
+                <span className="text-gray-400 block text-[10px]">Diet Preference:</span>
+                <span className="font-bold text-emerald-400">{healthProfile.dietPreference}</span>
+              </div>
+              <div className="bg-[var(--bg-elevated)] p-3 rounded-2xl">
+                <span className="text-gray-400 block text-[10px]">Medical Conditions:</span>
+                <span className="font-bold text-amber-400">{healthProfile.medicalConditions.join(', ')}</span>
+              </div>
+              <div className="bg-[var(--bg-elevated)] p-3 rounded-2xl">
+                <span className="text-gray-400 block text-[10px]">Fitness Level:</span>
+                <span className="font-bold text-blue-400">{healthProfile.fitnessLevel}</span>
+              </div>
+              <div className="bg-[var(--bg-elevated)] p-3 rounded-2xl">
+                <span className="text-gray-400 block text-[10px]">Equipment:</span>
+                <span className="font-bold text-[#d4af37]">{healthProfile.equipment}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 3. MEAL PLANNER TAB ───────────────────────────────────────────────── */}
+      {activeTab === 'planner' && (
+        <div className="px-5 pt-6 max-w-5xl mx-auto w-full space-y-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h3 className="text-lg font-black text-white">AI Prescribed Indian Meal Plan</h3>
+              <p className="text-xs text-gray-400">Customized for {healthProfile.dietPreference} • High Protein</p>
+            </div>
+            <button onClick={() => alert('Meal plan regenerated with latest AI parameters!')} className="btn-primary text-xs py-2 px-4">
+              🔄 Regenerate Plan
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="card p-5 rounded-3xl border border-[var(--border-color)] space-y-3">
+              <span className="text-xs font-extrabold text-amber-400 uppercase tracking-wider block">🌅 Breakfast (08:30 AM)</span>
+              <h4 className="text-base font-black text-white">Paneer Bhurji + Whole Wheat Roti</h4>
+              <p className="text-xs text-gray-400">Fresh cottage cheese scrambled with turmeric, green chillies & tomatoes.</p>
+              <div className="flex justify-between items-center text-xs font-mono font-bold text-emerald-400 pt-2 border-t border-[var(--border-color)]">
+                <span>380 kcal</span>
+                <span>24g Protein</span>
+              </div>
+            </div>
+
+            <div className="card p-5 rounded-3xl border border-[var(--border-color)] space-y-3">
+              <span className="text-xs font-extrabold text-blue-400 uppercase tracking-wider block">☀️ Lunch (01:30 PM)</span>
+              <h4 className="text-base font-black text-white">Moong Dal Tadka + Brown Rice + Salad</h4>
+              <p className="text-xs text-gray-400">Lentils tempered with pure mustard oil, garlic & cumin seeds.</p>
+              <div className="flex justify-between items-center text-xs font-mono font-bold text-emerald-400 pt-2 border-t border-[var(--border-color)]">
+                <span>520 kcal</span>
+                <span>28g Protein</span>
+              </div>
+            </div>
+
+            <div className="card p-5 rounded-3xl border border-[var(--border-color)] space-y-3">
+              <span className="text-xs font-extrabold text-purple-400 uppercase tracking-wider block">🌙 Dinner (08:00 PM)</span>
+              <h4 className="text-base font-black text-white">Palak Paneer + 2 Bajra Rotis</h4>
+              <p className="text-xs text-gray-400">Iron-rich spinach gravy with low-fat paneer cubes.</p>
+              <div className="flex justify-between items-center text-xs font-mono font-bold text-emerald-400 pt-2 border-t border-[var(--border-color)]">
+                <span>450 kcal</span>
+                <span>26g Protein</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 4. WATER & RECOVERY TAB ───────────────────────────────────────────── */}
+      {activeTab === 'recovery' && (
+        <div className="px-5 pt-6 max-w-5xl mx-auto w-full space-y-6">
+          <div className="card p-6 rounded-3xl border border-blue-500/30 bg-blue-500/10 space-y-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <span className="text-xs font-black uppercase text-blue-400 tracking-wider">Hydration Tracker</span>
+                <h3 className="text-2xl font-black text-white">{waterCups * 250} ml / 3000 ml</h3>
+              </div>
+              <button onClick={() => setWaterCups(prev => prev + 1)} className="btn-primary py-2.5 px-4 text-xs">
+                + Add Cup (250ml)
+              </button>
+            </div>
+
+            <div className="w-full h-3 bg-gray-800 rounded-full overflow-hidden">
+              <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${Math.min(100, ((waterCups * 250) / 3000) * 100)}%` }} />
+            </div>
+          </div>
+
+          <div className="card p-5 rounded-3xl border border-[var(--border-color)] space-y-3">
+            <h4 className="text-sm font-black text-white uppercase tracking-wider">Muscle Recovery Score</h4>
+            <div className="grid grid-cols-2 gap-3 text-center">
+              <div className="bg-[var(--bg-elevated)] p-4 rounded-2xl">
+                <span className="text-xs text-gray-400 font-bold block">Sleep Score</span>
+                <span className="text-2xl font-black text-purple-400 font-mono">7.5 Hours</span>
+              </div>
+              <div className="bg-[var(--bg-elevated)] p-4 rounded-2xl">
+                <span className="text-xs text-gray-400 font-bold block">Recovery State</span>
+                <span className="text-2xl font-black text-emerald-400 font-mono">Ready (88%)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 5. PANTRY AI TAB ─────────────────────────────────────────────────── */}
+      {activeTab === 'pantry' && (
+        <div className="px-5 pt-6 max-w-5xl mx-auto w-full space-y-6">
+          <div className="card p-6 rounded-3xl border border-[var(--border-color)] space-y-4">
+            <h3 className="text-base font-black text-white">Available Pantry Ingredients</h3>
+            
+            <div className="flex gap-2">
+              <input
+                type="text"
+                placeholder="Add new pantry item (e.g. Tofu, Spinach)..."
+                value={newPantryInput}
+                onChange={e => setNewPantryInput(e.target.value)}
+                className="flex-1 bg-[var(--bg-input)] border border-[var(--border-color)] p-3 rounded-xl text-xs outline-none"
+              />
+              <button onClick={addPantryItem} className="btn-primary px-4 text-xs font-bold">
+                + Add
+              </button>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {pantryItems.map(item => (
+                <span key={item} className="bg-gray-800 text-gray-200 border border-gray-700 px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-2">
+                  ✓ {item}
+                  <button onClick={() => removePantryItem(item)} className="text-gray-400 hover:text-red-400">
+                    <X size={14} />
+                  </button>
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── 6. BADGES & ANALYTICS TAB ─────────────────────────────────────────── */}
+      {activeTab === 'analytics' && (
+        <div className="px-5 pt-6 max-w-5xl mx-auto w-full space-y-6">
+          <div className="card p-6 rounded-3xl border border-[var(--border-color)] space-y-4">
+            <h3 className="text-base font-black text-white">Fitness & Meal Badges</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {badges.map(b => (
+                <div key={b.id} className="bg-[var(--bg-elevated)] p-4 rounded-2xl border border-[var(--border-color)] text-center space-y-1">
+                  <span className="text-2xl block">{b.icon}</span>
+                  <h4 className="text-xs font-black text-white">{b.title}</h4>
+                  <p className="text-[10px] text-gray-400">{b.desc}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODALS ── */}
       <WorkoutPlayerModal
         isOpen={workoutPlayerOpen}
         onClose={() => setWorkoutPlayerOpen(false)}
@@ -433,7 +585,7 @@ export default function Nutrition() {
         currentWorkout={currentWorkout}
       />
 
-      {/* Floating AI Coach Assistant Button */}
+      {/* Floating AI Coach Button */}
       <button
         onClick={() => setAiCoachDrawerOpen(true)}
         className="fixed bottom-20 right-5 z-40 p-3.5 rounded-full bg-[#d4af37] text-black shadow-glow-gold hover:scale-110 transition-transform flex items-center gap-2 font-black text-xs"

@@ -277,7 +277,7 @@ export default function Home() {
             </button>
 
             <button
-              onClick={() => navigate('/hotspots')}
+              onClick={() => navigate('/testing-centres')}
               className="p-4 rounded-2xl bg-[var(--bg-card)] border border-emerald-500/30 hover:border-emerald-400 text-left transition-all group flex flex-col justify-between h-24"
             >
               <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform">
