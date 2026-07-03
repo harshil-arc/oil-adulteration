@@ -92,7 +92,7 @@ export default function Community() {
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-xs font-black uppercase tracking-widest text-[#d4af37]">SPECTRA TRUST EMERGENCY NETWORK</span>
+              <span className="text-xs font-black uppercase tracking-widest text-[#d4af37]">FOOD 360 EMERGENCY NETWORK</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">Food Redistribution & Relief Platform</h1>
           </div>
@@ -373,7 +373,7 @@ export default function Community() {
             <h2 className="text-lg font-bold text-white flex items-center gap-2">
               <ShieldCheck size={20} className="text-emerald-400" /> Food Safety & Redistribution Guidelines
             </h2>
-            <p className="text-xs text-gray-400">Mandatory FSSAI & SpectraTrust food hygiene and transport standards</p>
+            <p className="text-xs text-gray-400">Mandatory FSSAI & Food 360 food hygiene and transport standards</p>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

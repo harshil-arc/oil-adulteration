@@ -123,11 +123,11 @@ export function PrivacySecurity() {
   );
 }
 
-// 2. About PureOil Screen
+// 2. About Food 360 Screen
 export function AboutApp() {
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col pb-24 animate-fade-in relative z-20">
-      <SubScreenNav title="About PureOil" />
+      <SubScreenNav title="About Food 360" />
       <div className="p-5 flex flex-col items-center flex-1">
          <div className="w-24 h-24 bg-gradient-to-br from-[#f5c842] to-[#d4af37] text-black rounded-[2rem] flex flex-col items-center justify-center shadow-glow-gold relative overflow-hidden mt-10 mb-6">
            <Shield size={48} strokeWidth={1} fill="currentColor" />
@@ -151,7 +151,7 @@ export function AboutApp() {
          </div>
 
          <p className="mt-auto text-center text-xs text-gray-600 max-w-[250px]">
-           © 2026 PureOil Ecosystem. All rights reserved. Designed for professional field inspection.
+           © 2026 Food 360 Ecosystem. All rights reserved. Designed for professional field inspection.
          </p>
       </div>
     </div>

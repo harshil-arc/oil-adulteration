@@ -26,7 +26,7 @@ export default function SplashOnboarding() {
     },
     {
       title: "Connect Your ESP32 Device",
-      subtitle: "Pair your PureOil hardware via Bluetooth or WiFi to seamlessly sync real-time spectra data.",
+      subtitle: "Pair your Food 360 hardware via Bluetooth or WiFi to seamlessly sync real-time spectra data.",
       Icon: Zap,
     },
     {
@@ -42,10 +42,8 @@ export default function SplashOnboarding() {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-[#d4af37] opacity-10 rounded-full blur-[80px]" />
         
         <div className="flex flex-col items-center justify-center z-10 animate-slide-up">
-          <div className="w-24 h-24 bg-gradient-to-br from-[#f5c842] to-[#d4af37] text-[#0a0a0a] rounded-[2rem] flex items-center justify-center shadow-glow-gold mb-6 rotate-12 transition-transform">
-            <Droplets size={48} fill="currentColor" strokeWidth={1} className="-rotate-12" />
-          </div>
-          <h1 className="text-4xl font-black tracking-tight text-white mb-2">Pure<span className="text-[#d4af37]">Oil</span></h1>
+          <img src="/food360-logo.jpg" alt="Food 360 Logo" className="w-28 h-28 rounded-[2rem] object-cover shadow-2xl border-2 border-[#d4af37]/50 mb-6 shadow-glow-gold" />
+          <h1 className="text-4xl font-black tracking-tight text-white mb-2">Food <span className="text-[#d4af37]">360</span></h1>
           <p className="text-[#9ca3af] font-medium tracking-wide uppercase text-xs">Know What You Consume</p>
         </div>
       </div>

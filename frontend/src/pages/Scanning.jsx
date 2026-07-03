@@ -84,7 +84,7 @@ export default function ScanningPage() {
 
         <div className="text-center">
           <h1 className="text-3xl font-black text-white mb-2">
-            {isConnecting ? 'Awaiting Sensor...' : done ? 'Analysis Complete!' : 'Verifying PureOil'}
+            {isConnecting ? 'Awaiting Sensor...' : done ? 'Analysis Complete!' : 'Verifying Food 360'}
           </h1>
           <p className="text-gray-500 text-sm max-w-[250px] mx-auto">
             {isConnecting 

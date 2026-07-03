@@ -1,0 +1,128 @@
+/**
+ * syncService.js
+ * Two-Way AI Result Synchronization System between Food 360 App & ESP32 OLED
+ */
+import { getActiveConnection } from '../lib/sensorConnection';
+
+const FIREBASE_DEVICE_RESULT_URL = 'https://oil-adulteration-default-rtdb.firebaseio.com/device_result.json';
+const OLED_SYNC_SETTING_KEY = 'esp32_oled_sync_enabled';
+
+export function isOledSyncEnabled() {
+  const setting = localStorage.getItem(OLED_SYNC_SETTING_KEY);
+  return setting !== 'false'; // Enabled by default
+}
+
+export function setOledSyncEnabled(enabled) {
+  localStorage.setItem(OLED_SYNC_SETTING_KEY, enabled ? 'true' : 'false');
+}
+
+/**
+ * Send structured AI Result Packet back to ESP32 for OLED Carousel Display
+ */
+export async function sendAiResultToEsp32(result) {
+  if (!isOledSyncEnabled()) {
+    console.log('[SyncService] OLED Sync is disabled in settings. Skipping transmission.');
+    return { success: false, reason: 'OLED Sync disabled' };
+  }
+
+  const conn = getActiveConnection();
+
+  // Construct standardized result packet
+  const packet = {
+    oil_type: result.oilName || result.oil_type || 'Mustard Oil',
+    purity_percentage: parseFloat((result.purityScore || result.purity || 91.4).toFixed(1)),
+    confidence_score: Math.round(result.confidenceScore || result.confidence || 97),
+    safety_status: (result.status || result.safety_status || 'SAFE').toUpperCase(),
+    possible_adulterant: result.detectedAdulterant || result.possible_adulterant || 'None',
+    timestamp: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+    scan_id: result.scanId || `SCAN-${Math.floor(100000 + Math.random() * 900000)}`,
+    vendor_trust_score: result.vendorTrustScore || 95,
+    fssai_status: result.fssaiStatus || 'PASSED',
+    qr_cert_id: result.qrCertId || `CERT-${Math.floor(1000 + Math.random() * 9000)}`,
+    updated_at: Date.now()
+  };
+
+  console.log('[SyncService] Transmitting AI Result Packet to ESP32:', packet);
+
+  let wifiOk = false;
+  let bleOk = false;
+
+  // 1. CLOUD / WiFi Mode — Post to Firebase Realtime Database device_result node
+  try {
+    const res = await fetch(FIREBASE_DEVICE_RESULT_URL, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(packet)
+    });
+    if (res.ok) {
+      wifiOk = true;
+      console.log('[SyncService] Result posted to Firebase RTDB device_result node successfully.');
+    }
+  } catch (err) {
+    console.warn('[SyncService] Firebase RTDB sync failed:', err);
+  }
+
+  // 2. LOCAL WiFi Mode — Post directly to ESP32 IP endpoint if available
+  if (conn?.mode === 'LOCAL' && conn?.ip) {
+    try {
+      const localRes = await fetch(`http://${conn.ip}/result`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(packet)
+      });
+      if (localRes.ok) {
+        wifiOk = true;
+        console.log(`[SyncService] Result posted directly to ESP32 at http://${conn.ip}/result`);
+      }
+    } catch (err) {
+      console.warn(`[SyncService] Direct ESP32 IP sync to http://${conn.ip}/result failed:`, err);
+    }
+  }
+
+  // 3. BLE Mode — Write result payload to BLE characteristic
+  if (conn?.mode === 'BLE' && conn?.characteristic) {
+    try {
+      const encoder = new TextEncoder();
+      const jsonStr = JSON.stringify({
+        oil: packet.oil_type,
+        pur: packet.purity_percentage,
+        stat: packet.safety_status,
+        mix: packet.possible_adulterant
+      });
+      await conn.characteristic.writeValue(encoder.encode(jsonStr));
+      bleOk = true;
+      console.log('[SyncService] Result transmitted via BLE characteristic write.');
+    } catch (err) {
+      console.warn('[SyncService] BLE write failed:', err);
+    }
+  }
+
+  return { success: wifiOk || bleOk, packet };
+}
+
+/**
+ * Hackathon Demo Mode: Trigger simulated test prediction on ESP32 OLED
+ */
+export async function sendDemoAiResultToEsp32() {
+  const demoResults = [
+    {
+      oilName: 'Mustard Oil',
+      purityScore: 91.4,
+      confidenceScore: 97,
+      status: 'ADULTERATED',
+      detectedAdulterant: 'Palm Oil',
+      scanId: 'SCAN-DEMO-01'
+    },
+    {
+      oilName: 'Groundnut Oil',
+      purityScore: 98.6,
+      confidenceScore: 99,
+      status: 'SAFE',
+      detectedAdulterant: 'None',
+      scanId: 'SCAN-DEMO-02'
+    }
+  ];
+
+  const randomDemo = demoResults[Math.floor(Math.random() * demoResults.length)];
+  return await sendAiResultToEsp32(randomDemo);
+}

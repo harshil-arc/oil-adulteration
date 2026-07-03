@@ -45,7 +45,7 @@ export default function QRLanding() {
          </div>
          <h1 className="text-2xl font-black theme-text tracking-wider uppercase mb-2">Mobile Device Required</h1>
          <p className="text-sm text-gray-500 max-w-sm mb-8">
-            It looks like you scanned a PureOil product QR code from a desktop browser. Please scan the QR code using your mobile phone's camera to initiate hardware testing.
+            It looks like you scanned a Food 360 product QR code from a desktop browser. Please scan the QR code using your mobile phone's camera to initiate hardware testing.
          </p>
          <button onClick={() => { setIsDesktop(false); setIsSplashActive(false); window.history.replaceState({}, '', '/scan'); }} className="btn-primary">
            Continue to App Anyway
@@ -64,7 +64,7 @@ export default function QRLanding() {
             <QrCode size={48} className="text-black -rotate-12" />
          </div>
          
-         <h1 className="text-3xl font-black text-white tracking-widest uppercase mb-2">PureOil<span className="text-[#C8952A]">.</span></h1>
+         <h1 className="text-3xl font-black text-white tracking-widest uppercase mb-2">Food 360<span className="text-[#C8952A]">.</span></h1>
          <p className="text-xs text-[#C8952A] font-bold uppercase tracking-[0.2em] mb-12">Product Target Locked</p>
          
          <div className="flex flex-col items-center gap-4 w-full max-w-xs transition-opacity duration-500">

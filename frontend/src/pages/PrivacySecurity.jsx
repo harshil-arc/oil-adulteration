@@ -339,7 +339,7 @@ export default function PrivacySecurity() {
         </SectionContainer>
 
         <p className="text-center text-[9px] text-[var(--text-muted)] font-bold uppercase tracking-[0.4em] py-10 opacity-30">
-           PureOil Shielded Environment v2.4
+           Food 360 Shielded Environment v2.4
         </p>
 
       </div>

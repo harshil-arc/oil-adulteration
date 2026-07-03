@@ -124,7 +124,7 @@ export default function Home() {
 
   // --- PERSONAL DASHBOARD STATS ---
   const personalStats = useMemo(() => {
-    const userScans = scans.filter(s => s.device_id === 'PUREOIL-ESP32-8842' || s.device_id === 'ESP32_01');
+    const userScans = scans.filter(s => s.device_id === 'FOOD 360-ESP32-8842' || s.device_id === 'ESP32_01');
     const totalScans = userScans.length > 0 ? userScans.length : 14;
     
     const puritySum = userScans.reduce((acc, val) => acc + parseFloat(val.purity || 0), 0);
@@ -264,16 +264,19 @@ export default function Home() {
 
       {/* --- TOP BAR & GREETING --- */}
       <div className="px-5 pt-4 pb-3 flex items-center justify-between border-b border-[var(--border-color)] bg-[var(--bg-card)]/80 backdrop-blur-md sticky top-0 z-30">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-xl font-black tracking-tight text-white">
-              {greeting}, {profile?.name ? profile.name.split(' ')[0] : 'Harshil'} 👋
-            </h1>
-            <span className="bg-[#d4af37]/20 text-[#d4af37] border border-[#d4af37]/40 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
-              <Award size={10} /> Gold Inspector
-            </span>
+        <div className="flex items-center gap-3">
+          <img src="/food360-logo.jpg" alt="Food 360 Logo" className="w-10 h-10 rounded-xl object-cover border border-[#d4af37]/40 shadow-md" />
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg font-black tracking-tight text-white">
+                Food <span className="text-[#d4af37]">360</span>
+              </h1>
+              <span className="bg-[#d4af37]/20 text-[#d4af37] border border-[#d4af37]/40 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
+                <Award size={10} /> Gold Inspector
+              </span>
+            </div>
+            <p className="text-[10px] text-gray-400 font-medium">{greeting}, {profile?.name ? profile.name.split(' ')[0] : 'Harshil'} 👋 • {formattedDate}</p>
           </div>
-          <p className="text-xs text-gray-400 font-medium">{formattedDate} • 🔥 5 Day Active Streak</p>
         </div>
 
         <div className="flex items-center gap-2">
@@ -1202,9 +1205,9 @@ export default function Home() {
           {/* Scan Cards List */}
           <div className="space-y-3">
             {[
-              { id: 'SCAN-8842-01', oil: 'Mustard Oil', purity: 96.4, confidence: 98.2, quality: 'Safe', store: 'Shree Krishna Traders', date: '2026-07-02 11:30 AM', device: 'PUREOIL-ESP32-8842' },
-              { id: 'SCAN-8842-02', oil: 'Sunflower Oil', purity: 94.8, confidence: 97.0, quality: 'Safe', store: 'Pure Oil Mart', date: '2026-07-02 02:15 PM', device: 'PUREOIL-ESP32-8842' },
-              { id: 'SCAN-8842-03', oil: 'Mustard Oil', purity: 71.2, confidence: 94.5, quality: 'Unsafe', store: 'Local Stall #12', date: '2026-07-01 04:45 PM', device: 'PUREOIL-ESP32-8842' }
+              { id: 'SCAN-8842-01', oil: 'Mustard Oil', purity: 96.4, confidence: 98.2, quality: 'Safe', store: 'Shree Krishna Traders', date: '2026-07-02 11:30 AM', device: 'FOOD 360-ESP32-8842' },
+              { id: 'SCAN-8842-02', oil: 'Sunflower Oil', purity: 94.8, confidence: 97.0, quality: 'Safe', store: 'Pure Oil Mart', date: '2026-07-02 02:15 PM', device: 'FOOD 360-ESP32-8842' },
+              { id: 'SCAN-8842-03', oil: 'Mustard Oil', purity: 71.2, confidence: 94.5, quality: 'Unsafe', store: 'Local Stall #12', date: '2026-07-01 04:45 PM', device: 'FOOD 360-ESP32-8842' }
             ].map(scan => (
               <div key={scan.id} className="card p-5 rounded-3xl border border-[var(--border-color)] space-y-3">
                 <div className="flex justify-between items-start">

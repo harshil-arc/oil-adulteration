@@ -39,11 +39,9 @@ export default function GlobalNavigation() {
         {/* Header */}
         <div className="p-8 flex items-center justify-between border-b border-[var(--border-color)]">
            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-brand-500 rounded-xl flex items-center justify-center shadow-lg shadow-brand-500/20">
-                 <LayoutDashboard size={20} className="text-black" />
-              </div>
+              <img src="/food360-logo.jpg" alt="Food 360 Logo" className="w-10 h-10 rounded-xl object-cover shadow-lg border border-[#d4af37]/30" />
               <div>
-                 <h2 className="text-sm font-black theme-text uppercase tracking-widest leading-none">SpectraTrust Control</h2>
+                 <h2 className="text-sm font-black theme-text uppercase tracking-widest leading-none">Food 360 Control</h2>
                  <p className="text-[9px] text-[var(--text-muted)] font-bold uppercase tracking-widest mt-1">Universal Drawer</p>
               </div>
            </div>

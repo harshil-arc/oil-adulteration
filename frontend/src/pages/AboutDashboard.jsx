@@ -146,7 +146,7 @@ export default function AboutDashboard() {
 
   return (
     <div className="flex flex-col min-h-screen bg-[var(--bg-page)] pb-20 animate-fade-in relative z-20 overflow-x-hidden">
-      <SubScreenNav title="SpectraTrust System" />
+      <SubScreenNav title="Food 360 System" />
 
       <div className="p-5 flex flex-col gap-6">
         
@@ -216,7 +216,7 @@ export default function AboutDashboard() {
            <div className="flex-1">
               <h4 className="text-amber-500 font-black text-[10px] uppercase tracking-widest mb-1">Standard Regulatory Warning</h4>
               <p className="text-amber-500/80 text-[10px] leading-relaxed">
-                This app is designed for indicative screening of edible and fuel oils in the field. Results provided by the SpectraTrust optical spectrometry sensors are for preliminary assessment and do not constitute a certified certificate. Official enforcement requires laboratory verification per FSSAI / Bureau of Indian Standards (BIS) protocols.
+                This app is designed for indicative screening of edible and fuel oils in the field. Results provided by the Food 360 optical spectrometry sensors are for preliminary assessment and do not constitute a certified certificate. Official enforcement requires laboratory verification per FSSAI / Bureau of Indian Standards (BIS) protocols.
               </p>
            </div>
         </div>

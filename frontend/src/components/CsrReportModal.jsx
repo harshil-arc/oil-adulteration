@@ -38,7 +38,7 @@ export default function CsrReportModal({ isOpen, onClose, donorName = 'Taj Palac
           
           <div className="border-b-2 border-[#d4af37] pb-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
             <div>
-              <span className="text-xs font-black uppercase tracking-widest text-[#d4af37] block mb-1">SPECTRA TRUST FOOD SAFETY NETWORK</span>
+              <span className="text-xs font-black uppercase tracking-widest text-[#d4af37] block mb-1">FOOD 360 FOOD SAFETY NETWORK</span>
               <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">CSR & Sustainability Impact Report</h1>
               <p className="text-xs text-gray-400 mt-0.5">Zero Food Waste & Carbon Reduction Compliance</p>
             </div>

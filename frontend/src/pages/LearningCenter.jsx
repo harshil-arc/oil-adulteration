@@ -43,7 +43,7 @@ const VIDEOS = [
   },
   { 
     id: 'v3', 
-    title: "PureOil App Training: Hardware Setup", 
+    title: "Food 360 App Training: Hardware Setup", 
     duration: "5:05", 
     difficulty: "Intermediate", 
     tags: ['Hardware', 'ESP32'], 
@@ -83,7 +83,7 @@ const MANUALS = [
   { 
     title: "App User Manual v2.4", 
     icon: BookOpen, 
-    desc: "Complete operational guide to the PureOil app.",
+    desc: "Complete operational guide to the Food 360 app.",
     content: `
       <h2>1. Initial Setup</h2>
       <p>Ensure your ESP32 device is powered on. Navigate to the "Scan" section in the app, select Bluetooth or Local Network, and pair the device. Once connected, the dashboard will show a "Streaming" status.</p>
@@ -161,7 +161,7 @@ const SENSORS = [
 ];
 
 const QUICK_HELP = [
-  { q: "How to perform a fast field scan?", a: "Power on the hardware. Open PureOil app > 'Scan' > 'Bluetooth' > Pair. Submerge the probe in the oil up to the marked line. Wait 5 seconds for the readings to stabilize. Tap 'Save DB' to finalize." },
+  { q: "How to perform a fast field scan?", a: "Power on the hardware. Open Food 360 app > 'Scan' > 'Bluetooth' > Pair. Submerge the probe in the oil up to the marked line. Wait 5 seconds for the readings to stabilize. Tap 'Save DB' to finalize." },
   { q: "The result is 'Inconclusive'. What now?", a: "This happens when the confidence score is between 40% and 60%. It usually means the probe was dirty, or the sample is a mix of highly similar oils (like sunflower and safflower). Clean the probe with an alcohol wipe and retry. If still inconclusive, a lab test is required." },
   { q: "What are the most common scanning mistakes?", a: "1. Failing to wipe the sensor lens between tests (causes cross-contamination data bleeding). 2. Testing oil under bright, direct sunlight (IR/UV rays from the sun enter the sensor and corrupt the spectral reading). 3. Testing oil while it is actively boiling on a stove." }
 ];
@@ -416,7 +416,7 @@ export default function LearningCenter() {
         </div>
 
         <p className="text-center text-[9px] text-[var(--text-muted)] font-black uppercase tracking-[0.4em] py-8 opacity-30">
-           PureOil Academy v1.0
+           Food 360 Academy v1.0
         </p>
 
       </div>

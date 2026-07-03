@@ -1,4 +1,4 @@
-// ─── SPECTRA TRUST INTELLIGENCE & DEMO SERVICE ──────────────────────────────
+// ─── FOOD 360 INTELLIGENCE & DEMO SERVICE ──────────────────────────────
 
 const SETTINGS_KEY = 'spectratrust_verification_settings';
 const DEMO_HOTSPOTS_KEY = 'spectratrust_demo_hotspots';

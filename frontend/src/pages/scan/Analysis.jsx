@@ -10,6 +10,7 @@ import CertificateModal from '../../components/CertificateModal';
 import ComplaintModal from '../../components/ComplaintModal';
 import DeveloperSettingsModal from '../../components/DeveloperSettingsModal';
 import { processScanResult, getVerificationSettings } from '../../services/intelligenceService';
+import { sendAiResultToEsp32 } from '../../services/syncService';
 
 // ─── Groq config (same as AiChatbot) ────────────────────────────────────────
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
@@ -247,6 +248,16 @@ export default function Analysis() {
     const syncRes = processScanResult(record);
     setSyncStatus(syncRes);
 
+    // TWO-WAY SYNCHRONIZATION: Transmit AI prediction packet back to ESP32 OLED
+    sendAiResultToEsp32({
+      oilName: selectedOil.oilName,
+      purityScore: result.purityPercentage,
+      confidenceScore: result.confidenceScore,
+      status: result.tier === 'pure' ? 'SAFE' : 'ADULTERATED',
+      detectedAdulterant: result.primaryIndicator || 'None',
+      scanId: reportNo
+    });
+
     // Save history to Supabase
     supabase.from('analysis_results').insert(record).then(({ error }) => {
       if (error) console.warn('[Analysis] Supabase sync notice:', error.message);
@@ -301,10 +312,10 @@ Provide 2-3 likely adulterants only.`;
   // ── Share Report ──────────────────────────────────────────────────────────
   const handleShare = async () => {
     if (!result || !selectedOil) return;
-    const text = `🫙 SpectraTrust Official Inspection Certificate\nOil: ${selectedOil.oilName}\nPurity Score: ${result.purityPercentage.toFixed(1)}%\nReport #: ${reportNo}\nDevice: ${deviceId}\nVerified with SpectraTrust AI — spectratrust.org`;
+    const text = `🫙 Food 360 Official Inspection Certificate\nOil: ${selectedOil.oilName}\nPurity Score: ${result.purityPercentage.toFixed(1)}%\nReport #: ${reportNo}\nDevice: ${deviceId}\nVerified with Food 360 AI — spectratrust.org`;
     try {
       if (navigator.share) {
-        await navigator.share({ title: 'SpectraTrust Digital Certificate', text });
+        await navigator.share({ title: 'Food 360 Digital Certificate', text });
       } else {
         await navigator.clipboard.writeText(text);
         alert('Inspection certificate details copied to clipboard!');

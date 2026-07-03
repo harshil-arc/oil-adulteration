@@ -157,7 +157,7 @@ export default function Nutrition() {
           <div>
             <div className="flex items-center gap-2 mb-1">
               <Sparkles size={16} className="text-[#d4af37]" />
-              <span className="text-xs font-black uppercase tracking-widest text-[#d4af37]">SPECTRA TRUST AI FITNESS COACH</span>
+              <span className="text-xs font-black uppercase tracking-widest text-[#d4af37]">FOOD 360 AI FITNESS COACH</span>
             </div>
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">AI Workout & Health Planner</h1>
           </div>
@@ -377,7 +377,7 @@ export default function Nutrition() {
             </div>
           </div>
 
-          {/* SPECTRA TRUST UNIQUE FEATURE: POST-WORKOUT MEAL ↔ PANTRY SYNCHRONIZATION CARD */}
+          {/* FOOD 360 UNIQUE FEATURE: POST-WORKOUT MEAL ↔ PANTRY SYNCHRONIZATION CARD */}
           <div className="card p-5 rounded-3xl border border-emerald-500/30 bg-emerald-500/5 space-y-3">
             <div className="flex justify-between items-center border-b border-emerald-500/20 pb-2">
               <h4 className="text-xs font-black uppercase text-emerald-400 tracking-wider flex items-center gap-1.5">

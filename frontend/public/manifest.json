@@ -1,6 +1,6 @@
 {
-  "name": "PureOil Detection",
-  "short_name": "PureOil",
+  "name": "Food 360 Detection",
+  "short_name": "Food 360",
   "description": "Smart field inspection and laboratory-grade oil adulteration detection system.",
   "start_url": "/home",
   "display": "standalone",

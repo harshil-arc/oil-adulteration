@@ -29,7 +29,7 @@ export default function QRGenerator() {
       const pngUrl = canvas.toDataURL("image/png").replace("image/png", "image/octet-stream");
       let downloadLink = document.createElement("a");
       downloadLink.href = pngUrl;
-      downloadLink.download = `PureOil-QR-${productId}.png`;
+      downloadLink.download = `Food 360-QR-${productId}.png`;
       document.body.appendChild(downloadLink);
       downloadLink.click();
       document.body.removeChild(downloadLink);

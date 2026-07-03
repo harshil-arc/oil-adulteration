@@ -45,7 +45,7 @@ export default function ScanDetail() {
   const handleShare = () => {
     if (!scan) return;
     const text = [
-      `SpectraTrust Scan Report`,
+      `Food 360 Scan Report`,
       `─────────────────`,
       `Oil Type: ${scan.oil_type || 'Unknown'}`,
       `Quality: ${scan.quality}`,
@@ -53,11 +53,11 @@ export default function ScanDetail() {
       `Date: ${new Date(scan.timestamp).toLocaleString()}`,
       scan.vendor ? `Vendor: ${scan.vendor}` : null,
       `─────────────────`,
-      `Verify at SpectraTrust AI Portal`
+      `Verify at Food 360 AI Portal`
     ].filter(Boolean).join('\n');
 
     if (navigator.share) {
-      navigator.share({ title: 'SpectraTrust Scan Report', text }).catch(() => {});
+      navigator.share({ title: 'Food 360 Scan Report', text }).catch(() => {});
     } else {
       navigator.clipboard?.writeText(text).then(() => alert('Report copied to clipboard!'));
     }
@@ -200,7 +200,7 @@ export default function ScanDetail() {
             <div>
               <p className="text-red-500 font-black text-xs uppercase tracking-widest mb-1">Contamination Detected</p>
               <p className="text-[var(--text-secondary)] text-sm leading-relaxed">
-                This sample was flagged as unsafe. Consider filing a SpectraTrust safety violation report and stopping the sale of this product immediately.
+                This sample was flagged as unsafe. Consider filing a Food 360 safety violation report and stopping the sale of this product immediately.
               </p>
             </div>
           </div>
@@ -222,7 +222,7 @@ export default function ScanDetail() {
             <div className="p-6 bg-white text-black border-4 border-double border-gray-400 rounded-3xl flex flex-col gap-4 text-center select-none shadow-xl mb-6">
               <div className="border-b border-gray-300 pb-3 flex flex-col items-center">
                 <span className="text-xl">🏆</span>
-                <h3 className="text-sm font-black uppercase tracking-widest mt-1">SpectraTrust Seal</h3>
+                <h3 className="text-sm font-black uppercase tracking-widest mt-1">Food 360 Seal</h3>
                 <p className="text-[7px] text-gray-500 font-bold uppercase tracking-wider">AI-Powered Food Safety Intelligence Platform</p>
               </div>
 
@@ -233,13 +233,13 @@ export default function ScanDetail() {
                 <p><strong>Safety Status:</strong> {scan.quality === 'Safe' ? 'Verified Safe' : 'High Risk'}</p>
                 <p><strong>Calibration Score:</strong> {scan.confidence_score || 96}%</p>
                 <p><strong>Scan Timestamp:</strong> {new Date(scan.timestamp).toLocaleString()}</p>
-                <p><strong>Link Device ID:</strong> {scan.device_id || 'PUREOIL-ESP32-8842'}</p>
+                <p><strong>Link Device ID:</strong> {scan.device_id || 'FOOD 360-ESP32-8842'}</p>
               </div>
 
               <div className="flex justify-between items-center pt-2">
                 <div className="text-left">
                   <p className="text-[7px] text-gray-400 uppercase tracking-widest">Digital Signature</p>
-                  <p className="text-[9px] font-black border-t border-gray-300 mt-5 pt-1">SpectraTrust Officer</p>
+                  <p className="text-[9px] font-black border-t border-gray-300 mt-5 pt-1">Food 360 Officer</p>
                 </div>
                 {/* Mock Verification QR Code */}
                 <div className="w-14 h-14 bg-gray-100 border border-gray-300 rounded flex items-center justify-center font-mono text-[6px]">

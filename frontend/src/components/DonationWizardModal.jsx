@@ -184,12 +184,12 @@ export default function DonationWizardModal({ isOpen, onClose, onDonationComplet
                 </div>
               </div>
 
-              {/* SPECTRA TRUST HARDWARE INTEGRATION LINK */}
+              {/* FOOD 360 HARDWARE INTEGRATION LINK */}
               <div className="bg-emerald-500/10 border border-emerald-500/30 p-3.5 rounded-2xl flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <Activity size={20} className="text-emerald-400 shrink-0" />
                   <div className="text-xs">
-                    <span className="font-extrabold text-emerald-400 block">SpectraTrust Sensor Verification</span>
+                    <span className="font-extrabold text-emerald-400 block">Food 360 Sensor Verification</span>
                     <span className="text-gray-300 text-[11px]">Oil Purity: <span className="font-mono font-bold text-white">97.4%</span> • Confidence: <span className="font-mono font-bold text-purple-400">98.2%</span></span>
                   </div>
                 </div>

@@ -32,7 +32,7 @@ export default function BluetoothScan() {
       const chrUuid = localStorage.getItem('ble_char_uuid') || '0000ffe1-0000-1000-8000-00805f9b34fb';
 
       const device = await navigator.bluetooth.requestDevice({
-        filters: [{ name: 'PureOil-BLE' }],
+        filters: [{ name: 'Food 360-BLE' }],
         optionalServices: [svcUuid],
       });
 
@@ -103,7 +103,7 @@ export default function BluetoothScan() {
           </div>
           <h2 className="theme-text font-black text-2xl text-center">Bluetooth Pairing</h2>
           <p className="text-gray-500 text-sm text-center mt-2 max-w-[250px]">
-            Ensure your ESP32 is powered on and <strong>&quot;PureOil-BLE&quot;</strong> is discoverable.
+            Ensure your ESP32 is powered on and <strong>&quot;Food 360-BLE&quot;</strong> is discoverable.
           </p>
         </div>
 

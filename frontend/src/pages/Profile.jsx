@@ -264,11 +264,11 @@ export default function Profile() {
                    </div>
                 </div>
 
-                {/* About SpectraTrust */}
+                {/* About Food 360 */}
                 <div onClick={() => navigate('/about')} className="flex items-center justify-between p-4 cursor-pointer hover:bg-[var(--hover-bg)] transition-colors bg-[var(--bg-card)]">
                    <div className="flex items-center gap-3">
                       <Info size={18} className="text-brand-500" />
-                      <span className="text-sm font-medium theme-text">About SpectraTrust</span>
+                      <span className="text-sm font-medium theme-text">About Food 360</span>
                    </div>
                    <ChevronRight size={16} className="text-[var(--text-muted)]" />
                 </div>

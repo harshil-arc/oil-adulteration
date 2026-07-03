@@ -235,9 +235,9 @@ export default function SettingsPage() {
         <div className="w-10 h-10 bg-gray-100 rounded-2xl flex items-center justify-center mb-2">
           <span className="text-lg">🛢️</span>
         </div>
-        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Pure Catalyst App</p>
+        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Food 360 App</p>
         <p className="text-xs">Version 2.0.1 (Build 42)</p>
-        <p className="text-xs mt-2">© 2024 Pure Catalyst Technologies.<br />Laboratory grade precision in your pocket.</p>
+        <p className="text-xs mt-2">© 2024 Food 360 Technologies.<br />Laboratory grade precision in your pocket.</p>
       </div>
     </div>
   );

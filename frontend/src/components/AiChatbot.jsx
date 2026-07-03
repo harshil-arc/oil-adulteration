@@ -106,7 +106,7 @@ export default function AiChatbot({ onClose }) {
       setMessages(prev => [...prev, { id: Date.now() + 1, sender: 'ai', text: aiText }]);
     } catch (err) {
       if (err.message === 'NO_KEY') {
-        setError('No Groq API key configured. You can still use all built-in SPECTRA TRUST oil testing, FSSAI complaints, & lab finder features.');
+        setError('No Groq API key configured. You can still use all built-in FOOD 360 oil testing, FSSAI complaints, & lab finder features.');
       } else if (err.message?.includes('401') || err.message?.toLowerCase().includes('invalid api key') || err.message?.toLowerCase().includes('unauthorized')) {
         setError('Groq API Key status: 401 Unauthorized (API key missing or expired). All hardware spectral testing and local oil purity algorithms remain fully functional.');
       } else if (err.message?.toLowerCase().includes('rate limit')) {

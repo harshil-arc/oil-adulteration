@@ -7,7 +7,7 @@ const resources = {
     translation: {
       "home": {
         "greeting": "Hey, Inspector",
-        "title": "PureOil Dashboard",
+        "title": "Food 360 Dashboard",
         "start_scan": "START SCAN",
         "total_scans": "TOTAL SCANS",
         "safe_oils": "SAFE OILS",
@@ -34,7 +34,7 @@ const resources = {
         "logout": "SIGN OUT",
         "notifications": "Notifications",
         "hw_connection": "Hardware Connection",
-        "about": "About PureOil",
+        "about": "About Food 360",
         "learning": "Learning Center",
         "fssai_guidelines": "FSSAI Guidelines",
         "edit_profile": "Edit Profile"

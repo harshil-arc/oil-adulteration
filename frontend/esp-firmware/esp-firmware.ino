@@ -6,18 +6,22 @@
 #include <Adafruit_MLX90614.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <ArduinoJson.h>
 #include <time.h>
 #include <math.h>
 
 // ============================================================
-//  CREDENTIALS & FIRESTORE REST API CONFIG
+//  CREDENTIALS & FIRESTORE / RTDB CONFIG
 // ============================================================
 const char* ssid     = "atl";
 const char* password = "harshil913";
 
-// Firebase Firestore REST API Endpoint (matches Firebase Console Firestore Database in screenshot)
-const char* FIREBASE_PROJECT_ID = "oil-adulteration";
-const char* FIREBASE_API_KEY    = "AIzaSyAhu9pa7EIlmZD-u68xxDeMXz483G98bS0";
+// Firebase RTDB endpoints
+const char* firebaseHost = "oil-adulteration-default-rtdb.firebaseio.com";
+const char* firebasePath = "/readings.json";
+const char* resultPath   = "/device_result.json";
+
+// Cloud Firestore REST Endpoint
 const char* FIRESTORE_URL = "https://firestore.googleapis.com/v1/projects/oil-adulteration/databases/(default)/documents/readings?key=AIzaSyAhu9pa7EIlmZD-u68xxDeMXz483G98bS0";
 
 // ============================================================
@@ -36,6 +40,28 @@ Adafruit_MLX90614 mlx = Adafruit_MLX90614();
 SfeAS7343ArdI2C  spectralSensor;
 
 // ============================================================
+//  TWO-WAY SYNCHRONIZATION STATE (AI RESULT PACKET)
+// ============================================================
+struct AiResultPacket {
+  bool hasResult = false;
+  char oilType[32] = "Mustard Oil";
+  float purity = 91.4;
+  int confidence = 97;
+  char status[20] = "ADULTERATED"; // "SAFE" or "ADULTERATED"
+  char possibleAdulterant[32] = "Palm Oil";
+  char scanId[24] = "SCAN-000123";
+  unsigned long lastUpdatedMs = 0;
+};
+
+AiResultPacket aiResult;
+
+// Carousel Timer State
+int currentPage = 1;
+const int TOTAL_PAGES = 9;
+unsigned long lastPageChangeMs = 0;
+const unsigned long PAGE_INTERVAL_MS = 2500; // Switch page every 2.5s
+
+// ============================================================
 //  SPECTRAL QUANTIZATION (raw counts -> compact 0-9 digit string)
 // ============================================================
 const float MAX_RAW_COUNT = 20000.0;
@@ -50,8 +76,131 @@ uint8_t quantizeChannel(uint16_t raw) {
 }
 
 // ============================================================
-//  OLED HELPER — 4 rows of text
+//  NON-BLOCKING OLED 9-PAGE CAROUSEL DISPLAY
 // ============================================================
+void renderOledCarousel(float tempC, const char* specDigits) {
+  display.clearDisplay();
+  display.setTextColor(SSD1306_WHITE);
+
+  switch (currentPage) {
+    case 1:
+      // Page 1: App Title & Status
+      display.setTextSize(1);
+      display.setCursor(20, 5);
+      display.println(F("Food 360 AI"));
+      display.drawLine(0, 18, 128, 18, SSD1306_WHITE);
+
+      display.setCursor(15, 30);
+      if (aiResult.hasResult) {
+        display.println(F("AI Result Synced"));
+      } else {
+        display.println(F("AI Processing..."));
+      }
+      display.setCursor(25, 48);
+      display.println(F("Please Wait..."));
+      break;
+
+    case 2:
+      // Page 2: Temperature
+      display.setTextSize(1);
+      display.setCursor(0, 0);
+      display.println(F("[1/9] Temp Sensor"));
+      display.setTextSize(2);
+      display.setCursor(10, 28);
+      if (isnan(tempC) || isinf(tempC)) {
+        display.println(F("ERROR"));
+      } else {
+        display.printf("%.1f C", tempC);
+      }
+      break;
+
+    case 3:
+      // Page 3: Spectral (0-9 Digits)
+      display.setTextSize(1);
+      display.setCursor(0, 0);
+      display.println(F("[2/9] Spectral 0-9"));
+      display.setCursor(0, 24);
+      display.setTextSize(1);
+      display.println(specDigits);
+      break;
+
+    case 4:
+      // Page 4: Oil Type
+      display.setTextSize(1);
+      display.setCursor(0, 0);
+      display.println(F("[3/9] Tested Oil"));
+      display.setTextSize(1);
+      display.setCursor(0, 28);
+      display.println(aiResult.oilType);
+      break;
+
+    case 5:
+      // Page 5: Purity Percentage
+      display.setTextSize(1);
+      display.setCursor(0, 0);
+      display.println(F("[4/9] Purity Score"));
+      display.setTextSize(2);
+      display.setCursor(15, 28);
+      display.printf("%.1f%%", aiResult.purity);
+      break;
+
+    case 6:
+      // Page 6: Confidence Score
+      display.setTextSize(1);
+      display.setCursor(0, 0);
+      display.println(F("[5/9] AI Confidence"));
+      display.setTextSize(2);
+      display.setCursor(25, 28);
+      display.printf("%d%%", aiResult.confidence);
+      break;
+
+    case 7:
+      // Page 7: Safety Status (SAFE vs ADULTERATED)
+      display.setTextSize(1);
+      display.setCursor(0, 0);
+      display.println(F("[6/9] Safety Status"));
+      display.setTextSize(2);
+      display.setCursor(0, 28);
+      if (strcmp(aiResult.status, "SAFE") == 0) {
+        display.println(F("  ✓ SAFE"));
+      } else {
+        display.println(F("ADULTERATED"));
+      }
+      break;
+
+    case 8:
+      // Page 8: Detected Mix / Adulterant
+      display.setTextSize(1);
+      display.setCursor(0, 0);
+      display.println(F("[7/9] Detected Mix"));
+      display.setTextSize(1);
+      display.setCursor(0, 28);
+      if (strcmp(aiResult.possibleAdulterant, "None") == 0 || strlen(aiResult.possibleAdulterant) == 0) {
+        display.println(F("No Mix Detected"));
+      } else {
+        display.println(aiResult.possibleAdulterant);
+      }
+      break;
+
+    case 9:
+      // Page 9: Scan Completed
+      display.setTextSize(1);
+      display.setCursor(15, 10);
+      display.println(F("Scan Completed"));
+      display.setTextSize(3);
+      display.setCursor(50, 30);
+      display.println(F("v"));
+      break;
+
+    default:
+      currentPage = 1;
+      break;
+  }
+
+  display.display();
+}
+
+// Helper simple OLED print for setup
 void oledShow(const char* r0, const char* r1, const char* r2, const char* r3) {
   display.clearDisplay();
   display.setTextSize(1);
@@ -61,6 +210,41 @@ void oledShow(const char* r0, const char* r1, const char* r2, const char* r3) {
   display.setCursor(0, 32); display.println(r2);
   display.setCursor(0, 48); display.println(r3);
   display.display();
+}
+
+// ============================================================
+//  FETCH LATEST AI RESULT PACKET FROM CLOUD (TWO-WAY SYNC)
+// ============================================================
+void fetchAiResultPacket() {
+  if (WiFi.status() != WL_CONNECTED) return;
+
+  WiFiClientSecure client;
+  client.setInsecure();
+
+  HTTPClient http;
+  String url = String("https://") + firebaseHost + resultPath;
+  http.begin(client, url);
+
+  int code = http.GET();
+  if (code == 200) {
+    String payload = http.getString();
+    if (payload.length() > 10 && payload != "null") {
+      DynamicJsonDocument doc(1024);
+      DeserializationError err = deserializeJson(doc, payload);
+      if (!err) {
+        aiResult.hasResult = true;
+        if (doc["oil_type"]) strlcpy(aiResult.oilType, doc["oil_type"], sizeof(aiResult.oilType));
+        if (doc["purity_percentage"]) aiResult.purity = doc["purity_percentage"];
+        if (doc["confidence_score"]) aiResult.confidence = doc["confidence_score"];
+        if (doc["safety_status"]) strlcpy(aiResult.status, doc["safety_status"], sizeof(aiResult.status));
+        if (doc["possible_adulterant"]) strlcpy(aiResult.possibleAdulterant, doc["possible_adulterant"], sizeof(aiResult.possibleAdulterant));
+        if (doc["scan_id"]) strlcpy(aiResult.scanId, doc["scan_id"], sizeof(aiResult.scanId));
+        aiResult.lastUpdatedMs = millis();
+        Serial.println(F("[Two-Way Sync] AI Result Packet Received & OLED Updated!"));
+      }
+    }
+  }
+  http.end();
 }
 
 // ============================================================
@@ -123,9 +307,9 @@ void setup() {
     Serial.println(F("AS7343: Ready."));
   }
 
-  oledShow("Setup Complete!", "Firestore Cloud Ready", "", "");
+  oledShow("Setup Complete!", "Two-Way AI Sync Ready", "", "");
   delay(1000);
-  Serial.println(F("=== Setup Complete ==="));
+  Serial.println(F("=== Setup Complete & Two-Way Sync Ready ==="));
 }
 
 // ============================================================
@@ -205,9 +389,6 @@ void loop() {
   }
 
   Serial.printf("Temp: %.2f°C | Spectral (0-9): %s\n", tempC, spectralDigits);
-  Serial.println(F("--- Firestore Payload ---"));
-  Serial.println(payload);
-  Serial.println(F("-------------------------"));
 
   // ── 5. POST to Cloud Firestore REST API ───────────────────
   if (WiFi.status() == WL_CONNECTED) {
@@ -219,34 +400,22 @@ void loop() {
     http.addHeader("Content-Type", "application/json");
 
     int code = http.POST(payload);
-    Serial.printf("Firestore Response HTTP Code: %d\n", code);
-
     if (code == 200 || code == 201) {
-      String resp = http.getString();
-      Serial.println(F("Row inserted into Cloud Firestore successfully!"));
-    } else {
-      String errBody = http.getString();
-      Serial.printf("HTTP %d Error body:\n", code);
-      Serial.println(errBody);
+      Serial.println(F("[Firestore] Telemetry Pushed Successfully!"));
     }
-
     http.end();
-  } else {
-    Serial.println(F(" WiFi lost — attempting reconnect..."));
-    WiFi.reconnect();
+
+    // ── 6. Fetch AI Result Packet from App Sync Node ──────────
+    fetchAiResultPacket();
   }
 
-  // ── 6. OLED Update ───────────────────────────────────────
-  char row0[22], row1[22], row2[22], row3[22];
-  snprintf(row0, sizeof(row0), "Oil Adulteration Sys");
-  if (isnan(tempC) || isinf(tempC)) {
-    snprintf(row1, sizeof(row1), "Temp: ERROR");
-  } else {
-    snprintf(row1, sizeof(row1), "Temp: %.2f C", tempC);
+  // ── 7. Non-Blocking OLED Carousel Rotation ────────────────
+  if (millis() - lastPageChangeMs >= PAGE_INTERVAL_MS) {
+    currentPage = (currentPage % TOTAL_PAGES) + 1;
+    lastPageChangeMs = millis();
   }
-  snprintf(row2, sizeof(row2), "Spec: %s", spectralDigits);
-  snprintf(row3, sizeof(row3), "Firestore: Sent OK");
-  oledShow(row0, row1, row2, row3);
 
-  delay(2000);
+  renderOledCarousel(tempC, spectralDigits);
+
+  delay(500); // Fast 500ms loop responsiveness
 }

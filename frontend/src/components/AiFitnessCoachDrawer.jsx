@@ -5,7 +5,7 @@ import { askAiFitnessCoach } from '../services/fitnessService';
 export default function AiFitnessCoachDrawer({ isOpen, onClose, currentWorkout, onWorkoutAdapted }) {
   const [userPrompt, setUserPrompt] = useState('');
   const [chatHistory, setChatHistory] = useState([
-    { role: 'assistant', text: '👋 Hi! I am your SpectraTrust AI Fitness Coach. How can I tailor your workout session today?' }
+    { role: 'assistant', text: '👋 Hi! I am your Food 360 AI Fitness Coach. How can I tailor your workout session today?' }
   ]);
 
   if (!isOpen) return null;

@@ -141,10 +141,8 @@ export default function Login() {
 
       {/* Header */}
       <div className="flex flex-col items-center justify-center pt-12 pb-8 z-10 animate-slide-up">
-        <div className="w-16 h-16 bg-gradient-to-br from-[#f5c842] to-[#d4af37] text-[#0a0a0a] rounded-2xl flex items-center justify-center shadow-glow-gold mb-4 rotate-12">
-          <Droplets size={32} fill="currentColor" strokeWidth={1} className="-rotate-12" />
-        </div>
-        <h1 className="text-3xl font-black tracking-tight theme-text">Pure<span className="text-[#d4af37]">Oil</span></h1>
+        <img src="/food360-logo.jpg" alt="Food 360 Logo" className="w-20 h-20 rounded-2xl object-cover shadow-2xl border-2 border-[#d4af37]/50 mb-4 shadow-glow-gold" />
+        <h1 className="text-3xl font-black tracking-tight theme-text">Food <span className="text-[#d4af37]">360</span></h1>
       </div>
 
       {/* Main Card */}
@@ -157,7 +155,7 @@ export default function Login() {
                 <h3 className="text-lg font-bold">Firebase Auth Not Initialized</h3>
               </div>
               <p className="text-sm text-gray-400 leading-relaxed">
-                SpectraTrust requires Firebase Authentication to function. The following environment variables are missing from your configuration:
+                Food 360 requires Firebase Authentication to function. The following environment variables are missing from your configuration:
               </p>
               <ul className="list-disc pl-5 text-sm font-mono text-red-400 bg-black/30 p-3 rounded-xl space-y-1">
                 {initResult.missing.map(variable => (

@@ -25,8 +25,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'pwa-192x192.png', 'pwa-512x512.png'],
       manifest: {
-        name: 'PureOil – Oil Adulteration Detection',
-        short_name: 'PureOil',
+        name: 'Food 360 – Food Safety & Adulteration Intelligence',
+        short_name: 'Food 360',
         description: 'Laboratory-grade oil adulteration detection powered by ESP32 sensors and AI analysis.',
         start_url: '/',
         display: 'standalone',

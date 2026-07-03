@@ -16,17 +16,17 @@ export default function BLEConnection({ onConnected, onCancel }) {
     setLoading(true);
     setError(null);
     try {
-      // Request device with specific PureOil service or generic
+      // Request device with specific Food 360 service or generic
       const device = await navigator.bluetooth.requestDevice({
         acceptAllDevices: true,
-        // Optional: filters: [{ namePrefix: 'PureOil' }]
+        // Optional: filters: [{ namePrefix: 'Food 360' }]
       });
 
       console.log('Connecting to GATT Server...', device.name);
       const server = await device.gatt.connect();
       
       onConnected({
-        name: device.name || 'PureOil-BLE',
+        name: device.name || 'Food 360-BLE',
         method: 'Bluetooth',
         battery: '94%',
         firmware: 'v1.4.2-ble'
@@ -77,7 +77,7 @@ export default function BLEConnection({ onConnected, onCancel }) {
       <div>
         <h2 className="text-white font-bold text-xl mb-2">Bluetooth Connectivity</h2>
         <p className="text-gray-500 text-xs leading-relaxed max-w-[240px] mx-auto">
-          Ensure your ESP32 is powered on and "PureOil-BLE" is discoverable.
+          Ensure your ESP32 is powered on and "Food 360-BLE" is discoverable.
         </p>
       </div>
 

@@ -1,4 +1,4 @@
-// ─── SPECTRA TRUST AI FITNESS & EXERCISE COACH SERVICE ──────────
+// ─── FOOD 360 AI FITNESS & EXERCISE COACH SERVICE ──────────
 
 const FITNESS_PROFILE_KEY = 'spectratrust_fitness_profile';
 const WORKOUT_LOGS_KEY = 'spectratrust_workout_logs';
@@ -301,7 +301,7 @@ export function askAiFitnessCoach(prompt = '', currentPlan = {}) {
 }
 
 /**
- * SPECTRA TRUST UNIQUE FEATURE: Post-Workout Meal ↔ Pantry Synchronization
+ * FOOD 360 UNIQUE FEATURE: Post-Workout Meal ↔ Pantry Synchronization
  */
 export function getPostWorkoutMealSync(workoutPlan = {}, pantryItems = []) {
   const estCalories = workoutPlan.estCalories || 300;

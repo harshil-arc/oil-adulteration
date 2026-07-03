@@ -27,9 +27,9 @@ export default function LocalRouter() {
       if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
       const json = await res.json();
 
-      if (json.device !== 'PureOil-Sensor' && !ip.includes('localhost')) {
+      if (json.device !== 'Food 360-Sensor' && !ip.includes('localhost')) {
          // We allow localhost to bypass strict device check for easier debugging
-         throw new Error('Device identity mismatch. Ensure you are connecting to a PureOil sensor.');
+         throw new Error('Device identity mismatch. Ensure you are connecting to a Food 360 sensor.');
       }
 
       setActiveConnection({ mode: 'LOCAL', ip: targetUrl.replace('http://', '') });

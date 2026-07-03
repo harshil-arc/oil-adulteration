@@ -44,7 +44,7 @@ export default function AuthLock({ children }) {
           <Lock className="text-[#d4af37]" size={32} />
         </div>
         <div className="text-center">
-          <h1 className="text-xl font-black text-white tracking-widest uppercase">PureOil Secure</h1>
+          <h1 className="text-xl font-black text-white tracking-widest uppercase">Food 360 Secure</h1>
           <p className="text-xs text-gray-500 font-bold mt-1">Enter 4-digit PIN to unlock</p>
         </div>
       </div>

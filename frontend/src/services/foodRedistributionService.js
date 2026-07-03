@@ -1,4 +1,4 @@
-// ─── SPECTRA TRUST EXPLAINABLE AI (XAI) FOOD REDISTRIBUTION ENGINE ──────────
+// ─── FOOD 360 EXPLAINABLE AI (XAI) FOOD REDISTRIBUTION ENGINE ──────────
 
 const DEMO_REQUESTS_KEY = 'spectratrust_demo_emergency_requests';
 const DEMO_NGOS_KEY = 'spectratrust_demo_ngos';
