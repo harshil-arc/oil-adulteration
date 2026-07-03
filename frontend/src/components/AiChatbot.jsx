@@ -102,17 +102,17 @@ export default function AiChatbot({ onClose }) {
     setIsTyping(true);
 
     try {
-    const aiText = await callGroq(updated);
+      const aiText = await callGroq(updated);
       setMessages(prev => [...prev, { id: Date.now() + 1, sender: 'ai', text: aiText }]);
     } catch (err) {
       if (err.message === 'NO_KEY') {
-        setError('No Groq API key found. Add VITE_GROQ_API_KEY to your .env file and restart the dev server.');
-      } else if (err.message?.toLowerCase().includes('invalid api key') || err.message?.toLowerCase().includes('incorrect api key')) {
-        setError('Invalid Groq API key. Get a free key from console.groq.com → API Keys.');
+        setError('No Groq API key configured. You can still use all built-in SPECTRA TRUST oil testing, FSSAI complaints, & lab finder features.');
+      } else if (err.message?.includes('401') || err.message?.toLowerCase().includes('invalid api key') || err.message?.toLowerCase().includes('unauthorized')) {
+        setError('Groq API Key status: 401 Unauthorized (API key missing or expired). All hardware spectral testing and local oil purity algorithms remain fully functional.');
       } else if (err.message?.toLowerCase().includes('rate limit')) {
         setError('Rate limit reached. Please wait a moment and try again.');
       } else {
-        setError(`AI error: ${err.message}`);
+        setError(`AI service notice: ${err.message}`);
       }
     } finally {
       setIsTyping(false);

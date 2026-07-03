@@ -18,6 +18,8 @@ import Hotspots from './pages/Hotspots';
 import Community from './pages/Community';
 import Profile from './pages/Profile';
 import Nutrition from './pages/Nutrition';
+import TestingCentres from './pages/TestingCentres';
+import ReportPage from './pages/Report';
 import { AppProvider } from './context/AppContext';
 
 import { ReportsList, DeveloperTools } from './pages/ProfileSubScreens';
@@ -62,7 +64,9 @@ export default function App() {
                       <Route path="/history" element={<Navigate to="/profile" replace />} />
                       <Route path="/history/raw" element={<Navigate to="/profile" replace />} />
                       <Route path="/scan/:id" element={<ScanDetail />} />
-                      <Route path="/map" element={<Navigate to="/hotspots" replace />} />
+                      <Route path="/map" element={<Navigate to="/testing-centres" replace />} />
+                      <Route path="/testing-centres" element={<TestingCentres />} />
+                      <Route path="/report" element={<ReportPage />} />
                       <Route path="/hotspots" element={<Hotspots />} />
                       <Route path="/profile" element={<Profile />} />
                       <Route path="/nutrition" element={<Nutrition />} />

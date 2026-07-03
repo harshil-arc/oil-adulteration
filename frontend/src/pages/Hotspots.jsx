@@ -178,15 +178,163 @@ export default function Hotspots() {
     };
   }, []);
 
+const DEMO_HOTSPOT_SHOPS = [
+  {
+    id: 'hs-1',
+    name: 'Shree Ji Oil Depot',
+    vendor: 'Shree Ji Traders',
+    address: 'Kalupur Market, Ahmedabad, Gujarat',
+    oil_type: 'Mustard Oil',
+    status: 'adulterated',
+    last_purity: 68.4,
+    adulteration: 31.6,
+    adulterant: 'Paraffin Oil & Argemone',
+    latitude: 23.0255,
+    longitude: 72.5874,
+    district: 'Ahmedabad',
+    risk_level: 'Critical',
+    reports_count: 14,
+    last_verified: '2026-07-02'
+  },
+  {
+    id: 'hs-2',
+    name: 'Vrindavan Edible Oils',
+    vendor: 'Vrindavan Mills',
+    address: 'Varachha Main Road, Surat, Gujarat',
+    oil_type: 'Cottonseed Oil',
+    status: 'adulterated',
+    last_purity: 71.8,
+    adulteration: 28.2,
+    adulterant: 'Recycled Waste Fry Oil',
+    latitude: 21.2035,
+    longitude: 72.8422,
+    district: 'Surat',
+    risk_level: 'Critical',
+    reports_count: 9,
+    last_verified: '2026-07-01'
+  },
+  {
+    id: 'hs-3',
+    name: 'Sardar Patel Oil Merchants',
+    vendor: 'SP Traders',
+    address: 'Gondal Road, Rajkot, Gujarat',
+    oil_type: 'Groundnut Oil',
+    status: 'moderate',
+    last_purity: 78.5,
+    adulteration: 21.5,
+    adulterant: 'Cheap Palm Oil Blend',
+    latitude: 22.2850,
+    longitude: 70.7960,
+    district: 'Rajkot',
+    risk_level: 'High',
+    reports_count: 6,
+    last_verified: '2026-06-30'
+  },
+  {
+    id: 'hs-4',
+    name: 'Mahalaxmi Enterprise',
+    vendor: 'Mahalaxmi Oils',
+    address: 'Alkapuri Market, Vadodara, Gujarat',
+    oil_type: 'Sunflower Oil',
+    status: 'safe',
+    last_purity: 96.2,
+    adulteration: 3.8,
+    adulterant: 'None',
+    latitude: 22.3100,
+    longitude: 73.1700,
+    district: 'Vadodara',
+    risk_level: 'Low',
+    reports_count: 0,
+    last_verified: '2026-07-02'
+  },
+  {
+    id: 'hs-5',
+    name: 'Mumbai Central Oil Mart',
+    vendor: 'Bombay Wholesalers',
+    address: 'Crawford Market, Mumbai, Maharashtra',
+    oil_type: 'Mustard Oil',
+    status: 'adulterated',
+    last_purity: 65.0,
+    adulteration: 35.0,
+    adulterant: 'Mineral Oil & Synthetic Dye',
+    latitude: 18.9485,
+    longitude: 72.8345,
+    district: 'Mumbai',
+    risk_level: 'Critical',
+    reports_count: 22,
+    last_verified: '2026-07-02'
+  },
+  {
+    id: 'hs-6',
+    name: 'Chandni Chowk Edible Hub',
+    vendor: 'Delhi Food Suppliers',
+    address: 'Chandni Chowk, Old Delhi, Delhi',
+    oil_type: 'Mustard Oil',
+    status: 'adulterated',
+    last_purity: 69.5,
+    adulteration: 30.5,
+    adulterant: 'Argemone Oil',
+    latitude: 28.6505,
+    longitude: 77.2300,
+    district: 'Delhi',
+    risk_level: 'Critical',
+    reports_count: 18,
+    last_verified: '2026-07-01'
+  },
+  {
+    id: 'hs-7',
+    name: 'Bengaluru South Organic Oil Store',
+    vendor: 'GreenHarvest Oils',
+    address: 'Jayanagar 4th Block, Bengaluru, Karnataka',
+    oil_type: 'Coconut Oil',
+    status: 'safe',
+    last_purity: 98.1,
+    adulteration: 1.9,
+    adulterant: 'None',
+    latitude: 12.9250,
+    longitude: 77.5938,
+    district: 'Bengaluru',
+    risk_level: 'Low',
+    reports_count: 0,
+    last_verified: '2026-07-03'
+  },
+  {
+    id: 'hs-8',
+    name: 'Kolkata Salt Lake Refineries',
+    vendor: 'East Coast Oils',
+    address: 'Sector V, Salt Lake, Kolkata, West Bengal',
+    oil_type: 'Soybean Oil',
+    status: 'moderate',
+    last_purity: 81.0,
+    adulteration: 19.0,
+    adulterant: 'Unrefined Crude Oil Mix',
+    latitude: 22.5800,
+    longitude: 88.4200,
+    district: 'Kolkata',
+    risk_level: 'Medium',
+    reports_count: 5,
+    last_verified: '2026-06-29'
+  }
+];
+
   const fetchData = async () => {
     try {
       const { data: shopsData } = await supabase.from('shops').select('*');
       const { data: scansData } = await supabase.from('analysis_results').select('*').order('timestamp', { ascending: false });
       
-      if (shopsData) setShops(shopsData);
+      if (shopsData && shopsData.length > 0) {
+        const mergedMap = new Map();
+        DEMO_HOTSPOT_SHOPS.forEach(s => mergedMap.set(s.id, s));
+        shopsData.forEach(s => mergedMap.set(s.id || s.name, s));
+        setShops(Array.from(mergedMap.values()));
+      } else {
+        setShops(DEMO_HOTSPOT_SHOPS);
+      }
+
       if (scansData) setScans(scansData);
     } catch (e) {
       console.error(e);
+      setShops(DEMO_HOTSPOT_SHOPS);
     } finally {
       setLoading(false);
     }

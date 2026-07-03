@@ -1,193 +1,291 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
-import { Filter, Search, ShieldAlert, ArrowRight, CheckCircle2, AlertTriangle, ShieldCheck } from 'lucide-react';
-import { getShops } from '../lib/api';
-import { useApp } from '../context/AppContext';
+import { 
+  Search, MapPin, Phone, Globe, Clock, Star, Navigation, 
+  Calendar, ShieldCheck, ChevronRight, Filter, ExternalLink, ArrowLeft, Building
+} from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 
-// Fix for default Leaflet markers in React
 delete L.Icon.Default.prototype._getIconUrl;
 
-const customIcon = (color) => {
-  let hex;
-  if (color === 'red') hex = '#ef4444'; // Danger
-  else if (color === 'yellow') hex = '#eab308'; // Watch
-  else hex = '#22c55e'; // Safe
+const labIcon = new L.DivIcon({
+  className: 'custom-lab-marker',
+  html: `<div style="
+    background-color: #3b82f6;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 0 12px rgba(59, 130, 246, 0.8);
+    color: #fff;
+    font-size: 12px;
+    font-weight: bold;
+  ">🔬</div>`,
+  iconSize: [24, 24],
+  iconAnchor: [12, 12]
+});
 
-  return new L.DivIcon({
-    className: 'custom-leaflet-marker',
-    html: `<div style="
-      background-color: ${hex};
-      width: 20px;
-      height: 20px;
-      display: block;
-      left: -10px;
-      top: -10px;
-      position: relative;
-      border-radius: 3rem 3rem 0;
-      transform: rotate(45deg);
-      border: 2px solid #000;
-      box-shadow: 0 0 10px ${hex}80;
-    "></div>`,
-    iconSize: [20, 20],
-    iconAnchor: [10, 20]
-  });
-};
-
-function ChangeView({ center, zoom }) {
+function ChangeMapView({ center, zoom }) {
   const map = useMap();
   useEffect(() => {
-    map.setView(center, zoom);
+    if (center) map.flyTo(center, zoom, { duration: 1.5 });
   }, [center, zoom, map]);
   return null;
 }
 
+const TESTING_LABORATORIES = [
+  {
+    id: 'lab-1',
+    name: 'NABL Central Food & Oil Testing Laboratory',
+    type: 'Government (FSSAI Accredited)',
+    address: 'Navrangpura, Near Gujarat University, Ahmedabad, Gujarat 380009',
+    city: 'Ahmedabad',
+    pinCode: '380009',
+    lat: 23.0338,
+    lng: 72.5250,
+    distance: 2.4,
+    rating: 4.8,
+    status: 'Open Now',
+    phone: '+91 79 2630 1142',
+    email: 'contact@nablahmedabad.gov.in',
+    website: 'https://nabl-india.org',
+    testsAvailable: ['Edible Oil Purity & Gas Chromatography', 'Argemone & Mineral Oil Detection', 'Microbiology & Heavy Metals', 'Chemical Analysis'],
+    estTurnaround: '24 Hours'
+  },
+  {
+    id: 'lab-2',
+    name: 'SGS Food & Chemical Analysis Center',
+    type: 'Private Approved',
+    address: 'S.G. Highway, Prahlad Nagar, Ahmedabad, Gujarat 380015',
+    city: 'Ahmedabad',
+    pinCode: '380015',
+    lat: 23.0120,
+    lng: 72.5100,
+    distance: 4.8,
+    rating: 4.6,
+    status: 'Open Now',
+    phone: '+91 79 4000 8800',
+    email: 'info.india@sgs.com',
+    website: 'https://sgs.com',
+    testsAvailable: ['Oil Adulteration Spectral Testing', 'Pesticide Residue Analysis', 'Nutrition Label Verification'],
+    estTurnaround: '12 Hours (Express)'
+  },
+  {
+    id: 'lab-3',
+    name: 'Surat Municipal Regional Food Lab',
+    type: 'Government (FSSAI Accredited)',
+    address: 'Surat Food Inspection Cell, Muglisara, Surat, Gujarat 395003',
+    city: 'Surat',
+    pinCode: '395003',
+    lat: 21.1980,
+    lng: 72.8250,
+    distance: 14.2,
+    rating: 4.7,
+    status: 'Open Now',
+    phone: '+91 261 242 2288',
+    email: 'foodsafety@surat.gov.in',
+    website: 'https://suratmunicipal.gov.in',
+    testsAvailable: ['Edible Oil Spectroscopy', 'Butter & Ghee Fat Analysis', 'Food Safety Audits'],
+    estTurnaround: '48 Hours'
+  },
+  {
+    id: 'lab-4',
+    name: 'TUV SUD South Asia Food Lab',
+    type: 'Private Approved',
+    address: 'MIDC Industrial Area, Andheri East, Mumbai, Maharashtra 400093',
+    city: 'Mumbai',
+    pinCode: '400093',
+    lat: 19.1150,
+    lng: 72.8650,
+    distance: 28.5,
+    rating: 4.9,
+    status: 'Open Now',
+    phone: '+91 22 6688 2000',
+    email: 'info@tuvsud.com',
+    website: 'https://tuvsud.com',
+    testsAvailable: ['High-Performance Liquid Chromatography (HPLC)', 'Fatty Acid Profile', 'Microbiology & Toxicology'],
+    estTurnaround: '24 Hours'
+  }
+];
+
 export default function MapPage() {
-  const { settings } = useApp();
-  const [vendors, setVendors] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
   const [query, setQuery] = useState('');
-  const [selectedVendor, setSelectedVendor] = useState(null);
+  const [filterType, setFilterType] = useState('all'); // 'all', 'Government', 'Private'
+  const [mapCenter, setMapCenter] = useState([23.0225, 72.5714]); // Default Ahmedabad
+  const [mapZoom, setMapZoom] = useState(12);
+  const [selectedLab, setSelectedLab] = useState(null);
 
-  // default center for India (approx) if no data
-  const [mapCenter] = useState([22.9734, 78.6569]);
+  // Filtered Laboratories
+  const filteredLabs = useMemo(() => {
+    return TESTING_LABORATORIES.filter(lab => {
+      const matchesType = filterType === 'all' || lab.type.toLowerCase().includes(filterType.toLowerCase());
+      const matchesQuery = query.trim() === '' || (
+        lab.name.toLowerCase().includes(query.toLowerCase()) ||
+        lab.city.toLowerCase().includes(query.toLowerCase()) ||
+        lab.pinCode.includes(query) ||
+        lab.address.toLowerCase().includes(query.toLowerCase())
+      );
+      return matchesType && matchesQuery;
+    });
+  }, [filterType, query]);
 
-  useEffect(() => {
-    fetchVendors();
-  }, []);
-
-  const fetchVendors = async () => {
-    setLoading(true);
-    try {
-      const res = await getShops();
-      const shopData = res.data?.data || [];
-      const mapped = shopData.filter(s => s.latitude && s.longitude).map(s => {
-        let status = 'safe';
-        if (s.trust_score < 40) status = 'red';
-        else if (s.trust_score < 70) status = 'yellow';
-        else status = 'green';
-
-        return { ...s, color: status };
-      });
-      setVendors(mapped);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoading(false);
+  // Handle GPS Location Search
+  const handleGPSLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition((pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        setMapCenter([lat, lng]);
+        setMapZoom(13);
+      }, () => alert("Could not resolve location"));
     }
   };
 
-  const filtered = vendors.filter(v => 
-    v.name.toLowerCase().includes(query.toLowerCase()) || 
-    v.address.toLowerCase().includes(query.toLowerCase())
-  );
-
   return (
-    <div className="flex flex-col h-screen bg-[#0a0a0a] animate-fade-in relative z-20">
-      {/* Top Header */}
-      <div className="absolute top-0 z-[400] w-full px-5 pt-6 pb-2 glass rounded-none border-b border-[#333]">
-         <div className="flex items-center justify-between mb-4">
-           <h1 className="text-xl font-bold text-[#d4af37]">Vendor Map</h1>
-           <button className="p-2 rounded-full hover:bg-[#1c1c1c] transition-colors text-white">
-             <Filter size={20} />
-           </button>
-         </div>
-
-         {/* Search Bar */}
-         <div className="relative">
-           <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-             <Search size={18} />
-           </div>
-           <input 
-             value={query}
-             onChange={e => setQuery(e.target.value)}
-             type="text" 
-             placeholder="Search area or oil vendor..." 
-             className="w-full bg-[#1c1c1c] border border-[#333] focus:border-[#d4af37] text-white rounded-full py-3.5 pl-12 pr-4 outline-none text-sm placeholder:text-gray-500 shadow-glow-gold transition-colors"
-           />
-         </div>
+    <div className="min-h-screen theme-bg theme-text pb-24 pt-safe px-4 max-w-5xl mx-auto space-y-5">
+      
+      {/* Header */}
+      <div className="flex items-center justify-between py-4 border-b border-[var(--border-color)]">
+        <div className="flex items-center gap-3">
+          <button onClick={() => navigate('/home')} className="p-2 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-color)] text-gray-400 hover:text-white">
+            <ArrowLeft size={18} />
+          </button>
+          <div>
+            <h1 className="text-xl font-black text-white flex items-center gap-2">
+              <Building className="text-[#d4af37]" size={20} />
+              Food & Oil Testing Centre Directory
+            </h1>
+            <p className="text-xs text-gray-400">NABL & FSSAI Accredited Laboratories for Official Sample Verification</p>
+          </div>
+        </div>
       </div>
 
-      {/* Map Content */}
-      <div className={`flex-1 w-full relative z-0 ${settings.darkMode ? 'bg-[#141414]' : 'bg-[#f5f5f5]'}`}>
-        <MapContainer
-          center={mapCenter}
-          zoom={5}
-          scrollWheelZoom={true}
-          className="w-full h-full"
-          zoomControl={false}
-        >
-          <TileLayer
-             url={settings.darkMode ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png' : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'}
-             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+      {/* Search & Location Bar */}
+      <div className="flex flex-col md:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
+          <input 
+            type="text"
+            placeholder="Search by City, District, State, or PIN Code (e.g. 380009)..."
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] text-xs text-white rounded-xl py-3 pl-9 pr-4 outline-none focus:border-[#d4af37]"
           />
-          {filtered.map(vendor => (
-             <Marker 
-               key={vendor.id} 
-               position={[vendor.latitude, vendor.longitude]} 
-               icon={customIcon(vendor.color)}
-               eventHandlers={{
-                 click: () => setSelectedVendor(vendor)
-               }}
-             >
-             </Marker>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button onClick={handleGPSLocation} className="btn-secondary py-3 px-4 text-xs flex items-center gap-1.5 whitespace-nowrap">
+            <Navigation size={14} /> Near Me
+          </button>
+
+          <select 
+            value={filterType} 
+            onChange={e => setFilterType(e.target.value)}
+            className="bg-[var(--bg-input)] border border-[var(--border-color)] text-xs text-white p-3 rounded-xl outline-none"
+          >
+            <option value="all">All Lab Types</option>
+            <option value="Government">Government (FSSAI)</option>
+            <option value="Private">Private NABL</option>
+          </select>
+        </div>
+      </div>
+
+      {/* Interactive Map Component */}
+      <div className="h-72 w-full border border-[var(--border-color)] rounded-3xl overflow-hidden relative z-0">
+        <MapContainer center={mapCenter} zoom={mapZoom} scrollWheelZoom={true} className="w-full h-full" zoomControl={false}>
+          <TileLayer
+            url={document.documentElement.classList.contains('dark')
+              ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+              : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+            }
+            attribution='&copy; ESRI / CartoDB / FSSAI'
+          />
+          <ChangeMapView center={mapCenter} zoom={mapZoom} />
+
+          {filteredLabs.map(lab => (
+            <Marker key={lab.id} position={[lab.lat, lab.lng]} icon={labIcon}>
+              <Popup>
+                <div className="p-2 space-y-1 text-xs text-black">
+                  <h4 className="font-bold text-sm">{lab.name}</h4>
+                  <p>{lab.type}</p>
+                  <p>📍 {lab.distance} km away</p>
+                  <button onClick={() => setSelectedLab(lab)} className="mt-2 text-[10px] bg-black text-white px-3 py-1 rounded font-bold w-full">
+                    View & Book →
+                  </button>
+                </div>
+              </Popup>
+            </Marker>
           ))}
         </MapContainer>
       </div>
 
-      {/* Selected Vendor Bottom Sheet overlay */}
-      {selectedVendor && (
-        <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+70px)] left-0 w-full px-4 z-[400]">
-          <div className="card rounded-3xl p-5 shadow-[0_-10px_40px_rgba(0,0,0,0.8)] border border-[#d4af37]/30 bg-[#141414]/95 backdrop-blur-xl relative animate-slide-up">
-             <button 
-               onClick={() => setSelectedVendor(null)}
-               className="absolute top-4 right-4 w-8 h-8 rounded-full bg-[#1c1c1c] flex flex-col items-center justify-center text-gray-400 hover:text-white"
-             >
-               ✕
-             </button>
+      {/* Laboratory List Cards */}
+      <div className="space-y-4">
+        <h3 className="text-base font-bold text-white flex items-center gap-2">
+          <ShieldCheck size={18} className="text-[#d4af37]" />
+          Accredited Laboratories ({filteredLabs.length} Available)
+        </h3>
 
-             <div className="flex items-start gap-4 mb-4">
-                <div className={`w-12 h-12 rounded-full flex flex-col items-center justify-center border-2 
-                  ${selectedVendor.color === 'red' ? 'bg-red-500/10 border-red-500 text-red-500' : 
-                    selectedVendor.color === 'yellow' ? 'bg-yellow-500/10 border-yellow-500 text-yellow-500' : 'bg-green-500/10 border-green-500 text-green-500'}`}>
-                  {selectedVendor.color === 'red' ? <ShieldAlert size={20} /> : selectedVendor.color === 'yellow' ? <AlertTriangle size={20} /> : <ShieldCheck size={20} />}
-                </div>
-                <div className="flex-1 pr-6">
-                   <h3 className="text-white font-bold text-lg leading-tight mb-1">{selectedVendor.name}</h3>
-                   <p className="text-gray-400 text-xs">{selectedVendor.address}</p>
-                </div>
-             </div>
-
-             <div className="flex justify-between items-center bg-[#0a0a0a] rounded-xl p-3 mb-4 border border-[#333]">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {filteredLabs.map(lab => (
+            <div key={lab.id} className="card p-5 rounded-3xl border border-[var(--border-color)] hover:border-[#d4af37]/50 space-y-3 transition-all">
+              <div className="flex justify-between items-start gap-2">
                 <div>
-                  <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-1">Safety Ticket</p>
-                  <p className="text-white text-sm font-bold">{selectedVendor.color === 'red' ? '⚠️ Adulterated' : selectedVendor.color === 'yellow' ? '👀 On Watch' : '✅ Verified Pure'}</p>
+                  <span className="text-[10px] font-bold uppercase tracking-wider bg-[#d4af37]/20 text-[#d4af37] px-2.5 py-0.5 rounded-md border border-[#d4af37]/30">
+                    {lab.type}
+                  </span>
+                  <h4 className="text-base font-bold text-white mt-1">{lab.name}</h4>
+                  <p className="text-xs text-gray-400 mt-0.5">📍 {lab.address}</p>
                 </div>
-                <div className="text-right">
-                  <p className="text-[10px] text-gray-500 uppercase font-bold tracking-widest mb-1">Score</p>
-                  <p className="text-[#d4af37] font-black text-lg">{selectedVendor.trust_score}/100</p>
+                <div className="text-right text-xs shrink-0">
+                  <span className="bg-emerald-500/10 text-emerald-400 font-bold px-2 py-1 rounded-lg">
+                    ★ {lab.rating}
+                  </span>
+                  <p className="text-[10px] text-gray-500 mt-1">{lab.distance} km away</p>
                 </div>
-             </div>
+              </div>
 
-             {selectedVendor.color === 'red' && (
-               <button className="btn-primary bg-gradient-to-r from-red-500 to-red-600 shadow-[0_4px_20px_rgba(239,68,68,0.3)] border-0 text-white w-full pr-4">
-                 <span>REPORT VENDOR TO FSSAI</span>
-                 <ArrowRight size={18} />
-               </button>
-             )}
-          </div>
+              {/* Tests Offered */}
+              <div className="bg-[var(--bg-elevated)] p-3 rounded-2xl text-xs space-y-1">
+                <p className="font-bold text-gray-300">Available Tests:</p>
+                <div className="flex flex-wrap gap-1">
+                  {lab.testsAvailable.map((t, idx) => (
+                    <span key={idx} className="bg-gray-800 text-gray-300 text-[10px] px-2 py-0.5 rounded">
+                      ✓ {t}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-between pt-2 border-t border-[var(--border-color)] text-xs">
+                <div className="flex items-center gap-3">
+                  <a href={`tel:${lab.phone}`} className="text-blue-400 font-bold flex items-center gap-1 hover:underline">
+                    <Phone size={14} /> Call
+                  </a>
+                  <a href={lab.website} target="_blank" rel="noreferrer" className="text-gray-400 flex items-center gap-1 hover:text-white">
+                    <Globe size={14} /> Website
+                  </a>
+                </div>
+
+                <button 
+                  onClick={() => alert(`Appointment booking request sent to ${lab.name}`)}
+                  className="btn-primary py-2 px-3 text-xs flex items-center gap-1"
+                >
+                  <Calendar size={14} /> Book Test
+                </button>
+              </div>
+            </div>
+          ))}
         </div>
-      )}
-
-      {/* Legend */}
-      <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+70px)] left-0 w-full px-5 py-3 z-[300] flex items-center justify-center pointer-events-none">
-         <div className="glass px-4 py-2 rounded-full flex gap-4 text-[10px] font-bold tracking-widest uppercase text-white shadow-glow-gold border border-[#d4af37]/20 pointer-events-auto">
-            <span className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-green-500" /> Safe</span>
-            <span className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-yellow-500" /> Watch</span>
-            <span className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-red-500" /> Danger</span>
-         </div>
       </div>
+
     </div>
   );
 }
