@@ -1,38 +1,28 @@
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <Wire.h>
 #include <SparkFun_AS7343.h>
 #include <Adafruit_MLX90614.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
-#include "HX711.h"
-#include <time.h>
+#include <math.h>
 
 // ============================================================
 //  CREDENTIALS
 // ============================================================
-const char* ssid     = "atl";
-const char* password = "harshil913";
+const char* ssid       = "atl";
+const char* password   = "harshil913";
 
-// ── Firebase Firestore REST API ──────────────────────────────
-// Format: POST https://firestore.googleapis.com/v1/projects/{projectId}/databases/(default)/documents/{collection}
-//
-// For public write (no auth required if your Firestore rule is:
-//   match /readings/{id} { allow write: if true; }
-// ), you do NOT need an Auth token — just the API key as a query param.
-//
-const char* FIREBASE_PROJECT_ID = "oil-adulteration";
-const char* FIREBASE_API_KEY    = "AIzaSyAhu9pa7EIlmZD-u68xxDeMXz483G98bS0";
+// Firebase Realtime Database
+const char* firebaseHost = "oil-adulteration-default-rtdb.firebaseio.com";
 
-// Full URL built in loop: base + "?key=" + FIREBASE_API_KEY
-const char* FIRESTORE_BASE =
-  "https://firestore.googleapis.com/v1/projects/oil-adulteration/databases/(default)/documents/readings";
+// Node under which readings are pushed. Each POST creates a new
+// auto-generated key, e.g. /readings/-NxAbC123.json
+const char* firebasePath = "/readings.json";
 
-// ============================================================
-//  PINS
-// ============================================================
-const int LOADCELL_DOUT_PIN = 4;
-const int LOADCELL_SCK_PIN  = 5;
+// Optional Database Auth secret / token (leave empty if rules allow write)
+const char* firebaseAuth = "";
 
 // ============================================================
 //  OLED
@@ -48,7 +38,20 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
 // ============================================================
 Adafruit_MLX90614 mlx = Adafruit_MLX90614();
 SfeAS7343ArdI2C  spectralSensor;
-HX711            scale;
+
+// ============================================================
+//  SPECTRAL QUANTIZATION (raw counts -> compact 0-9 digit)
+// ============================================================
+const float MAX_RAW_COUNT = 20000.0;
+
+uint8_t quantizeChannel(uint16_t raw) {
+  if (raw == 0) return 0;
+  float logMax = log2(MAX_RAW_COUNT + 1.0);
+  float bin = (log2((float)raw + 1.0) / logMax) * 9.0;
+  if (bin < 0) bin = 0;
+  if (bin > 9) bin = 9;
+  return (uint8_t)(bin + 0.5); // round to nearest digit
+}
 
 // ============================================================
 //  OLED HELPER — 4 rows of text
@@ -71,6 +74,21 @@ void setup() {
   Serial.begin(115200);
   Wire.begin(21, 22);
 
+  // I2C Scan
+  Serial.println(F("--- I2C Scan ---"));
+  int foundDevices = 0;
+  for (uint8_t addr = 1; addr < 127; addr++) {
+    Wire.beginTransmission(addr);
+    if (Wire.endTransmission() == 0) {
+      Serial.printf("  Found device at 0x%02X\n", addr);
+      foundDevices++;
+    }
+  }
+  if (foundDevices == 0) {
+    Serial.println(F("  No I2C devices found! Check wiring/power."));
+  }
+  Serial.println(F("----------------"));
+
   // OLED
   if (!display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDRESS)) {
     Serial.println(F("OLED not found!"));
@@ -92,9 +110,16 @@ void setup() {
   oledShow("WiFi Connected!", ipBuf, "", "");
   delay(1000);
 
-  // Configure NTP for Firestore timestamps
+  // Sync time — required for TLS certificate validation
   configTime(0, 0, "pool.ntp.org", "time.nist.gov");
-  Serial.println(F("NTP client configured."));
+  Serial.print(F("Syncing time"));
+  time_t now = time(nullptr);
+  while (now < 8 * 3600 * 2) {
+    delay(250);
+    Serial.print('.');
+    now = time(nullptr);
+  }
+  Serial.println(F(" done."));
 
   // MLX90614
   if (!mlx.begin()) {
@@ -103,24 +128,6 @@ void setup() {
     delay(1000);
   } else {
     Serial.println(F("MLX90614: Ready."));
-  }
-
-  // HX711
-  scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
-  scale.set_scale(-7050);
-  unsigned long t0 = millis();
-  while (!scale.is_ready()) {
-    if (millis() - t0 > 5000) {
-      Serial.println(F("HX711: Timeout!"));
-      oledShow("HX711 Timeout!", "Check wiring", "", "");
-      delay(1000);
-      break;
-    }
-    delay(100);
-  }
-  if (scale.is_ready()) {
-    scale.tare();
-    Serial.println(F("HX711: Ready & tared."));
   }
 
   // AS7343
@@ -135,9 +142,9 @@ void setup() {
     Serial.println(F("AS7343: Ready."));
   }
 
-  oledShow("Setup Complete!", "Pushing to Firebase", "", "");
+  oledShow("Setup Complete!", "Pushing to cloud...", "", "");
   delay(1000);
-  Serial.println(F("=== Setup Complete. Sending to Firebase Firestore ==="));
+  Serial.println(F("=== Setup Complete ==="));
 }
 
 // ============================================================
@@ -148,16 +155,7 @@ void loop() {
   // ── 1. Temperature (MLX90614) ─────────────────────────────
   float tempC = mlx.readObjectTempC();
 
-  // ── 2. Weight (HX711) ────────────────────────────────────
-  float weightG = 0.0;
-  unsigned long t0 = millis();
-  while (!scale.is_ready()) {
-    if (millis() - t0 > 3000) { Serial.println(F("HX711: Timeout in loop")); break; }
-    delay(50);
-  }
-  if (scale.is_ready()) weightG = scale.get_units(3);
-
-  // ── 3. Spectral Data (AS7343) ────────────────────────────
+  // ── 2. Spectral Data (AS7343) ────────────────────────────
   spectralSensor.ledOn();
   delay(100);
   spectralSensor.readSpectraDataFromSensor();
@@ -178,119 +176,95 @@ void loop() {
   uint16_t ch_vis = spectralSensor.getChannelData(CH_VIS_1);
   uint16_t ch_nir = spectralSensor.getChannelData(CH_NIR_855NM);
 
-  // ── 4. Get NTP Time ──────────────────────────────────────
-  struct tm timeinfo;
-  char timeBuf[30] = "";
-  if (getLocalTime(&timeinfo)) {
-    strftime(timeBuf, sizeof(timeBuf), "%Y-%m-%dT%H:%M:%SZ", &timeinfo);
+  // Quantize each raw channel down to a single 0-9 digit
+  uint8_t q_f1  = quantizeChannel(ch_f1);
+  uint8_t q_f2  = quantizeChannel(ch_f2);
+  uint8_t q_fz  = quantizeChannel(ch_fz);
+  uint8_t q_f3  = quantizeChannel(ch_f3);
+  uint8_t q_f4  = quantizeChannel(ch_f4);
+  uint8_t q_f5  = quantizeChannel(ch_f5);
+  uint8_t q_fy  = quantizeChannel(ch_fy);
+  uint8_t q_fxl = quantizeChannel(ch_fxl);
+  uint8_t q_f6  = quantizeChannel(ch_f6);
+  uint8_t q_f7  = quantizeChannel(ch_f7);
+  uint8_t q_f8  = quantizeChannel(ch_f8);
+  uint8_t q_vis = quantizeChannel(ch_vis);
+  uint8_t q_nir = quantizeChannel(ch_nir);
+
+  // Build compact quantized 13-digit string (0-9)
+  char spectralDigits[14];
+  snprintf(spectralDigits, sizeof(spectralDigits), "%u%u%u%u%u%u%u%u%u%u%u%u%u",
+    q_f1, q_f2, q_fz, q_f3, q_f4, q_f5, q_fy, q_fxl, q_f6, q_f7, q_f8, q_vis, q_nir);
+
+  // ── 3. Serial Debug ──────────────────────────────────────
+  Serial.printf("Temp: %.2f°C | Spectral (0-9): %s\n", tempC, spectralDigits);
+
+  // ── 4. Build JSON Payload (Temperature + Spectral 0-9 string ONLY) ──
+  char tempField[16];
+  if (isnan(tempC) || isinf(tempC)) {
+    snprintf(tempField, sizeof(tempField), "null");
+    Serial.println(F(" WARNING: MLX90614 returned NaN — sending null temperature."));
   } else {
-    // Fallback if not synchronized yet
-    snprintf(timeBuf, sizeof(timeBuf), "2026-06-30T22:42:00Z");
+    snprintf(tempField, sizeof(tempField), "%.2f", tempC);
   }
 
-  // ── 5. Serial Debug ──────────────────────────────────────
-  Serial.printf("Time: %s | Temp: %.2f°C | Weight: %.2fg\n", timeBuf, tempC, weightG);
-  Serial.printf("Spectral: f1=%u f2=%u fz=%u f3=%u f4=%u f5=%u fy=%u fxl=%u f6=%u f7=%u f8=%u vis=%u nir=%u\n",
-    ch_f1, ch_f2, ch_fz, ch_f3, ch_f4, ch_f5, ch_fy, ch_fxl, ch_f6, ch_f7, ch_f8, ch_vis, ch_nir);
-
-  // ── 6. Build Firestore JSON Payload ──────────────────────
-  //
-  // Firestore REST API expects data in its own typed format.
-  // We close fields under mapValue, mapValue itself, spectral_data, fields, and the root document.
-  // That requires exactly 5 closing braces at the end (after closing the individual channel's fields).
-  //
-  char payload[1800];
-
+  char payload[256];
   snprintf(payload, sizeof(payload),
-    "{"
-      "\"fields\":{"
-        "\"temperature\":{\"doubleValue\":%.4f},"
-        "\"weight\":{\"doubleValue\":%.4f},"
-        "\"created_at\":{\"stringValue\":\"%s\"},"
-        "\"spectral_data\":{"
-          "\"mapValue\":{\"fields\":{"
-            "\"f1_405nm\":{\"integerValue\":\"%u\"},"
-            "\"f2_425nm\":{\"integerValue\":\"%u\"},"
-            "\"fz_450nm\":{\"integerValue\":\"%u\"},"
-            "\"f3_475nm\":{\"integerValue\":\"%u\"},"
-            "\"f4_515nm\":{\"integerValue\":\"%u\"},"
-            "\"f5_550nm\":{\"integerValue\":\"%u\"},"
-            "\"fy_555nm\":{\"integerValue\":\"%u\"},"
-            "\"fxl_600nm\":{\"integerValue\":\"%u\"},"
-            "\"f6_640nm\":{\"integerValue\":\"%u\"},"
-            "\"f7_690nm\":{\"integerValue\":\"%u\"},"
-            "\"f8_745nm\":{\"integerValue\":\"%u\"},"
-            "\"vis\":{\"integerValue\":\"%u\"},"
-            "\"nir_855nm\":{\"integerValue\":\"%u\"}"
-          "}}"
-        "}"
-      "}"
-    "}",
-    tempC, weightG, timeBuf,
-    ch_f1, ch_f2, ch_fz, ch_f3, ch_f4,
-    ch_f5, ch_fy, ch_fxl, ch_f6, ch_f7,
-    ch_f8, ch_vis, ch_nir
-  );
-
-  // Safety check
-  int payloadLen = strlen(payload);
-  Serial.printf("Payload length: %d bytes\n", payloadLen);
-  if (payloadLen >= (int)sizeof(payload) - 1) {
-    Serial.println(F("⚠ WARNING: payload buffer full — JSON may be truncated!"));
-  }
+    "{\"temperature\":%s,\"spectral_data\":\"%s\",\"timestamp\":{\".sv\":\"timestamp\"}}",
+    tempField, spectralDigits);
 
   Serial.println(F("--- Firebase Payload ---"));
   Serial.println(payload);
   Serial.println(F("------------------------"));
 
-  // ── 7. POST to Firebase Firestore REST API ────────────────
+  // ── 5. POST to Firebase Realtime Database ────────────────
   if (WiFi.status() == WL_CONNECTED) {
+    WiFiClientSecure client;
+    client.setInsecure();   // skip cert validation for Firebase RTDB
+
     HTTPClient http;
 
-    // Build full URL with API key appended as query param
-    char url[256];
-    snprintf(url, sizeof(url), "%s?key=%s", FIRESTORE_BASE, FIREBASE_API_KEY);
+    String url = String("https://") + firebaseHost + firebasePath;
+    if (strlen(firebaseAuth) > 0) {
+      url += "?auth=";
+      url += firebaseAuth;
+    }
 
-    http.begin(url);
+    http.begin(client, url);
     http.addHeader("Content-Type", "application/json");
 
     int code = http.POST(payload);
-    Serial.printf("Firebase Response Code: %d\n", code);
+    Serial.printf("Firebase Response: %d\n", code);
 
     if (code == 200) {
-      Serial.println(F("✅ Document inserted into Firestore successfully."));
-      oledShow("Firebase: OK", "Doc inserted!", "", "");
+      String resp = http.getString();
+      Serial.print(F("Row inserted successfully. Key: "));
+      Serial.println(resp);
     } else {
       String errBody = http.getString();
-      Serial.printf("❌ HTTP %d Error:\n", code);
+      Serial.printf("HTTP %d Error body:\n", code);
       Serial.println(errBody);
-
-      if (code == 403) {
-        Serial.println(F("   Fix: Set Firestore rule: allow write: if true; for /readings/{id}"));
-        oledShow("Firebase: 403", "Check rules!", "", "");
-      } else if (code == 400) {
-        Serial.println(F("   Fix: JSON payload malformed. Check Serial output."));
-        oledShow("Firebase: 400", "Bad JSON!", "", "");
-      } else {
-        oledShow("Firebase ERR", errBody.substring(0, 20).c_str(), "", "");
-      }
+      if (code == 401 || code == 403)
+        Serial.println(F("   Fix: check Realtime Database Rules allow writes, or set firebaseAuth."));
     }
 
     http.end();
   } else {
-    Serial.println(F("⚠ WiFi lost — attempting reconnect..."));
+    Serial.println(F(" WiFi lost — attempting reconnect..."));
     WiFi.reconnect();
-    oledShow("WiFi Lost!", "Reconnecting...", "", "");
   }
 
-  // ── 8. OLED Update ───────────────────────────────────────
+  // ── 6. OLED Update ───────────────────────────────────────
   char row0[22], row1[22], row2[22], row3[22];
   snprintf(row0, sizeof(row0), "Oil Adulteration Sys");
-  snprintf(row1, sizeof(row1), "Temp:   %.2f C", tempC);
-  snprintf(row2, sizeof(row2), "Weight: %.2f g", weightG);
-  snprintf(row3, sizeof(row3), "WiFi: %s",
-    WiFi.status() == WL_CONNECTED ? "Connected" : "Reconnecting");
+  if (isnan(tempC) || isinf(tempC)) {
+    snprintf(row1, sizeof(row1), "Temp: ERROR");
+  } else {
+    snprintf(row1, sizeof(row1), "Temp: %.2f C", tempC);
+  }
+  snprintf(row2, sizeof(row2), "Spec: %s", spectralDigits);
+  snprintf(row3, sizeof(row3), "Status: Pushed to Cloud");
   oledShow(row0, row1, row2, row3);
 
-  delay(5000);  // push every 5 seconds
+  delay(2000);
 }
