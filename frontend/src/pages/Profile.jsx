@@ -168,6 +168,13 @@ export default function Profile() {
            <h1 className="text-2xl font-black tracking-tight theme-text">Profile</h1>
            <p className="text-[9px] text-[var(--text-muted)] font-bold uppercase tracking-widest mt-0.5">Inspector Command Portal</p>
          </div>
+         <button
+           onClick={() => setShowLogout(true)}
+           className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-red-500/10 border border-red-500/30 text-red-500 hover:bg-red-500 hover:text-white transition-all text-xs font-black uppercase tracking-wider shadow-sm"
+         >
+           <LogOut size={14} />
+           Sign Out
+         </button>
        </div>
 
        <div className="flex-1 px-5 flex flex-col gap-6 relative z-10">
@@ -280,6 +287,15 @@ export default function Profile() {
                       <span className="text-sm font-medium theme-text">Privacy Policy</span>
                    </div>
                    <ChevronRight size={16} className="text-[var(--text-muted)]" />
+                </div>
+
+                {/* Sign Out Account */}
+                <div onClick={() => setShowLogout(true)} className="flex items-center justify-between p-4 cursor-pointer hover:bg-red-500/10 transition-colors bg-[var(--bg-card)] group">
+                   <div className="flex items-center gap-3">
+                      <LogOut size={18} className="text-red-500" />
+                      <span className="text-sm font-bold text-red-500">Sign Out Account</span>
+                   </div>
+                   <ChevronRight size={16} className="text-red-500 group-hover:translate-x-1 transition-transform" />
                 </div>
              </div>
           </div>
@@ -538,6 +554,17 @@ export default function Profile() {
                      {settings.connectionMethod === conn && <div className="w-2 h-2 rounded-full bg-brand-500" />}
                    </button>
                  ))}
+               </div>
+               
+               {/* Big Bottom Sign Out Button */}
+               <div className="pt-2 pb-4">
+                  <button
+                     onClick={() => setShowLogout(true)}
+                     className="w-full flex items-center justify-center gap-2 py-4 px-5 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-500 hover:bg-red-500 hover:text-white font-black text-xs uppercase tracking-widest transition-all shadow-md shadow-red-500/5 active:scale-95"
+                  >
+                     <LogOut size={16} />
+                     Sign Out of Food 360 Account
+                  </button>
                </div>
             </div>
          </div>
