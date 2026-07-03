@@ -91,38 +91,65 @@ export default function Readings() {
           setLastUpdated(Date.now());
           localFails = 0;
         } else if (conn.mode === 'CLOUD') {
-          console.log('[Readings] Fetching from Supabase readings table...');
-          const { data: row, error } = await supabase
-            .from('readings')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .single();
+          console.log('[Readings] Fetching latest reading from Cloud Firestore...');
+          let latestRow = null;
 
-          if (error) {
-            console.error('[Readings] Supabase error:', error);
-            throw error;
+          try {
+            // 1. Primary: Fetch latest entry from Cloud Firestore (readings collection)
+            const { data: row, error } = await supabase
+              .from('readings')
+              .select('*')
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .single();
+
+            if (!error && row) {
+              latestRow = row;
+            }
+          } catch (fsErr) {
+            console.warn('[Readings] Firestore fetch error:', fsErr);
           }
-          if (row) {
-            console.log('[Readings] CLOUD data:', row);
 
-            // Parse spectral_data for adulteration index (NIR vs VIS ratio)
-            const spectral = row.spectral_data || {};
-            const vis = spectral.vis || 1;
-            const nir = spectral.nir_855nm || 1;
-            const adulterationIndex = Math.min(100, Math.round((nir / vis) * 100));
+          // 2. Secondary Fallback: Realtime Database
+          if (!latestRow) {
+            try {
+              const rtdbRes = await fetch('https://oil-adulteration-default-rtdb.firebaseio.com/readings.json');
+              if (rtdbRes.ok) {
+                const rtdbData = await rtdbRes.json();
+                if (rtdbData && typeof rtdbData === 'object') {
+                  const keys = Object.keys(rtdbData);
+                  if (keys.length > 0) {
+                    latestRow = rtdbData[keys[keys.length - 1]];
+                  }
+                }
+              }
+            } catch (rtdbErr) {
+              console.warn('[Readings] Realtime Database fetch error:', rtdbErr);
+            }
+          }
+
+          if (latestRow) {
+            console.log('[Readings] CLOUD data received:', latestRow);
+
+            const tempVal = typeof latestRow.temperature === 'number' 
+              ? latestRow.temperature 
+              : (parseFloat(latestRow.temperature) || 0);
+
+            const spectralVal = typeof latestRow.spectral_data === 'string' 
+              ? latestRow.spectral_data 
+              : (latestRow.spectral_data ? JSON.stringify(latestRow.spectral_data) : '—');
 
             setData({
-              temperature:        row.temperature ?? 0,
-              spectral_data:      typeof row.spectral_data === 'string' 
-                                    ? row.spectral_data 
-                                    : (row.spectral_data ? JSON.stringify(row.spectral_data) : '—'),
-              oil_type:           row.oil_type || 'Cloud Sample',
-              adulteration_index: adulterationIndex,
+              temperature:        tempVal,
+              spectral_data:      spectralVal,
+              oil_type:           latestRow.oil_type || 'Cloud Sample',
+              adulteration_index: latestRow.adulteration_index || 0,
             });
             setFailCount(0);
             setLastUpdated(Date.now());
             localFails = 0;
+          } else {
+            throw new Error('No readings found in cloud database');
           }
         }
       } catch (err) {

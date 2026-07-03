@@ -6,23 +6,19 @@
 #include <Adafruit_MLX90614.h>
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <time.h>
 #include <math.h>
 
 // ============================================================
-//  CREDENTIALS
+//  CREDENTIALS & FIRESTORE REST API CONFIG
 // ============================================================
-const char* ssid       = "atl";
-const char* password   = "harshil913";
+const char* ssid     = "atl";
+const char* password = "harshil913";
 
-// Firebase Realtime Database
-const char* firebaseHost = "oil-adulteration-default-rtdb.firebaseio.com";
-
-// Node under which readings are pushed. Each POST creates a new
-// auto-generated key, e.g. /readings/-NxAbC123.json
-const char* firebasePath = "/readings.json";
-
-// Optional Database Auth secret / token (leave empty if rules allow write)
-const char* firebaseAuth = "";
+// Firebase Firestore REST API Endpoint (matches Firebase Console Firestore Database in screenshot)
+const char* FIREBASE_PROJECT_ID = "oil-adulteration";
+const char* FIREBASE_API_KEY    = "AIzaSyAhu9pa7EIlmZD-u68xxDeMXz483G98bS0";
+const char* FIRESTORE_URL = "https://firestore.googleapis.com/v1/projects/oil-adulteration/databases/(default)/documents/readings?key=AIzaSyAhu9pa7EIlmZD-u68xxDeMXz483G98bS0";
 
 // ============================================================
 //  OLED
@@ -40,7 +36,7 @@ Adafruit_MLX90614 mlx = Adafruit_MLX90614();
 SfeAS7343ArdI2C  spectralSensor;
 
 // ============================================================
-//  SPECTRAL QUANTIZATION (raw counts -> compact 0-9 digit)
+//  SPECTRAL QUANTIZATION (raw counts -> compact 0-9 digit string)
 // ============================================================
 const float MAX_RAW_COUNT = 20000.0;
 
@@ -74,21 +70,6 @@ void setup() {
   Serial.begin(115200);
   Wire.begin(21, 22);
 
-  // I2C Scan
-  Serial.println(F("--- I2C Scan ---"));
-  int foundDevices = 0;
-  for (uint8_t addr = 1; addr < 127; addr++) {
-    Wire.beginTransmission(addr);
-    if (Wire.endTransmission() == 0) {
-      Serial.printf("  Found device at 0x%02X\n", addr);
-      foundDevices++;
-    }
-  }
-  if (foundDevices == 0) {
-    Serial.println(F("  No I2C devices found! Check wiring/power."));
-  }
-  Serial.println(F("----------------"));
-
   // OLED
   if (!display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDRESS)) {
     Serial.println(F("OLED not found!"));
@@ -110,7 +91,7 @@ void setup() {
   oledShow("WiFi Connected!", ipBuf, "", "");
   delay(1000);
 
-  // Sync time — required for TLS certificate validation
+  // Sync NTP time (required for Firestore timestamps & TLS)
   configTime(0, 0, "pool.ntp.org", "time.nist.gov");
   Serial.print(F("Syncing time"));
   time_t now = time(nullptr);
@@ -142,7 +123,7 @@ void setup() {
     Serial.println(F("AS7343: Ready."));
   }
 
-  oledShow("Setup Complete!", "Pushing to cloud...", "", "");
+  oledShow("Setup Complete!", "Firestore Cloud Ready", "", "");
   delay(1000);
   Serial.println(F("=== Setup Complete ==="));
 }
@@ -196,56 +177,57 @@ void loop() {
   snprintf(spectralDigits, sizeof(spectralDigits), "%u%u%u%u%u%u%u%u%u%u%u%u%u",
     q_f1, q_f2, q_fz, q_f3, q_f4, q_f5, q_fy, q_fxl, q_f6, q_f7, q_f8, q_vis, q_nir);
 
-  // ── 3. Serial Debug ──────────────────────────────────────
-  Serial.printf("Temp: %.2f°C | Spectral (0-9): %s\n", tempC, spectralDigits);
+  // ── 3. ISO8601 Timestamp for Firestore ───────────────────
+  time_t now = time(nullptr);
+  struct tm timeinfo;
+  gmtime_r(&now, &timeinfo);
+  char isoTime[30];
+  strftime(isoTime, sizeof(isoTime), "%Y-%m-%dT%H:%M:%SZ", &timeinfo);
 
-  // ── 4. Build JSON Payload (Temperature + Spectral 0-9 string ONLY) ──
-  char tempField[16];
+  // ── 4. Build Firestore REST API JSON Payload ──────────────
+  char payload[512];
   if (isnan(tempC) || isinf(tempC)) {
-    snprintf(tempField, sizeof(tempField), "null");
-    Serial.println(F(" WARNING: MLX90614 returned NaN — sending null temperature."));
+    snprintf(payload, sizeof(payload),
+      "{\"fields\":{"
+      "\"temperature\":{\"nullValue\":null},"
+      "\"spectral_data\":{\"stringValue\":\"%s\"},"
+      "\"created_at\":{\"timestampValue\":\"%s\"}"
+      "}}",
+      spectralDigits, isoTime);
   } else {
-    snprintf(tempField, sizeof(tempField), "%.2f", tempC);
+    snprintf(payload, sizeof(payload),
+      "{\"fields\":{"
+      "\"temperature\":{\"doubleValue\":%.2f},"
+      "\"spectral_data\":{\"stringValue\":\"%s\"},"
+      "\"created_at\":{\"timestampValue\":\"%s\"}"
+      "}}",
+      tempC, spectralDigits, isoTime);
   }
 
-  char payload[256];
-  snprintf(payload, sizeof(payload),
-    "{\"temperature\":%s,\"spectral_data\":\"%s\",\"timestamp\":{\".sv\":\"timestamp\"}}",
-    tempField, spectralDigits);
-
-  Serial.println(F("--- Firebase Payload ---"));
+  Serial.printf("Temp: %.2f°C | Spectral (0-9): %s\n", tempC, spectralDigits);
+  Serial.println(F("--- Firestore Payload ---"));
   Serial.println(payload);
-  Serial.println(F("------------------------"));
+  Serial.println(F("-------------------------"));
 
-  // ── 5. POST to Firebase Realtime Database ────────────────
+  // ── 5. POST to Cloud Firestore REST API ───────────────────
   if (WiFi.status() == WL_CONNECTED) {
     WiFiClientSecure client;
-    client.setInsecure();   // skip cert validation for Firebase RTDB
+    client.setInsecure(); // skip cert validation for Firestore REST
 
     HTTPClient http;
-
-    String url = String("https://") + firebaseHost + firebasePath;
-    if (strlen(firebaseAuth) > 0) {
-      url += "?auth=";
-      url += firebaseAuth;
-    }
-
-    http.begin(client, url);
+    http.begin(client, FIRESTORE_URL);
     http.addHeader("Content-Type", "application/json");
 
     int code = http.POST(payload);
-    Serial.printf("Firebase Response: %d\n", code);
+    Serial.printf("Firestore Response HTTP Code: %d\n", code);
 
-    if (code == 200) {
+    if (code == 200 || code == 201) {
       String resp = http.getString();
-      Serial.print(F("Row inserted successfully. Key: "));
-      Serial.println(resp);
+      Serial.println(F("Row inserted into Cloud Firestore successfully!"));
     } else {
       String errBody = http.getString();
       Serial.printf("HTTP %d Error body:\n", code);
       Serial.println(errBody);
-      if (code == 401 || code == 403)
-        Serial.println(F("   Fix: check Realtime Database Rules allow writes, or set firebaseAuth."));
     }
 
     http.end();
@@ -263,7 +245,7 @@ void loop() {
     snprintf(row1, sizeof(row1), "Temp: %.2f C", tempC);
   }
   snprintf(row2, sizeof(row2), "Spec: %s", spectralDigits);
-  snprintf(row3, sizeof(row3), "Status: Pushed to Cloud");
+  snprintf(row3, sizeof(row3), "Firestore: Sent OK");
   oledShow(row0, row1, row2, row3);
 
   delay(2000);

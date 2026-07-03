@@ -42,10 +42,15 @@ function parseSpectralData(raw) {
       raw.f6_640nm, raw.f7_690nm, raw.f8_745nm, raw.nir_855nm, raw.vis
     ];
   } else if (typeof raw === 'string') {
-    // Trim string, split using regex for multiple spaces/commas, map to Number
-    const cleaned = raw.replace(/[^0-9.,\s-]/g, ' ');
-    const parts = cleaned.trim().split(/[\s,]+/);
-    extract = parts.map(p => parseFloat(p));
+    const trimmed = raw.trim();
+    // Check if it's a compact 13-digit string (e.g. "0133315432060")
+    if (trimmed.length === 13 && /^\d+$/.test(trimmed)) {
+      extract = trimmed.split('').map(ch => parseInt(ch, 10));
+    } else {
+      const cleaned = raw.replace(/[^0-9.,\s-]/g, ' ');
+      const parts = cleaned.trim().split(/[\s,]+/);
+      extract = parts.map(p => parseFloat(p));
+    }
   }
   
   const finalArray = [];
