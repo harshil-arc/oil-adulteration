@@ -1,4 +1,4 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
+import { initializeApp, getApps, getApp, deleteApp } from 'firebase/app';
 import { 
   getFirestore, 
   collection, 
@@ -79,15 +79,25 @@ const initResult = validateFirebaseConfig();
 
 if (initResult.ok) {
   try {
-    if (getApps().length === 0) {
-      app = initializeApp(firebaseConfig);
+    if (getApps().length > 0) {
+      const existingApp = getApp();
+      if (existingApp.options && existingApp.options.apiKey !== firebaseConfig.apiKey) {
+        try {
+          deleteApp(existingApp);
+        } catch (e) {
+          // Ignore delete error
+        }
+        app = initializeApp(firebaseConfig);
+      } else {
+        app = existingApp;
+      }
     } else {
-      app = getApp();
+      app = initializeApp(firebaseConfig);
     }
     db = getFirestore(app);
     auth = getAuth(app);
     storage = getStorage(app);
-    console.log("Firebase initialized successfully in SpectraTrust frontend.");
+    console.log(`[Firebase] Initialized successfully. Project: "${firebaseConfig.projectId}", Key: "${firebaseConfig.apiKey.slice(0, 8)}..."`);
   } catch (err) {
     firebaseInitError = err;
     console.error("Failed to initialize Firebase:", err);
