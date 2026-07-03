@@ -49,6 +49,12 @@ export default function Login() {
     if (code.includes("auth/weak-password")) {
       return "Password should be at least 6 characters.";
     }
+    if (code.includes("auth/api-key-not-valid")) {
+      return "Firebase API Key restricted or invalid. If your app is deployed, please authorize your domain in Google Cloud Console / Firebase Console.";
+    }
+    if (code.includes("auth/operation-not-allowed") || code.includes("ADMIN_ONLY_OPERATION")) {
+      return "Email/Password authentication is disabled. Please enable Email/Password under Firebase Console -> Authentication -> Sign-in method.";
+    }
     if (code.includes("auth/network-request-failed")) {
       return "Connection error. Please check your internet connection.";
     }
