@@ -182,7 +182,7 @@ export default function Profile() {
           </div>
 
           {/* Top Actions */}
-          <div className="flex items-center gap-2 self-end sm:self-auto">
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-[var(--border-color)]">
             <button
               onClick={() => setShowSettingsDrawer(!showSettingsDrawer)}
               className="p-2.5 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-color)] text-gray-300 hover:text-white flex items-center gap-1.5 text-xs font-bold"
@@ -191,7 +191,7 @@ export default function Profile() {
             </button>
             <button
               onClick={() => setShowLogout(true)}
-              className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 hover:bg-red-500 hover:text-white flex items-center gap-1.5 text-xs font-black uppercase tracking-wider"
+              className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-red-600/30 active:scale-95 transition-all"
             >
               <LogOut size={16} /> Sign Out
             </button>
@@ -641,6 +641,16 @@ export default function Profile() {
 
             </div>
           )}
+        </div>
+
+        {/* ── 8. ALWAYS-VISIBLE SIGN OUT CARD ─────────────────────────────────── */}
+        <div className="card p-4 rounded-3xl border border-red-500/30 bg-red-500/5">
+          <button
+            onClick={() => setShowLogout(true)}
+            className="w-full py-4 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2.5 shadow-lg shadow-red-600/30 active:scale-95 transition-all"
+          >
+            <LogOut size={18} /> Sign Out of Food 360 Account
+          </button>
         </div>
 
       </div>
