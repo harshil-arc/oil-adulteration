@@ -53,6 +53,8 @@ export default defineConfig({
         ]
       },
       workbox: {
+        // Increase maximum file size limit to 6 MB for PWA precaching to prevent build failures
+        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
         // Cache all JS, CSS, HTML, and image assets
         globPatterns: ['**/*.{js,css,html,ico,png,svg,jpg,jpeg,webp,woff,woff2}'],
         // Runtime caching for API calls and external resources
@@ -101,6 +103,19 @@ export default defineConfig({
       }
     })
   ],
+  build: {
+    chunkSizeWarningLimit: 1500,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-charts': ['recharts'],
+          'vendor-icons': ['lucide-react'],
+          'vendor-maps': ['leaflet', 'react-leaflet'],
+        }
+      }
+    }
+  },
   server: {
     port: 5173,
     proxy: {

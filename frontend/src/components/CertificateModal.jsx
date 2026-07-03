@@ -20,17 +20,9 @@ export default function CertificateModal({ isOpen, onClose, scanData }) {
   const isPure = result.purityPercentage >= 80;
   const statusColor = isPure ? 'text-emerald-400 border-emerald-500/40 bg-emerald-500/10' : 'text-red-400 border-red-500/40 bg-red-500/10';
 
-  // PNG Download via HTML5 Canvas
+  // PNG / PDF Download trigger
   const handleDownloadPNG = () => {
-    if (!certRef.current) return;
-    const certElement = certRef.current;
-    
-    // Quick canvas print simulation for high-res PNG download
-    import('clsx').then(() => {
-      window.print();
-    }).catch(() => {
-      window.print();
-    });
+    window.print();
   };
 
   return (
