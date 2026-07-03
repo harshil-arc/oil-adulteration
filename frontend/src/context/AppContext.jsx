@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { socket } from '../lib/socket';
 import i18n from '../i18n';
 import { supabase } from '../lib/supabase';
+import { runThemeAudit } from '../utils/themeAuditor';
 
 const STORAGE_KEY = 'pureoil_settings';
 const PROFILE_KEY = 'pureoil_profile';
@@ -133,6 +134,11 @@ export function AppProvider({ children }) {
       } else {
         document.documentElement.classList.remove('dark');
       }
+
+      // Run theme contrast audit
+      setTimeout(() => {
+        runThemeAudit();
+      }, 300);
     };
 
     applyTheme();
