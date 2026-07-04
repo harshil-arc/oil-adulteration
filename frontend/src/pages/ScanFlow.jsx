@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Wifi, Bluetooth, Usb, CheckCircle2, XCircle, AlertTriangle, ChevronLeft, Droplets, RefreshCw, ShieldCheck, Globe, Zap, Cloud } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { fetchLatestCloudReading } from '../lib/firestoreSensorService';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { socket } from '../lib/socket';
@@ -128,26 +129,22 @@ export default function ScanFlow() {
       setScanResult(null);
       let poller;
 
-      if (deviceInfo?.method === 'Supabase Cloud') {
+      if (deviceInfo?.method === 'Supabase Cloud' || deviceInfo?.method === 'Cloud Firestore') {
         let fetchedData = false;
         poller = setInterval(async () => {
           try {
-            const { data: row, error } = await supabase
-              .from('readings')
-              .select('*')
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .single();
+            const row = await fetchLatestCloudReading();
 
-            if (!error && row && !fetchedData) {
+            if (row && !fetchedData) {
               fetchedData = true;
               clearInterval(poller);
               
               setLocalLiveData({
                 tds_ppm: row.tds || 450,
-                temperature_c: row.temperature || row.temperature_c || 25,
+                temperature_c: row.temperature || 25.5,
                 ph: row.ph || 6.45,
-                density_gcm3: row.density || row.density_gcm3 || 0.908
+                density_gcm3: row.density || 0.908,
+                spectral_data: row.spectral_data
               });
 
               setProgress(100);

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Bluetooth, Wifi, Cloud, AlertTriangle, LogOut, ChevronLeft, RefreshCw, FlaskConical, Zap } from 'lucide-react';
 import { getActiveConnection, clearConnection } from '../../lib/sensorConnection';
 import { supabase } from '../../lib/supabase';
+import { fetchLatestCloudReading } from '../../lib/firestoreSensorService';
 
 
 /* ------------------------------------------------------------------ */
@@ -91,71 +92,15 @@ export default function Readings() {
           setLastUpdated(Date.now());
           localFails = 0;
         } else if (conn.mode === 'CLOUD') {
-          console.log('[Readings] Fetching latest reading from Cloud...');
-          let latestRow = null;
-
-          // 1. Primary: Try Firebase Realtime Database with explicit numerical timestamp sorting
-          try {
-            const rtdbRes = await fetch('https://oil-adulteration-default-rtdb.firebaseio.com/readings.json');
-            if (rtdbRes.ok) {
-              const rtdbData = await rtdbRes.json();
-              if (rtdbData && typeof rtdbData === 'object') {
-                const entries = Object.values(rtdbData).filter(item => item && (item.spectral_data || item.temperature));
-                entries.sort((a, b) => {
-                  const tA = typeof a.timestamp === 'number' ? a.timestamp : (new Date(a.created_at || a.timestamp || 0).getTime());
-                  const tB = typeof b.timestamp === 'number' ? b.timestamp : (new Date(b.created_at || b.timestamp || 0).getTime());
-                  return tB - tA; // Absolute newest first!
-                });
-                if (entries.length > 0) {
-                  latestRow = entries[0];
-                }
-              }
-            }
-          } catch (rtdbErr) {
-            console.warn('[Readings] Realtime Database fetch error:', rtdbErr);
-          }
-
-          // 2. Secondary Fallback: Firestore
-          if (!latestRow) {
-            try {
-              const { data: rows, error } = await supabase
-                .from('readings')
-                .select('*')
-                .order('created_at', { ascending: false })
-                .limit(5);
-
-              if (!error && rows && rows.length > 0) {
-                latestRow = rows[0];
-              }
-            } catch (fsErr) {
-              console.warn('[Readings] Firestore fetch error:', fsErr);
-            }
-          }
+          console.log('[Readings] Fetching latest reading from Cloud Firestore REST API...');
+          const latestRow = await fetchLatestCloudReading();
 
           if (latestRow) {
-            console.log('[Readings] CLOUD data received (Newest):', latestRow);
-
-            const tempVal = typeof latestRow.temperature === 'number' 
-              ? latestRow.temperature 
-              : (parseFloat(latestRow.temperature) || 0);
-
-            let spectralVal = '—';
-            if (typeof latestRow.spectral_data === 'string') {
-              spectralVal = latestRow.spectral_data;
-            } else if (typeof latestRow.spectral_data === 'object' && latestRow.spectral_data !== null) {
-              // Convert legacy object to 0-9 string if an old record is encountered
-              const s = latestRow.spectral_data;
-              const channels = [
-                s.f1_405nm || 0, s.f2_425nm || 0, s.fz_450nm || 0, s.f3_475nm || 0,
-                s.f4_515nm || 0, s.fy_555nm || 0, s.f5_550nm || 0, s.fxl_600nm || 0,
-                s.f6_640nm || 0, s.f7_690nm || 0, s.f8_745nm || 0, s.vis || 0, s.nir_855nm || 0
-              ];
-              spectralVal = channels.map(v => Math.min(9, Math.round(v / 5))).join('');
-            }
+            console.log('[Readings] CLOUD data received from ESP32 Firestore:', latestRow);
 
             setData({
-              temperature:        tempVal,
-              spectral_data:      spectralVal,
+              temperature:        latestRow.temperature,
+              spectral_data:      latestRow.spectral_data,
               oil_type:           latestRow.oil_type || 'Cloud Sample',
               adulteration_index: latestRow.adulteration_index || 0,
             });

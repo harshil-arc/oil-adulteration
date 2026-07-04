@@ -11,6 +11,7 @@ import {
 import { getActiveConnection } from '../../lib/sensorConnection';
 import { safeLocalFetch } from '../../lib/sensorApi';
 import { supabase } from '../../lib/supabase';
+import { fetchLatestCloudReading } from '../../lib/firestoreSensorService';
 
 const SAMPLE_INTERVAL_MS = 1500;  // read every 1.5s
 const TOTAL_SAMPLES      = 8;     // collect 8 readings → ~12s total
@@ -48,13 +49,8 @@ export default function Calibrate() {
       let data = null;
 
       if (conn?.mode === 'CLOUD') {
-        // Cloud mode — pull latest from Supabase
-        const { data: rows } = await supabase
-          .from('readings')
-          .select('*')
-          .order('created_at', { ascending: false })
-          .limit(1);
-        data = rows?.[0] || null;
+        // Cloud mode — pull latest from Google Cloud Firestore REST API
+        data = await fetchLatestCloudReading();
       } else {
         // Local / BLE mode — direct fetch
         const raw = await safeLocalFetch();
@@ -67,6 +63,7 @@ export default function Calibrate() {
         temperature:        parseFloat(data.temperature ?? 0),
         density:            parseFloat(data.density     ?? 0),
         adulteration_index: parseFloat(data.adulteration_index ?? 0),
+        spectral_data:      data.spectral_data || '—'
       };
     } catch (_) {
       return null;
