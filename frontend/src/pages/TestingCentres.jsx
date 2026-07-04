@@ -230,52 +230,52 @@ export default function TestingCentres() {
             
             {/* State Selector */}
             <div>
-              <label className="text-gray-400 block mb-1 text-[10px] uppercase">State / Territory</label>
+              <label className="text-gray-400 block mb-1 text-[10px] uppercase font-bold">State / Territory</label>
               <select
                 value={selectedState}
                 onChange={e => {
                   setSelectedState(e.target.value);
                   setSelectedCity('All');
                 }}
-                className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] p-2.5 rounded-xl text-white outline-none font-bold"
+                className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] p-2.5 rounded-xl text-[var(--text-color)] outline-none font-bold"
               >
-                <option value="All" className="bg-[#18181b]">All India (Nationwide)</option>
+                <option value="All" className="bg-[var(--bg-card)] text-[var(--text-color)]">All India (Nationwide)</option>
                 {Object.keys(ALL_INDIAN_STATES).map(st => (
-                  <option key={st} value={st} className="bg-[#18181b]">{st}</option>
+                  <option key={st} value={st} className="bg-[var(--bg-card)] text-[var(--text-color)]">{st}</option>
                 ))}
               </select>
             </div>
 
             {/* City Selector */}
             <div>
-              <label className="text-gray-400 block mb-1 text-[10px] uppercase">District / City</label>
+              <label className="text-gray-400 block mb-1 text-[10px] uppercase font-bold">District / City</label>
               <select
                 value={selectedCity}
                 onChange={e => setSelectedCity(e.target.value)}
-                className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] p-2.5 rounded-xl text-white outline-none font-bold"
+                className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] p-2.5 rounded-xl text-[var(--text-color)] outline-none font-bold"
               >
-                <option value="All" className="bg-[#18181b]">All Cities</option>
+                <option value="All" className="bg-[var(--bg-card)] text-[var(--text-color)]">All Cities</option>
                 {(ALL_INDIAN_STATES[selectedState] || []).map(c => (
-                  <option key={c} value={c} className="bg-[#18181b]">{c}</option>
+                  <option key={c} value={c} className="bg-[var(--bg-card)] text-[var(--text-color)]">{c}</option>
                 ))}
               </select>
             </div>
 
             {/* PIN Code Search */}
             <div>
-              <label className="text-gray-400 block mb-1 text-[10px] uppercase">PIN Code</label>
+              <label className="text-gray-400 block mb-1 text-[10px] uppercase font-bold">PIN Code</label>
               <input
                 type="text"
                 placeholder="e.g. 380009..."
                 value={pincodeQuery}
                 onChange={e => setPincodeQuery(e.target.value)}
-                className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] p-2.5 rounded-xl text-white outline-none font-mono"
+                className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] p-2.5 rounded-xl text-[var(--text-color)] outline-none font-mono font-bold"
               />
             </div>
 
             {/* Lab Name Search */}
             <div>
-              <label className="text-gray-400 block mb-1 text-[10px] uppercase">Search Lab or Test</label>
+              <label className="text-gray-400 block mb-1 text-[10px] uppercase font-bold">Search Lab or Test</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={14} />
                 <input
@@ -283,7 +283,7 @@ export default function TestingCentres() {
                   placeholder="e.g. FDL, Oil, Milk..."
                   value={searchQuery}
                   onChange={e => setSearchQuery(e.target.value)}
-                  className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] p-2.5 pl-9 rounded-xl text-white outline-none"
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] p-2.5 pl-9 rounded-xl text-[var(--text-color)] outline-none font-bold"
                 />
               </div>
             </div>
@@ -597,27 +597,27 @@ export default function TestingCentres() {
             <form onSubmit={(e) => { e.preventDefault(); alert('✅ Visit Scheduled! Laboratory team will call you to confirm sample pickup.'); setIsBookingOpen(false); }} className="space-y-3 text-xs">
               <div>
                 <label className="text-gray-400 font-bold block mb-1">Your Full Name</label>
-                <input type="text" required placeholder="e.g. Harshil Patel" className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] p-2.5 rounded-xl text-white outline-none font-bold" />
+                <input type="text" required placeholder="e.g. Harshil Patel" className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] p-2.5 rounded-xl text-[var(--text-color)] outline-none font-bold" />
               </div>
 
               <div>
                 <label className="text-gray-400 font-bold block mb-1">Mobile Number</label>
-                <input type="tel" required placeholder="+91 98765 43210" className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] p-2.5 rounded-xl text-white outline-none font-bold font-mono" />
+                <input type="tel" required placeholder="+91 98765 43210" className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] p-2.5 rounded-xl text-[var(--text-color)] outline-none font-bold font-mono" />
               </div>
 
               <div>
                 <label className="text-gray-400 font-bold block mb-1">Sample Type</label>
-                <select className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] p-2.5 rounded-xl text-white outline-none font-bold">
-                  <option value="Mustard Oil" className="bg-[#18181b]">Mustard / Edible Oil</option>
-                  <option value="Ghee" className="bg-[#18181b]">Desi Ghee / Butter</option>
-                  <option value="Milk" className="bg-[#18181b]">Fresh Milk / Dairy</option>
-                  <option value="Spices" className="bg-[#18181b]">Spices / Turmeric / Chilli</option>
+                <select className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] p-2.5 rounded-xl text-[var(--text-color)] outline-none font-bold">
+                  <option value="Mustard Oil" className="bg-[var(--bg-card)] text-[var(--text-color)]">Mustard / Edible Oil</option>
+                  <option value="Ghee" className="bg-[var(--bg-card)] text-[var(--text-color)]">Desi Ghee / Butter</option>
+                  <option value="Milk" className="bg-[var(--bg-card)] text-[var(--text-color)]">Fresh Milk / Dairy</option>
+                  <option value="Spices" className="bg-[var(--bg-card)] text-[var(--text-color)]">Spices / Turmeric / Chilli</option>
                 </select>
               </div>
 
               <div>
                 <label className="text-gray-400 font-bold block mb-1">Preferred Date</label>
-                <input type="date" required className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] p-2.5 rounded-xl text-white outline-none font-bold" />
+                <input type="date" required className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] p-2.5 rounded-xl text-[var(--text-color)] outline-none font-bold" />
               </div>
 
               <div className="pt-2 flex gap-2">
