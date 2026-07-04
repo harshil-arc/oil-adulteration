@@ -6,7 +6,7 @@ import {
   ChevronRight, RefreshCw, BarChart2, Check, Clock, Droplet, 
   Flame, ShieldCheck, Stethoscope, Utensils, Zap, Filter, Search,
   X, CheckCircle2, AlertTriangle, BookOpen, ThumbsUp, ThumbsDown,
-  Dumbbell, Play, Activity, Moon, Shield, Bot, HelpCircle, ChevronDown, ChevronUp
+  Dumbbell, Play, Activity, Moon, Shield, Bot, HelpCircle, ChevronDown, ChevronUp, Edit3
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { 
@@ -58,9 +58,13 @@ export default function Nutrition() {
     regions: ['North Indian', 'Gujarati'],
     dietPreference: 'Vegetarian',
     medicalConditions: ['Diabetes'],
+    allergies: ['None'],
     waterGoalLiters: 3.0,
     sleepHours: 7.5,
   });
+
+  // Profile Form Edit Temp State
+  const [tempProfile, setTempProfile] = useState(healthProfile);
 
   // Workout & Modals State
   const [selectedDayIdx, setSelectedDayIdx] = useState(0);
@@ -83,6 +87,13 @@ export default function Nutrition() {
     'Paneer', 'Whole Wheat Atta', 'Oats', 'Milk', 'Eggs', 'Moong Dal', 'Turmeric', 'Mustard Oil'
   ]);
   const [newPantryInput, setNewPantryInput] = useState('');
+
+  // Sync temp profile when modal opens
+  useEffect(() => {
+    if (isEditingProfile) {
+      setTempProfile({ ...healthProfile });
+    }
+  }, [isEditingProfile, healthProfile]);
 
   // Calculated BMI
   const calculatedBMI = useMemo(() => {
@@ -165,6 +176,30 @@ export default function Nutrition() {
     setPantryItems(pantryItems.filter(i => i !== item));
   };
 
+  const handleSaveHealthProfile = (e) => {
+    e.preventDefault();
+    setHealthProfile(tempProfile);
+    setIsEditingProfile(false);
+  };
+
+  const toggleCondition = (cond) => {
+    const list = tempProfile.medicalConditions || [];
+    if (list.includes(cond)) {
+      setTempProfile({ ...tempProfile, medicalConditions: list.filter(c => c !== cond) });
+    } else {
+      setTempProfile({ ...tempProfile, medicalConditions: [...list.filter(c => c !== 'None'), cond] });
+    }
+  };
+
+  const toggleAllergy = (allergy) => {
+    const list = tempProfile.allergies || [];
+    if (list.includes(allergy)) {
+      setTempProfile({ ...tempProfile, allergies: list.filter(a => a !== allergy) });
+    } else {
+      setTempProfile({ ...tempProfile, allergies: [...list.filter(a => a !== 'None'), allergy] });
+    }
+  };
+
   return (
     <div className="flex flex-col min-h-screen theme-bg theme-text animate-fade-in pb-28">
       
@@ -182,15 +217,17 @@ export default function Nutrition() {
           <div className="flex items-center gap-2">
             <button
               onClick={() => setExerciseLibraryOpen(true)}
-              className="px-3.5 py-2 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/30 text-xs font-bold hover:bg-purple-500/20"
+              className="px-3 py-2 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/30 text-xs font-bold hover:bg-purple-500/20"
             >
               📚 Library
             </button>
+            
+            {/* PROMINENT HEALTH PROFILE & CONDITIONS BUTTON */}
             <button
-              onClick={() => setIsEditingProfile(!isEditingProfile)}
-              className="px-3 py-2 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-color)] text-xs font-bold text-gray-300"
+              onClick={() => setIsEditingProfile(true)}
+              className="px-3.5 py-2 rounded-xl bg-[#d4af37]/15 text-[#d4af37] border border-[#d4af37]/40 text-xs font-black flex items-center gap-1.5 hover:bg-[#d4af37]/20 shadow-sm transition-all"
             >
-              ⚙️ Config
+              <User size={15} /> Health Profile
             </button>
           </div>
         </div>
@@ -410,23 +447,34 @@ export default function Nutrition() {
           </div>
 
           <div className="card p-6 rounded-3xl border border-[var(--border-color)] space-y-4">
-            <h3 className="text-sm font-black text-white uppercase tracking-wider">Health Profile Summary</h3>
+            <div className="flex justify-between items-center border-b border-[var(--border-color)] pb-3">
+              <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                <User size={16} className="text-[#d4af37]" /> Health & Medical Profile Summary
+              </h3>
+              <button
+                onClick={() => setIsEditingProfile(true)}
+                className="btn-secondary py-1.5 px-3 text-xs font-bold flex items-center gap-1 text-[#d4af37] border-[#d4af37]/40 hover:border-[#d4af37]"
+              >
+                <Edit3 size={12} /> Edit Conditions
+              </button>
+            </div>
+
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-              <div className="bg-[var(--bg-elevated)] p-3 rounded-2xl">
-                <span className="text-gray-400 block text-[10px]">Diet Preference:</span>
-                <span className="font-bold text-emerald-400">{healthProfile.dietPreference}</span>
+              <div className="bg-[var(--bg-elevated)] p-3 rounded-2xl border border-[var(--border-color)]">
+                <span className="text-gray-400 block text-[10px] font-bold">Diet Preference:</span>
+                <span className="font-bold text-emerald-400 mt-0.5 block">{healthProfile.dietPreference}</span>
               </div>
-              <div className="bg-[var(--bg-elevated)] p-3 rounded-2xl">
-                <span className="text-gray-400 block text-[10px]">Medical Conditions:</span>
-                <span className="font-bold text-amber-400">{healthProfile.medicalConditions.join(', ')}</span>
+              <div className="bg-[var(--bg-elevated)] p-3 rounded-2xl border border-[var(--border-color)]">
+                <span className="text-gray-400 block text-[10px] font-bold">Medical Conditions:</span>
+                <span className="font-bold text-amber-400 mt-0.5 block">{(healthProfile.medicalConditions || []).join(', ') || 'None'}</span>
               </div>
-              <div className="bg-[var(--bg-elevated)] p-3 rounded-2xl">
-                <span className="text-gray-400 block text-[10px]">Fitness Level:</span>
-                <span className="font-bold text-blue-400">{healthProfile.fitnessLevel}</span>
+              <div className="bg-[var(--bg-elevated)] p-3 rounded-2xl border border-[var(--border-color)]">
+                <span className="text-gray-400 block text-[10px] font-bold">Food Allergies:</span>
+                <span className="font-bold text-rose-400 mt-0.5 block">{(healthProfile.allergies || []).join(', ') || 'None'}</span>
               </div>
-              <div className="bg-[var(--bg-elevated)] p-3 rounded-2xl">
-                <span className="text-gray-400 block text-[10px]">Equipment:</span>
-                <span className="font-bold text-[#d4af37]">{healthProfile.equipment}</span>
+              <div className="bg-[var(--bg-elevated)] p-3 rounded-2xl border border-[var(--border-color)]">
+                <span className="text-gray-400 block text-[10px] font-bold">Primary Goal:</span>
+                <span className="font-bold text-[#d4af37] mt-0.5 block">{healthProfile.goal}</span>
               </div>
             </div>
           </div>
@@ -487,7 +535,7 @@ export default function Nutrition() {
             <div className="flex justify-between items-center">
               <div>
                 <span className="text-xs font-black uppercase text-blue-400 tracking-wider">Hydration Tracker</span>
-                <h3 className="text-2xl font-black text-white">{waterCups * 250} ml / 3000 ml</h3>
+                <h3 className="text-2xl font-black text-white">{waterCups * 250} ml / {Math.round(healthProfile.waterGoalLiters * 1000)} ml</h3>
               </div>
               <button onClick={() => setWaterCups(prev => prev + 1)} className="btn-primary py-2.5 px-4 text-xs">
                 + Add Cup (250ml)
@@ -495,7 +543,7 @@ export default function Nutrition() {
             </div>
 
             <div className="w-full h-3 bg-gray-800 rounded-full overflow-hidden">
-              <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${Math.min(100, ((waterCups * 250) / 3000) * 100)}%` }} />
+              <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${Math.min(100, ((waterCups * 250) / (healthProfile.waterGoalLiters * 1000)) * 100)}%` }} />
             </div>
           </div>
 
@@ -504,7 +552,7 @@ export default function Nutrition() {
             <div className="grid grid-cols-2 gap-3 text-center">
               <div className="bg-[var(--bg-elevated)] p-4 rounded-2xl">
                 <span className="text-xs text-gray-400 font-bold block">Sleep Score</span>
-                <span className="text-2xl font-black text-purple-400 font-mono">7.5 Hours</span>
+                <span className="text-2xl font-black text-purple-400 font-mono">{healthProfile.sleepHours} Hours</span>
               </div>
               <div className="bg-[var(--bg-elevated)] p-4 rounded-2xl">
                 <span className="text-xs text-gray-400 font-bold block">Recovery State</span>
@@ -562,6 +610,191 @@ export default function Nutrition() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── HEALTH PROFILE & MEDICAL CONDITIONS MODAL ── */}
+      {isEditingProfile && (
+        <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 overflow-y-auto backdrop-blur-md animate-fade-in">
+          <div className="card p-6 rounded-3xl border border-[#d4af37]/40 max-w-lg w-full space-y-4 my-auto max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center border-b border-[var(--border-color)] pb-3">
+              <div>
+                <span className="text-[10px] font-bold text-[#d4af37] uppercase tracking-wider block">AI Customization</span>
+                <h3 className="text-lg font-black text-white flex items-center gap-2">
+                  <User size={18} className="text-[#d4af37]" /> Health & Medical Profile
+                </h3>
+              </div>
+              <button onClick={() => setIsEditingProfile(false)} className="p-2 rounded-xl text-gray-400 hover:text-white">
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveHealthProfile} className="space-y-4 text-xs">
+              {/* Basic Physical Metrics */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                <div>
+                  <label className="text-gray-400 font-bold block mb-1">Age</label>
+                  <input
+                    type="number"
+                    value={tempProfile.age}
+                    onChange={e => setTempProfile({ ...tempProfile, age: parseInt(e.target.value) || 28 })}
+                    className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] p-2.5 rounded-xl font-bold text-white outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-gray-400 font-bold block mb-1">Gender</label>
+                  <select
+                    value={tempProfile.gender}
+                    onChange={e => setTempProfile({ ...tempProfile, gender: e.target.value })}
+                    className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] p-2.5 rounded-xl font-bold text-white outline-none"
+                  >
+                    <option value="Male" className="bg-[#18181b]">Male</option>
+                    <option value="Female" className="bg-[#18181b]">Female</option>
+                    <option value="Other" className="bg-[#18181b]">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="text-gray-400 font-bold block mb-1">Height (cm)</label>
+                  <input
+                    type="number"
+                    value={tempProfile.height}
+                    onChange={e => setTempProfile({ ...tempProfile, height: parseInt(e.target.value) || 170 })}
+                    className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] p-2.5 rounded-xl font-bold text-white outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-gray-400 font-bold block mb-1">Weight (kg)</label>
+                  <input
+                    type="number"
+                    value={tempProfile.weight}
+                    onChange={e => setTempProfile({ ...tempProfile, weight: parseInt(e.target.value) || 68 })}
+                    className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] p-2.5 rounded-xl font-bold text-white outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Activity & Goal */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-gray-400 font-bold block mb-1">Primary Goal</label>
+                  <select
+                    value={tempProfile.goal}
+                    onChange={e => setTempProfile({ ...tempProfile, goal: e.target.value })}
+                    className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] p-2.5 rounded-xl font-bold text-white outline-none"
+                  >
+                    <option value="Muscle Building" className="bg-[#18181b]">Muscle Building</option>
+                    <option value="Weight Loss" className="bg-[#18181b]">Weight Loss</option>
+                    <option value="Maintain Weight" className="bg-[#18181b]">Maintain Weight</option>
+                    <option value="Diabetes Management" className="bg-[#18181b]">Diabetes Management</option>
+                    <option value="Heart Health & BP" className="bg-[#18181b]">Heart Health & BP</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-gray-400 font-bold block mb-1">Diet Preference</label>
+                  <select
+                    value={tempProfile.dietPreference}
+                    onChange={e => setTempProfile({ ...tempProfile, dietPreference: e.target.value })}
+                    className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] p-2.5 rounded-xl font-bold text-white outline-none"
+                  >
+                    <option value="Vegetarian" className="bg-[#18181b]">Vegetarian</option>
+                    <option value="Non-Vegetarian" className="bg-[#18181b]">Non-Vegetarian</option>
+                    <option value="Eggetarian" className="bg-[#18181b]">Eggetarian</option>
+                    <option value="Vegan" className="bg-[#18181b]">Vegan</option>
+                    <option value="Jain" className="bg-[#18181b]">Jain</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Medical Conditions Selector */}
+              <div className="space-y-1.5">
+                <label className="text-gray-400 font-bold uppercase text-[10px] tracking-wider block">Medical Conditions & Health Concerns</label>
+                <div className="flex flex-wrap gap-2">
+                  {['Diabetes', 'Hypertension (High BP)', 'High Cholesterol', 'PCOS / PCOD', 'Thyroid', 'Acid Reflux', 'None'].map(cond => {
+                    const isSelected = (tempProfile.medicalConditions || []).includes(cond);
+                    return (
+                      <button
+                        type="button"
+                        key={cond}
+                        onClick={() => toggleCondition(cond)}
+                        className={`px-3 py-1.5 rounded-xl font-bold text-xs border transition-all ${
+                          isSelected 
+                            ? 'bg-amber-500/20 text-amber-300 border-amber-500/40 font-black' 
+                            : 'bg-[var(--bg-elevated)] text-gray-400 border-[var(--border-color)] hover:border-gray-500'
+                        }`}
+                      >
+                        {isSelected ? '✓ ' : '+ '}{cond}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Food Allergies Selector */}
+              <div className="space-y-1.5">
+                <label className="text-gray-400 font-bold uppercase text-[10px] tracking-wider block">Food Allergies & Intolerances</label>
+                <div className="flex flex-wrap gap-2">
+                  {['Lactose / Dairy', 'Peanuts & Nuts', 'Gluten / Wheat', 'Soy', 'Seafood', 'None'].map(allergy => {
+                    const isSelected = (tempProfile.allergies || []).includes(allergy);
+                    return (
+                      <button
+                        type="button"
+                        key={allergy}
+                        onClick={() => toggleAllergy(allergy)}
+                        className={`px-3 py-1.5 rounded-xl font-bold text-xs border transition-all ${
+                          isSelected 
+                            ? 'bg-rose-500/20 text-rose-300 border-rose-500/40 font-black' 
+                            : 'bg-[var(--bg-elevated)] text-gray-400 border-[var(--border-color)] hover:border-gray-500'
+                        }`}
+                      >
+                        {isSelected ? '✓ ' : '+ '}{allergy}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Hydration & Sleep Targets */}
+              <div className="grid grid-cols-2 gap-3 pt-1">
+                <div>
+                  <label className="text-gray-400 font-bold block mb-1">Water Goal (Liters)</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={tempProfile.waterGoalLiters}
+                    onChange={e => setTempProfile({ ...tempProfile, waterGoalLiters: parseFloat(e.target.value) || 3.0 })}
+                    className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] p-2.5 rounded-xl font-bold text-white outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-gray-400 font-bold block mb-1">Target Sleep (Hours)</label>
+                  <input
+                    type="number"
+                    step="0.5"
+                    value={tempProfile.sleepHours}
+                    onChange={e => setTempProfile({ ...tempProfile, sleepHours: parseFloat(e.target.value) || 7.5 })}
+                    className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] p-2.5 rounded-xl font-bold text-white outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-2 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsEditingProfile(false)}
+                  className="btn-secondary flex-1 py-3 text-xs font-bold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-primary flex-1 py-3 text-xs font-black uppercase tracking-wider"
+                >
+                  Save & Update AI Plan →
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
