@@ -57,8 +57,9 @@ export default function Readings() {
       return () => char.removeEventListener('characteristicvaluechanged', handler);
     }
 
-    // LOCAL or CLOUD — polling with exponential backoff
+    // LOCAL or CLOUD — polling with rapid live updates
     const getBackoff = (fails) => {
+      if (conn.mode === 'CLOUD') return 1500; // Snappy 1.5s refresh for cloud telemetry
       if (fails <= 0) return 2000;
       if (fails === 1) return 4000;
       if (fails === 2) return 8000;
