@@ -173,7 +173,18 @@ export default function Nutrition() {
 
   const handleSaveProfile = (e) => {
     e.preventDefault();
-    setHealthProfile(tempProfile);
+    const finalAge = Math.max(1, Math.min(120, parseInt(tempProfile.age) || 25));
+    const finalHeight = Math.max(50, Math.min(250, parseInt(tempProfile.height) || 170));
+    const finalWeight = Math.max(10, Math.min(300, parseInt(tempProfile.weight) || 68));
+    
+    const updated = {
+      ...tempProfile,
+      age: finalAge,
+      height: finalHeight,
+      weight: finalWeight
+    };
+    setHealthProfile(updated);
+    setTempProfile(updated);
     setIsEditingProfile(false);
   };
 
@@ -720,7 +731,7 @@ export default function Nutrition() {
             <div className="flex justify-between items-center border-b border-[var(--border-color)] pb-3">
               <div>
                 <span className="text-[10px] font-bold text-[#d4af37] uppercase tracking-wider block">AI Customization</span>
-                <h3 className="text-lg font-black text-white flex items-center gap-2">
+                <h3 className="text-lg font-black text-[var(--text-color)] flex items-center gap-2">
                   <User size={18} className="text-[#d4af37]" /> Health & Medical Profile
                 </h3>
               </div>
@@ -740,8 +751,11 @@ export default function Nutrition() {
                     max="120"
                     required
                     value={tempProfile.age}
-                    onChange={e => setTempProfile({ ...tempProfile, age: parseInt(e.target.value) || 25 })}
-                    className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] p-2.5 rounded-xl font-bold text-white outline-none"
+                    onChange={e => {
+                      const v = e.target.value;
+                      setTempProfile({ ...tempProfile, age: v === '' ? '' : parseInt(v) });
+                    }}
+                    className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] p-2.5 rounded-xl font-bold text-[var(--text-color)] outline-none"
                   />
                 </div>
                 <div>
@@ -749,11 +763,11 @@ export default function Nutrition() {
                   <select
                     value={tempProfile.gender}
                     onChange={e => setTempProfile({ ...tempProfile, gender: e.target.value })}
-                    className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] p-2.5 rounded-xl font-bold text-white outline-none"
+                    className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] p-2.5 rounded-xl font-bold text-[var(--text-color)] outline-none"
                   >
-                    <option value="Male" className="bg-[#18181b]">Male</option>
-                    <option value="Female" className="bg-[#18181b]">Female</option>
-                    <option value="Other" className="bg-[#18181b]">Other</option>
+                    <option value="Male" className="bg-[var(--bg-card)] text-[var(--text-color)]">Male</option>
+                    <option value="Female" className="bg-[var(--bg-card)] text-[var(--text-color)]">Female</option>
+                    <option value="Other" className="bg-[var(--bg-card)] text-[var(--text-color)]">Other</option>
                   </select>
                 </div>
                 <div>
@@ -761,8 +775,11 @@ export default function Nutrition() {
                   <input
                     type="number"
                     value={tempProfile.height}
-                    onChange={e => setTempProfile({ ...tempProfile, height: parseInt(e.target.value) || 170 })}
-                    className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] p-2.5 rounded-xl font-bold text-white outline-none"
+                    onChange={e => {
+                      const v = e.target.value;
+                      setTempProfile({ ...tempProfile, height: v === '' ? '' : parseInt(v) });
+                    }}
+                    className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] p-2.5 rounded-xl font-bold text-[var(--text-color)] outline-none"
                   />
                 </div>
                 <div>
@@ -770,8 +787,11 @@ export default function Nutrition() {
                   <input
                     type="number"
                     value={tempProfile.weight}
-                    onChange={e => setTempProfile({ ...tempProfile, weight: parseInt(e.target.value) || 68 })}
-                    className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] p-2.5 rounded-xl font-bold text-white outline-none"
+                    onChange={e => {
+                      const v = e.target.value;
+                      setTempProfile({ ...tempProfile, weight: v === '' ? '' : parseInt(v) });
+                    }}
+                    className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] p-2.5 rounded-xl font-bold text-[var(--text-color)] outline-none"
                   />
                 </div>
               </div>
@@ -783,12 +803,12 @@ export default function Nutrition() {
                   <select
                     value={tempProfile.goal}
                     onChange={e => setTempProfile({ ...tempProfile, goal: e.target.value })}
-                    className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] p-2.5 rounded-xl font-bold text-white outline-none"
+                    className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] p-2.5 rounded-xl font-bold text-[var(--text-color)] outline-none"
                   >
-                    <option value="Weight Loss" className="bg-[#18181b]">Weight Loss</option>
-                    <option value="Muscle Gain" className="bg-[#18181b]">Muscle Gain</option>
-                    <option value="Maintenance" className="bg-[#18181b]">Maintenance</option>
-                    <option value="Fat Loss" className="bg-[#18181b]">Fat Loss</option>
+                    <option value="Weight Loss" className="bg-[var(--bg-card)] text-[var(--text-color)]">Weight Loss</option>
+                    <option value="Muscle Gain" className="bg-[var(--bg-card)] text-[var(--text-color)]">Muscle Gain</option>
+                    <option value="Maintenance" className="bg-[var(--bg-card)] text-[var(--text-color)]">Maintenance</option>
+                    <option value="Fat Loss" className="bg-[var(--bg-card)] text-[var(--text-color)]">Fat Loss</option>
                   </select>
                 </div>
 
@@ -797,13 +817,13 @@ export default function Nutrition() {
                   <select
                     value={tempProfile.dietPreference}
                     onChange={e => setTempProfile({ ...tempProfile, dietPreference: e.target.value })}
-                    className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] p-2.5 rounded-xl font-bold text-white outline-none"
+                    className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] p-2.5 rounded-xl font-bold text-[var(--text-color)] outline-none"
                   >
-                    <option value="Vegetarian" className="bg-[#18181b]">Vegetarian</option>
-                    <option value="Non-Vegetarian" className="bg-[#18181b]">Non-Vegetarian</option>
-                    <option value="Vegan" className="bg-[#18181b]">Vegan</option>
-                    <option value="Jain" className="bg-[#18181b]">Jain</option>
-                    <option value="Eggitarian" className="bg-[#18181b]">Eggitarian</option>
+                    <option value="Vegetarian" className="bg-[var(--bg-card)] text-[var(--text-color)]">Vegetarian</option>
+                    <option value="Non-Vegetarian" className="bg-[var(--bg-card)] text-[var(--text-color)]">Non-Vegetarian</option>
+                    <option value="Vegan" className="bg-[var(--bg-card)] text-[var(--text-color)]">Vegan</option>
+                    <option value="Jain" className="bg-[var(--bg-card)] text-[var(--text-color)]">Jain</option>
+                    <option value="Eggitarian" className="bg-[var(--bg-card)] text-[var(--text-color)]">Eggitarian</option>
                   </select>
                 </div>
               </div>
