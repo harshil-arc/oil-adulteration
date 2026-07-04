@@ -29,9 +29,10 @@ export async function sendAiResultToEsp32(result) {
 
   // Construct standardized result packet matching user prediction specs
   const purity = parseFloat((result.purityPercentage || result.purityScore || result.purity || 91.4).toFixed(1));
+  const adultPct = parseFloat((result.adulterationPercentage ?? Math.max(0, 100 - purity)).toFixed(1));
   const status = result.status || (purity >= 90 ? 'Pure' : purity >= 75 ? 'Suspicious' : 'Adulterated');
   const adulterant = result.adulterationType || result.detectedAdulterant || result.possible_adulterant || (purity < 90 ? 'Palm Oil' : 'None');
-  const estMix = result.estimatedAdulterationPercent || result.estimated_adulteration_percent || (purity < 90 ? '15-20% (Estimated by AI)' : '0% (Pure)');
+  const estMix = purity >= 90 ? '0% (Pure)' : `${adultPct}%`;
   const confidence = Math.round(result.confidenceScore || result.confidence || 97);
   const temp = parseFloat((result.temperature || 31.2).toFixed(1));
 

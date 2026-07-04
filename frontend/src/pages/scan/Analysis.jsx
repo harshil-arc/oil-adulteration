@@ -252,6 +252,7 @@ export default function Analysis() {
     sendAiResultToEsp32({
       oilName: selectedOil.oilName,
       purityScore: result.purityPercentage,
+      adulterationPercentage: result.adulterationPercentage,
       confidenceScore: result.confidenceScore,
       status: result.tier === 'pure' ? 'SAFE' : 'ADULTERATED',
       detectedAdulterant: result.primaryIndicator || 'None',

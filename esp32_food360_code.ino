@@ -95,7 +95,11 @@ void renderScreen1Oil(const char* oilName) {
 
   display.setTextSize(1);
   display.setCursor(0, 52);
-  display.println("Food 360 AI Verified");
+  if (str == "--" || str.length() == 0) {
+    display.println("Select Oil in App");
+  } else {
+    display.println("Food 360 AI Verified");
+  }
   display.display();
 }
 
@@ -115,7 +119,11 @@ void renderScreen2Status(const char* status) {
 
   display.setTextSize(1);
   display.setCursor(0, 52);
-  display.println("FSSAI Safety Rule");
+  if (str == "Ready" || str == "--") {
+    display.println("Waiting for Scan");
+  } else {
+    display.println("FSSAI Safety Rule");
+  }
   display.display();
 }
 
@@ -124,7 +132,6 @@ String sanitizeAscii(String str) {
   String clean = "";
   for (size_t i = 0; i < str.length(); i++) {
     unsigned char c = (unsigned char)str.charAt(i);
-    // Replace multi-byte UTF-8 en-dash (0xE2 0x80 0x93) or em-dash
     if (c == 0xE2 && i + 2 < str.length()) {
       unsigned char c2 = (unsigned char)str.charAt(i + 1);
       unsigned char c3 = (unsigned char)str.charAt(i + 2);
@@ -151,7 +158,7 @@ void renderScreen3Adulteration(const char* rawLevelText) {
 
   String str = sanitizeAscii(String(rawLevelText));
   String pctOnly = str;
-  String subText = "(Estimated by AI)";
+  String subText = (str == "--") ? "No Active Scan" : "(Estimated by AI)";
 
   int parenIdx = str.indexOf('(');
   if (parenIdx > 0) {
@@ -237,7 +244,7 @@ struct AiPredictionPacket {
   bool hasPrediction;
 };
 
-AiPredictionPacket currentPrediction = { "Mustard Oil", 91.4, "Pure", "None", "0% (Pure)", 30.2, "15,32,45,67,89,102,120,135,150,165,180,195,210", false };
+AiPredictionPacket currentPrediction = { "--", 0.0, "Ready", "None", "--", 30.2, "15,32,45,67,89,102,120,135,150,165,180,195,210", false };
 
 // Timing variables
 unsigned long lastUploadTime = 0;
@@ -352,24 +359,31 @@ void fetchPredictionFromFirebase() {
 
   HTTPClient http;
   http.begin(client, FIREBASE_RESULT_URL);
-  http.setTimeout(1500);
+  http.setTimeout(2500);
   int code = http.GET();
 
   if (code == 200) {
     String resp = http.getString();
+    Serial.printf("   --> Firebase GET device_result HTTP 200: %s\n", resp.c_str());
+
     if (resp.length() > 10 && resp != "null") {
       String oil = extractJsonString(resp, "oil_type");
       String status = extractJsonString(resp, "safety_status");
       String estMix = extractJsonString(resp, "estimated_adulteration_percent");
       float purity = extractJsonNumber(resp, "purity_percentage");
 
-      if (oil.length() > 0) currentPrediction.oilType = oil;
-      if (purity > 0) currentPrediction.purity = purity;
-      if (status.length() > 0) currentPrediction.status = status;
-      if (estMix.length() > 0) currentPrediction.estimatedMix = estMix;
-
-      currentPrediction.hasPrediction = true;
+      if (oil.length() > 0 && oil != "--") {
+        currentPrediction.oilType = oil;
+        currentPrediction.purity = (purity > 0) ? purity : 91.4;
+        currentPrediction.status = (status.length() > 0) ? status : "PURE";
+        currentPrediction.estimatedMix = (estMix.length() > 0) ? estMix : "0% (Pure)";
+        currentPrediction.hasPrediction = true;
+        Serial.printf("[ACTIVE PREDICTION LOADED] Oil=%s Purity=%.1f%% Status=%s Mix=%s\n",
+          currentPrediction.oilType.c_str(), currentPrediction.purity, currentPrediction.status.c_str(), currentPrediction.estimatedMix.c_str());
+      }
     }
+  } else {
+    Serial.printf("   --> Firebase GET device_result HTTP code: %d\n", code);
   }
   http.end();
 }
@@ -377,7 +391,7 @@ void fetchPredictionFromFirebase() {
 void loop() {
   unsigned long nowMs = millis();
 
-  // ── TASK A: SENSOR READ & FIREBASE UPLOAD (Every 1.5 seconds) ────────────
+  // ── TASK A: SENSOR READ & ALTERNATING FIREBASE COMM (Every 1.5 seconds) ──
   if (nowMs - lastUploadTime >= 1500) {
     lastUploadTime = nowMs;
 
@@ -439,33 +453,40 @@ void loop() {
     // Print to Serial Monitor
     Serial.printf("[TELEMETRY] Temp: %.2f °C | Spectral: %s\n", tempC, spectralDigits);
 
-    // Firebase Upload
+    // Alternating Firebase Communication (Avoid double TLS handshake congestion)
+    static bool toggleComm = false;
+    toggleComm = !toggleComm;
+
     if (WiFi.status() == WL_CONNECTED) {
-      time_t now = time(nullptr);
-      uint64_t epochMs = (uint64_t)now * 1000ULL;
-      if (epochMs < 100000ULL) epochMs = millis();
+      if (toggleComm) {
+        // Cycle 1: POST Telemetry
+        time_t now = time(nullptr);
+        uint64_t epochMs = (uint64_t)now * 1000ULL;
+        if (epochMs < 100000ULL) epochMs = millis();
 
-      char payload[512];
-      snprintf(payload, sizeof(payload),
-        "{"
-        "\"temperature\":%.2f,"
-        "\"spectral_data\":\"%s\","
-        "\"timestamp\":%llu"
-        "}",
-        tempC, spectralDigits, epochMs);
+        char payload[512];
+        snprintf(payload, sizeof(payload),
+          "{"
+          "\"temperature\":%.2f,"
+          "\"spectral_data\":\"%s\","
+          "\"timestamp\":%llu"
+          "}",
+          tempC, spectralDigits, epochMs);
 
-      WiFiClientSecure client;
-      client.setInsecure();
+        WiFiClientSecure client;
+        client.setInsecure();
 
-      HTTPClient http;
-      http.begin(client, FIREBASE_TELEMETRY_URL);
-      http.addHeader("Content-Type", "application/json");
-      http.setTimeout(1500);
-      int code = http.POST(payload);
-      Serial.printf("   --> Firebase Response: HTTP %d\n", code);
-      http.end();
-
-      fetchPredictionFromFirebase();
+        HTTPClient http;
+        http.begin(client, FIREBASE_TELEMETRY_URL);
+        http.addHeader("Content-Type", "application/json");
+        http.setTimeout(2000);
+        int code = http.POST(payload);
+        Serial.printf("   --> Firebase POST Response: HTTP %d\n", code);
+        http.end();
+      } else {
+        // Cycle 2: GET Prediction
+        fetchPredictionFromFirebase();
+      }
     } else {
       WiFi.reconnect();
     }
