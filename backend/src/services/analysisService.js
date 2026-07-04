@@ -250,7 +250,7 @@ function analyzeOil(inputReadings, oilType) {
   const estLower = Math.max(5, rawEstPercent - 3);
   const estUpper = Math.min(95, rawEstPercent + 3);
   const estimatedAdulterationPercent = adulterationDetected 
-    ? `${estLower}–${estUpper}% (Estimated by AI)` 
+    ? `${estLower}-${estUpper}% (Estimated by AI)` 
     : "0% (Pure)";
 
   const confidenceScore = adulterationDetected 

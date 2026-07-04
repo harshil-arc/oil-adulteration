@@ -1,8 +1,8 @@
 /*
  * ============================================================================
- *  FOOD 360 — ESP32 Fast Telemetry & Non-Blocking 5-Screen OLED Display
+ *  FOOD 360 — ESP32 Fast Telemetry & Clean 5-Screen OLED Display
  *  Sensors: AS7343 13-Channel Spectrometer + MLX90614 IR Temperature Sensor
- *  Display: SSD1306 128x64 OLED (Non-blocking Screen Switcher)
+ *  Display: SSD1306 128x64 OLED (Clean Layout - Zero Overlap)
  *  Cloud Endpoint: Firebase Realtime Database REST API
  * ============================================================================
  */
@@ -56,33 +56,7 @@ uint8_t quantizeChannel(uint16_t raw) {
   return (raw > 255) ? 255 : (uint8_t)raw;
 }
 
-// OLED Card Helper
-void oledCard(const char* screenNum, const char* title, const char* mainVal, const char* subVal) {
-  display.clearDisplay();
-  display.setTextColor(SSD1306_WHITE);
-  
-  // Header line
-  display.setTextSize(1);
-  display.setCursor(0, 0);
-  display.print(screenNum);
-  display.print(" ");
-  display.println(title);
-  display.drawLine(0, 11, 128, 11, SSD1306_WHITE);
-
-  // Main Value
-  display.setTextSize(2);
-  display.setCursor(0, 20);
-  display.println(mainVal);
-
-  // Subtitle
-  display.setTextSize(1);
-  display.setCursor(0, 48);
-  display.println(subVal);
-
-  display.display();
-}
-
-// OLED Text Helper
+// OLED Text Helper (Standard 4 rows with no overlap)
 void oledShow(const char* r0, const char* r1, const char* r2, const char* r3) {
   display.clearDisplay();
   display.setTextSize(1);
@@ -91,6 +65,163 @@ void oledShow(const char* r0, const char* r1, const char* r2, const char* r3) {
   display.setCursor(0, 16); display.println(r1);
   display.setCursor(0, 32); display.println(r2);
   display.setCursor(0, 48); display.println(r3);
+  display.display();
+}
+
+// ── PERFECT 128x64 OLED CAROUSEL CARDS (ZERO OVERLAP) ─────────────
+void drawCardHeader(const char* num, const char* title) {
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.setCursor(0, 0);
+  display.print(num);
+  display.print(" ");
+  display.println(title);
+  display.drawLine(0, 10, 128, 10, SSD1306_WHITE);
+}
+
+void renderScreen1Oil(const char* oilName) {
+  display.clearDisplay();
+  drawCardHeader("[1/5]", "OIL TYPE");
+
+  display.setTextSize(2);
+  display.setCursor(0, 18);
+  
+  String str = String(oilName);
+  if (str.length() > 9) {
+    display.setTextSize(1);
+    display.setCursor(0, 22);
+  }
+  display.println(oilName);
+
+  display.setTextSize(1);
+  display.setCursor(0, 52);
+  display.println("Food 360 AI Verified");
+  display.display();
+}
+
+void renderScreen2Status(const char* status) {
+  display.clearDisplay();
+  drawCardHeader("[2/5]", "STATUS");
+
+  display.setTextSize(2);
+  display.setCursor(0, 20);
+
+  String str = String(status);
+  if (str.length() > 8) {
+    display.setTextSize(1);
+    display.setCursor(0, 24);
+  }
+  display.println(status);
+
+  display.setTextSize(1);
+  display.setCursor(0, 52);
+  display.println("FSSAI Safety Rule");
+  display.display();
+}
+
+// Sanitizes non-ASCII Unicode characters (e.g. en-dash '–' \u2013) to standard ASCII '-'
+String sanitizeAscii(String str) {
+  String clean = "";
+  for (size_t i = 0; i < str.length(); i++) {
+    unsigned char c = (unsigned char)str.charAt(i);
+    // Replace multi-byte UTF-8 en-dash (0xE2 0x80 0x93) or em-dash
+    if (c == 0xE2 && i + 2 < str.length()) {
+      unsigned char c2 = (unsigned char)str.charAt(i + 1);
+      unsigned char c3 = (unsigned char)str.charAt(i + 2);
+      if (c2 == 0x80 && (c3 == 0x93 || c3 == 0x94)) {
+        clean += "-";
+        i += 2;
+        continue;
+      }
+    }
+    if (c >= 32 && c <= 126) {
+      clean += (char)c;
+    } else if (c == '\n' || c == '\r' || c == '\t') {
+      clean += " ";
+    } else {
+      clean += "-";
+    }
+  }
+  return clean;
+}
+
+void renderScreen3Adulteration(const char* rawLevelText) {
+  display.clearDisplay();
+  drawCardHeader("[3/5]", "ADULTERATION %");
+
+  String str = sanitizeAscii(String(rawLevelText));
+  String pctOnly = str;
+  String subText = "(Estimated by AI)";
+
+  int parenIdx = str.indexOf('(');
+  if (parenIdx > 0) {
+    pctOnly = str.substring(0, parenIdx);
+    pctOnly.trim();
+    subText = str.substring(parenIdx);
+    subText.trim();
+  }
+
+  // Draw main percentage value in Big Text (TextSize 2)
+  display.setTextSize(2);
+  display.setCursor(0, 22);
+  if (pctOnly.length() > 8) {
+    display.setTextSize(1);
+    display.setCursor(0, 26);
+  }
+  display.println(pctOnly);
+
+  // Draw subtitle text at y=50
+  display.setTextSize(1);
+  display.setCursor(0, 50);
+  display.println(subText);
+
+  display.display();
+}
+
+void renderScreen4Temp(float tempC) {
+  display.clearDisplay();
+  drawCardHeader("[4/5]", "TEMPERATURE");
+
+  char buf[20];
+  snprintf(buf, sizeof(buf), "%.1f C", tempC);
+
+  display.setTextSize(2);
+  display.setCursor(0, 20);
+  display.println(buf);
+
+  display.setTextSize(1);
+  display.setCursor(0, 52);
+  display.println("MLX90614 IR Sensor");
+  display.display();
+}
+
+void renderScreen5Spectral(const char* digitsStr) {
+  display.clearDisplay();
+  drawCardHeader("[5/5]", "SPECTRAL DATA");
+
+  display.setTextSize(1);
+  display.setCursor(0, 14);
+
+  // Parse digits comma-separated into 2 clean lines
+  String s = String(digitsStr);
+  int half = s.length() / 2;
+  int commaPos = s.indexOf(',', half);
+  if (commaPos != -1) {
+    String line1 = s.substring(0, commaPos);
+    String line2 = s.substring(commaPos + 1);
+
+    display.setCursor(0, 15);
+    display.println(line1);
+
+    display.setCursor(0, 30);
+    display.println(line2);
+  } else {
+    display.setCursor(0, 20);
+    display.println(s);
+  }
+
+  display.setCursor(0, 52);
+  display.println("AS7343 13-Channels");
   display.display();
 }
 
@@ -108,7 +239,7 @@ struct AiPredictionPacket {
 
 AiPredictionPacket currentPrediction = { "Mustard Oil", 91.4, "Pure", "None", "0% (Pure)", 30.2, "15,32,45,67,89,102,120,135,150,165,180,195,210", false };
 
-// Timing variables for non-blocking loop execution
+// Timing variables
 unsigned long lastUploadTime = 0;
 unsigned long lastOledTime   = 0;
 int currentOledPage = 0;
@@ -154,25 +285,25 @@ void setup() {
     oledShow("WiFi Connected!", ipBuf, "", "");
     delay(800);
   } else {
-    Serial.println(F("\n[WARN] WiFi Connect Timeout! Will retry in background."));
+    Serial.println(F("\n[WARN] WiFi Connect Timeout! Retrying in background."));
     oledShow("WiFi Disconnected", "Retrying...", "", "");
   }
 
   // NTP Time Sync
   configTime(0, 0, "pool.ntp.org", "time.nist.gov");
   
-  // Initialize MLX90614 IR Temperature Sensor
+  // Initialize MLX90614 IR Temp Sensor
   if (!mlx.begin()) {
-    Serial.println(F("[WARN] MLX90614 IR Temp sensor not detected on I2C address 0x5A!"));
+    Serial.println(F("[WARN] MLX90614 IR Temp sensor not detected on address 0x5A!"));
     mlxReady = false;
   } else {
     Serial.println(F("[OK] MLX90614 IR Temperature sensor initialized."));
     mlxReady = true;
   }
 
-  // Initialize AS7343 13-Channel Spectral Sensor
+  // Initialize AS7343 Spectral Sensor
   if (!spectralSensor.begin()) {
-    Serial.println(F("[WARN] AS7343 Spectral sensor not detected on I2C address 0x39!"));
+    Serial.println(F("[WARN] AS7343 Spectral sensor not detected on address 0x39!"));
     as7343Ready = false;
   } else {
     spectralSensor.powerOn();
@@ -250,7 +381,7 @@ void loop() {
   if (nowMs - lastUploadTime >= 1500) {
     lastUploadTime = nowMs;
 
-    // 1. Read Temperature from MLX90614
+    // 1. Read Temperature
     float tempC = 30.2;
     if (mlxReady) {
       float readT = mlx.readObjectTempC();
@@ -260,7 +391,7 @@ void loop() {
     }
     currentPrediction.temperature = tempC;
 
-    // 2. Read Spectral Data from AS7343
+    // 2. Read Spectral Data
     char spectralDigits[64] = "15,32,45,67,89,102,120,135,150,165,180,195,210";
     if (as7343Ready) {
       spectralSensor.ledOn();
@@ -296,7 +427,6 @@ void loop() {
       uint8_t qvis= quantizeChannel(chvis);
       uint8_t qnir= quantizeChannel(chnir);
 
-      // Avoid all zeros
       if (q1 == 0 && q2 == 0 && qz == 0) {
         snprintf(spectralDigits, sizeof(spectralDigits), "15,32,45,67,89,102,120,135,150,165,180,195,210");
       } else {
@@ -306,11 +436,10 @@ void loop() {
     }
     currentPrediction.spectralDigits = String(spectralDigits);
 
-    // 3. PRINT LIVE READINGS DIRECTLY TO SERIAL MONITOR
-    Serial.printf("[SENSOR TELEMETRY] Temp: %.2f °C | Spectral: %s\n", 
-      tempC, spectralDigits);
+    // Print to Serial Monitor
+    Serial.printf("[TELEMETRY] Temp: %.2f °C | Spectral: %s\n", tempC, spectralDigits);
 
-    // 4. POST TO FIREBASE REALTIME DATABASE
+    // Firebase Upload
     if (WiFi.status() == WL_CONNECTED) {
       time_t now = time(nullptr);
       uint64_t epochMs = (uint64_t)now * 1000ULL;
@@ -333,56 +462,46 @@ void loop() {
       http.addHeader("Content-Type", "application/json");
       http.setTimeout(1500);
       int code = http.POST(payload);
-      Serial.printf("   --> Firebase POST Response: HTTP %d\n", code);
+      Serial.printf("   --> Firebase Response: HTTP %d\n", code);
       http.end();
 
       fetchPredictionFromFirebase();
     } else {
-      Serial.println(F("   --> WiFi Disconnected! Reconnecting..."));
       WiFi.reconnect();
     }
   }
 
-  // ── TASK B: NON-BLOCKING 5-SCREEN OLED CAROUSEL (Every 2.0 seconds) ──────
-  if (nowMs - lastOledTime >= 2000) {
+  // ── TASK B: NON-BLOCKING 5-SCREEN OLED CAROUSEL (Every 2.2 seconds) ──────
+  if (nowMs - lastOledTime >= 2200) {
     lastOledTime = nowMs;
     currentOledPage = (currentOledPage + 1) % 5;
 
     switch (currentOledPage) {
       case 0:
-        // Screen 1: Oil Type
-        oledCard("[1/5]", "Oil Type", currentPrediction.oilType.c_str(), "Food 360 AI");
+        renderScreen1Oil(currentPrediction.oilType.c_str());
         break;
       case 1:
-        // Screen 2: Adulterated Status
         {
           String statusText = (currentPrediction.purity >= 90) ? "Pure" : "Adulterated";
           if (currentPrediction.status.length() > 0) statusText = currentPrediction.status;
-          oledCard("[2/5]", "Status", statusText.c_str(), "FSSAI Safety Rule");
+          renderScreen2Status(statusText.c_str());
         }
         break;
       case 2:
-        // Screen 3: Adulteration Level
         {
           String levelText = currentPrediction.estimatedMix;
           if (currentPrediction.purity >= 90) levelText = "0% (Pure)";
-          oledCard("[3/5]", "Adulteration %", levelText.c_str(), "Estimated Level");
+          renderScreen3Adulteration(levelText.c_str());
         }
         break;
       case 3:
-        // Screen 4: Temperature
-        {
-          char tempBuf[20];
-          snprintf(tempBuf, sizeof(tempBuf), "%.1f C", currentPrediction.temperature);
-          oledCard("[4/5]", "Temperature", tempBuf, "MLX90614 IR Sensor");
-        }
+        renderScreen4Temp(currentPrediction.temperature);
         break;
       case 4:
-        // Screen 5: Spectral Data
-        oledCard("[5/5]", "Spectral Data", currentPrediction.spectralDigits.c_str(), "AS7343 13-Channels");
+        renderScreen5Spectral(currentPrediction.spectralDigits.c_str());
         break;
     }
   }
 
-  delay(10); // Minimal yield for ESP32 CPU watchdog
+  delay(10);
 }
