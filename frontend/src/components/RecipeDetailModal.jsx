@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { 
   X, Clock, Flame, ShieldCheck, Heart, Share2, Award, CheckCircle2, 
-  AlertTriangle, DollarSign, BookOpen, Utensils, Zap, Plus, Check, Info, AlertCircle
+  AlertTriangle, DollarSign, BookOpen, Utensils, Zap, Plus, Check, Info, AlertCircle, RefreshCw
 } from 'lucide-react';
 
 export default function RecipeDetailModal({ isOpen, onClose, recipe, onAddToShoppingList }) {
