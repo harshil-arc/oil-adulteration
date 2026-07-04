@@ -1,8 +1,8 @@
 /*
  * ============================================================================
- *  FOOD 360 — ESP32 Complete AI Prediction & Telemetry Code
+ *  FOOD 360 — ESP32 Cloud Sensor Telemetry & 5-Screen OLED Display
  *  Sensors: AS7343 13-Channel Spectrometer + MLX90614 IR Temperature Sensor
- *  Display: SSD1306 128x64 OLED (7-Screen AI Prediction Carousel)
+ *  Display: SSD1306 128x64 OLED (5 Screens: Oil, Status, Adulteration %, Temp, Spectral)
  *  Cloud Endpoint: Firebase Realtime Database REST API
  * ============================================================================
  */
@@ -24,7 +24,7 @@
 const char* ssid     = "atl";
 const char* password = "harshil913";
 
-// Firebase Realtime Database Endpoints
+// Firebase Realtime Database REST Endpoints
 const char* FIREBASE_TELEMETRY_URL = "https://oil-adulteration-default-rtdb.firebaseio.com/readings.json";
 const char* FIREBASE_RESULT_URL    = "https://oil-adulteration-default-rtdb.firebaseio.com/device_result.json";
 
@@ -55,7 +55,7 @@ uint8_t quantizeChannel(uint16_t raw) {
   return (uint8_t)(bin + 0.5);
 }
 
-// OLED Helper — Render screen with title, big text & subtitle
+// OLED Helper — Display Card with Title, Large Text & Subtitle
 void oledCard(const char* screenNum, const char* title, const char* mainVal, const char* subVal) {
   display.clearDisplay();
   display.setTextColor(SSD1306_WHITE);
@@ -101,11 +101,11 @@ struct AiPredictionPacket {
   String adulterantType;
   String estimatedMix;
   float temperature;
-  int confidence;
+  String spectralDigits;
   bool hasPrediction;
 };
 
-AiPredictionPacket currentPrediction = { "Mustard Oil", 0.0, "Analyzing...", "None", "0%", 28.5, 0, false };
+AiPredictionPacket currentPrediction = { "Mustard Oil", 0.0, "Analyzing...", "None", "0%", 28.5, "0,0,0,0,0,0,0,0,0,0,0,0,0", false };
 
 void setup() {
   Serial.begin(115200);
@@ -116,7 +116,7 @@ void setup() {
     Serial.println(F("OLED not found!"));
     while (true);
   }
-  oledShow("Food 360 AI Boot", "Initializing...", "", "");
+  oledShow("Food 360 ESP32 Init", "Starting...", "", "");
 
   // Connect to WiFi
   WiFi.begin(ssid, password);
@@ -223,23 +223,17 @@ void fetchPredictionFromFirebase() {
     if (resp.length() > 10 && resp != "null") {
       String oil = extractJsonString(resp, "oil_type");
       String status = extractJsonString(resp, "safety_status");
-      String adulterant = extractJsonString(resp, "adulteration_type");
       String estMix = extractJsonString(resp, "estimated_adulteration_percent");
       float purity = extractJsonNumber(resp, "purity_percentage");
-      float confidence = extractJsonNumber(resp, "confidence_score");
-      float temp = extractJsonNumber(resp, "temperature");
 
       if (oil.length() > 0) currentPrediction.oilType = oil;
       if (purity > 0) currentPrediction.purity = purity;
       if (status.length() > 0) currentPrediction.status = status;
-      if (adulterant.length() > 0) currentPrediction.adulterantType = adulterant;
       if (estMix.length() > 0) currentPrediction.estimatedMix = estMix;
-      if (temp > 0) currentPrediction.temperature = temp;
-      if (confidence > 0) currentPrediction.confidence = (int)confidence;
 
       currentPrediction.hasPrediction = true;
-      Serial.printf("[Firebase] Prediction Downloaded: Purity=%.1f%% Status=%s Adulterant=%s\n", 
-        currentPrediction.purity, currentPrediction.status.c_str(), currentPrediction.adulterantType.c_str());
+      Serial.printf("[Firebase] Downloaded: Oil=%s Status=%s Mix=%s\n", 
+        currentPrediction.oilType.c_str(), currentPrediction.status.c_str(), currentPrediction.estimatedMix.c_str());
     }
   }
   http.end();
@@ -252,6 +246,7 @@ void loop() {
   if (isnan(tempC) || isinf(tempC) || tempC < -40.0 || tempC > 150.0) {
     tempC = 28.5;
   }
+  currentPrediction.temperature = tempC;
 
   spectralSensor.ledOn();
   delay(100);
@@ -289,6 +284,7 @@ void loop() {
   char spectralDigits[64];
   snprintf(spectralDigits, sizeof(spectralDigits), "%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u",
     q_f1, q_f2, q_fz, q_f3, q_f4, q_f5, q_fy, q_fxl, q_f6, q_f7, q_f8, q_vis, q_nir);
+  currentPrediction.spectralDigits = String(spectralDigits);
 
   time_t now = time(nullptr);
   uint64_t epochMs = (uint64_t)now * 1000ULL;
@@ -318,44 +314,30 @@ void loop() {
     fetchPredictionFromFirebase();
   }
 
-  // ── 4. RENDER 7-SCREEN OLED CAROUSEL ───────────────────────
-  if (!currentPrediction.hasPrediction) {
-    oledShow("Food 360 AI Scan", "Analyzing...", "Waiting for AI...", "SpectraTrust AI v1");
-    delay(2000);
-  } else {
-    // Screen 1: Oil Type
-    char subBuf[30];
-    oledCard("[1/7]", "Oil Name", currentPrediction.oilType.c_str(), "SpectraTrust AI");
-    delay(2500);
+  // ── 4. RENDER 5 SPECIFIC OLED CAROUSEL SCREENS ────────────
+  // Screen 1: Oil Type
+  oledCard("[1/5]", "Oil Type", currentPrediction.oilType.c_str(), "Food 360 AI");
+  delay(2200);
 
-    // Screen 2: Purity %
-    char purityBuf[20];
-    snprintf(purityBuf, sizeof(purityBuf), "%.1f%%", currentPrediction.purity);
-    oledCard("[2/7]", "Purity", purityBuf, "AI Calculated");
-    delay(2500);
+  // Screen 2: Adulterated Status (Adulterated vs Pure)
+  String statusText = (currentPrediction.purity >= 90) ? "Pure" : "Adulterated";
+  if (currentPrediction.status.length() > 0) statusText = currentPrediction.status;
+  oledCard("[2/5]", "Status", statusText.c_str(), "FSSAI Safety Rule");
+  delay(2200);
 
-    // Screen 3: Safety Status
-    oledCard("[3/7]", "Status", currentPrediction.status.c_str(), "FSSAI Safety Rule");
-    delay(2500);
+  // Screen 3: Adulteration Level
+  String levelText = currentPrediction.estimatedMix;
+  if (currentPrediction.purity >= 90) levelText = "0% (Pure)";
+  oledCard("[3/5]", "Adulteration %", levelText.c_str(), "Estimated Level");
+  delay(2200);
 
-    // Screen 4: Adulterant Type
-    oledCard("[4/7]", "Adulterant", currentPrediction.adulterantType.c_str(), "Detected Foreign Fat");
-    delay(2500);
+  // Screen 4: Temperature
+  char tempBuf[20];
+  snprintf(tempBuf, sizeof(tempBuf), "%.1f C", tempC);
+  oledCard("[4/5]", "Temperature", tempBuf, "MLX90614 Sensor");
+  delay(2200);
 
-    // Screen 5: Estimated Adulteration %
-    oledCard("[5/7]", "Estimated Mix", currentPrediction.estimatedMix.c_str(), "AI Mixture Model");
-    delay(2500);
-
-    // Screen 6: Temperature
-    char tempBuf[20];
-    snprintf(tempBuf, sizeof(tempBuf), "%.1f C", currentPrediction.temperature);
-    oledCard("[6/7]", "Temperature", tempBuf, "MLX90614 Thermal");
-    delay(2500);
-
-    // Screen 7: AI Confidence
-    char confBuf[20];
-    snprintf(confBuf, sizeof(confBuf), "%d%%", currentPrediction.confidence);
-    oledCard("[7/7]", "AI Confidence", confBuf, "Model v1.0 Validated");
-    delay(2500);
-  }
+  // Screen 5: Spectral Sensor Reading
+  oledCard("[5/5]", "Spectral Data", currentPrediction.spectralDigits.c_str(), "AS7343 13-Channels");
+  delay(2200);
 }

@@ -248,9 +248,9 @@ export default function Readings() {
           <SensorCard label="Temperature" value={data.temperature} unit="°C" decimals={1} />
           <OilTypeCard label="Oil Type" value={data.oil_type} />
           <div className="col-span-2">
-            <div className="bg-[#1c1c1c] border border-[#333] rounded-2xl p-4 flex flex-col gap-1">
-              <span className="text-[9px] text-gray-500 uppercase font-bold tracking-widest">Spectral Data</span>
-              <span className="text-sm font-black text-[#d4af37] leading-tight mt-1 break-all">
+            <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl p-4 flex flex-col gap-1 shadow-sm">
+              <span className="text-[10px] text-[var(--text-muted)] uppercase font-bold tracking-widest">Spectral Data (13 Channels)</span>
+              <span className="text-sm font-black text-[#d4af37] leading-tight mt-1 break-all font-mono">
                 {data.spectral_data || '—'}
               </span>
             </div>
@@ -314,11 +314,11 @@ export default function Readings() {
 function SensorCard({ label, value, unit, decimals = 1 }) {
   const display = value != null ? Number(value).toFixed(decimals) : '--';
   return (
-    <div className="bg-[#1c1c1c] border border-[#333] rounded-2xl p-4 flex flex-col gap-1">
-      <span className="text-[9px] text-gray-500 uppercase font-bold tracking-widest">{label}</span>
-      <span className="text-2xl font-black text-white font-mono">
+    <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl p-4 flex flex-col gap-1 shadow-sm">
+      <span className="text-[10px] text-[var(--text-muted)] uppercase font-bold tracking-widest">{label}</span>
+      <span className="text-2xl font-black text-amber-500 font-mono flex items-baseline gap-1">
         {display}
-        <span className="text-[12px] text-gray-500 ml-1">{unit}</span>
+        <span className="text-xs text-[var(--text-muted)] font-normal">{unit}</span>
       </span>
     </div>
   );
@@ -329,8 +329,8 @@ function SensorCard({ label, value, unit, decimals = 1 }) {
 /* ------------------------------------------------------------------ */
 function OilTypeCard({ label, value }) {
   return (
-    <div className="bg-[#1c1c1c] border border-[#333] rounded-2xl p-4 flex flex-col gap-1">
-      <span className="text-[9px] text-gray-500 uppercase font-bold tracking-widest">{label}</span>
+    <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl p-4 flex flex-col gap-1 shadow-sm">
+      <span className="text-[10px] text-[var(--text-muted)] uppercase font-bold tracking-widest">{label}</span>
       <span className="text-lg font-black text-[#d4af37] leading-tight mt-1">
         {value || '—'}
       </span>
