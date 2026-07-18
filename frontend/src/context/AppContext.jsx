@@ -21,6 +21,7 @@ const defaultProfile = {
   email: 'admin@pureoil.gov.in',
   phone: '+91 98765 43210',
   badgeId: 'FSSAI-2024-001',
+  role: 'admin',
 };
 
 const AppContext = createContext(null);

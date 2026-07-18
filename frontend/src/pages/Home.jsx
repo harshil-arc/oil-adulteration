@@ -1,626 +1,825 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
-  Beaker, ShieldAlert, AlertTriangle, ShieldCheck, 
-  MapPin, Bell, RefreshCw, ChevronDown, TrendingUp, TrendingDown,
-  Sparkles, Flame, X, User, Shield, Info, BookOpen, Clock,
-  Plus, Calendar, Compass, Share2, Printer, ArrowRight, Award, HelpCircle, FileText,
-  Apple, ChevronRight, Utensils, CheckCircle2, ShoppingCart, Heart, BarChart2,
-  Building, Check, Filter, Search, Eye, Zap, Download, ScanLine, Activity, Layers
+  Beaker, ShieldAlert, AlertTriangle, ShieldCheck, MapPin, Bell, 
+  RefreshCw, ChevronRight, Award, Plus, Calendar, Compass, Heart, BarChart2,
+  Building, Check, Filter, Search, Eye, Zap, Download, ScanLine, 
+  Shield, Users, Clipboard, Terminal, Clock, Lock, CheckCircle2, FileText,
+  Upload, UserCheck, AlertCircle, EyeOff, Send, HelpCircle, Map, Trash2
 } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar, Cell } from 'recharts';
 import { supabase } from '../lib/supabase';
 import { useApp } from '../context/AppContext';
-import NationalIntelligenceCenter from '../components/NationalIntelligenceCenter';
-import ComplaintModal from '../components/ComplaintModal';
-
-// Simple Count-Up Component for numbers
-function CountUp({ end, duration = 800, suffix = "" }) {
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    let startTimestamp = null;
-    const step = (timestamp) => {
-      if (!startTimestamp) startTimestamp = timestamp;
-      const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-      setCount(Math.floor(progress * end));
-      if (progress < 1) {
-        window.requestAnimationFrame(step);
-      } else {
-        setCount(end);
-      }
-    };
-    window.requestAnimationFrame(step);
-  }, [end, duration]);
-
-  return <span>{count.toLocaleString()}{suffix}</span>;
-}
 
 export default function Home() {
   const navigate = useNavigate();
-  const { profile } = useApp();
-  
+  const { profile, updateProfile, logout } = useApp();
+  const currentRole = profile?.role || 'citizen';
+
   // Data State
-  const [scans, setScans] = useState([]);
+  const [complaints, setComplaints] = useState([]);
+  const [subInspectors, setSubInspectors] = useState([]);
+  const [auditLogs, setAuditLogs] = useState([]);
   const [loading, setLoading] = useState(true);
-  
-  // Modals
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [showFullAnalytics, setShowFullAnalytics] = useState(false);
-  const [showComplaintModal, setShowComplaintModal] = useState(false);
-  const [selectedStatModal, setSelectedStatModal] = useState(null);
 
-  // Time Range Filter inside Full Analytics Modal
-  const [chartTimeRange, setChartTimeRange] = useState('Weekly');
+  // Modals & Timelines
+  const [selectedComplaint, setSelectedComplaint] = useState(null);
+  const [showFssaiConfirm, setShowFssaiConfirm] = useState(false);
+  const [complaintWizardOpen, setComplaintWizardOpen] = useState(false);
+  const [complaintStep, setComplaintStep] = useState(1);
+  const [selectedSubInspectorId, setSelectedSubInspectorId] = useState('');
+  const [subInspectorSearch, setSubInspectorSearch] = useState('');
 
-  // Time-based Greeting
-  const greeting = useMemo(() => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning';
-    if (hour < 18) return 'Good Afternoon';
-    return 'Good Evening';
-  }, []);
+  // GPS & Checklist for Sub Inspector
+  const [gpsCheckedIn, setGpsCheckedIn] = useState(false);
+  const [gpsCheckedOut, setGpsCheckedOut] = useState(false);
 
-  const formattedDate = useMemo(() => {
-    return new Date().toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-  }, []);
+  // Form Fields
+  const [complaintForm, setComplaintForm] = useState({
+    vendorName: '',
+    vendorAddress: '',
+    city: '',
+    state: '',
+    pin: '',
+    oilType: 'Mustard Oil',
+    brandName: '',
+    batchNumber: '',
+    mfgDate: new Date().toISOString().split('T')[0],
+    expiryDate: '',
+    purchaseDate: new Date().toISOString().split('T')[0],
+    quantity: '1000',
+    price: '180',
+    description: '',
+    photosCount: 0
+  });
+
+  const [actionInput, setActionInput] = useState({
+    notes: '',
+    labPurity: '95',
+    labAdulterant: 'Argemone Oil',
+    warningAmount: '5000',
+    complianceText: '',
+    appealStatement: ''
+  });
 
   useEffect(() => {
     fetchData();
-
-    const channelScans = supabase
-      .channel('realtime_scans_home_separation')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'analysis_results' }, () => {
-        fetchData();
-      })
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channelScans);
-    };
   }, []);
 
   const fetchData = async () => {
+    setLoading(true);
     try {
-      const { data: scansData } = await supabase.from('analysis_results').select('*').order('timestamp', { ascending: false });
-      if (scansData) setScans(scansData);
+      // 1. Fetch complaints
+      const { data: compData } = await supabase.from('complaints').select('*');
+      const loadedComplaints = compData && compData.length > 0 ? compData : [
+        {
+          id: 'SPT-2026-000124',
+          citizen_uid: 'citizen-demo-id',
+          vendor_name: 'Pooja Grocery Store',
+          vendor_address: 'Sector 4, Gandhinagar',
+          oil_type: 'Mustard Oil',
+          brand_name: 'PureDrop Mustard',
+          batch_number: 'MSTD-B9',
+          mfg_date: '2026-05-10',
+          expiry_date: '2026-11-10',
+          purchase_date: '2026-07-10',
+          price: 175,
+          quantity_ml: 1000,
+          description: 'Distinct petroleum smell and bitter taste. Suspected paraffin mixture.',
+          status: 'submitted',
+          assigned_inspector_id: 'Rajesh Sharma',
+          assigned_sub_inspector_id: null,
+          sla_due_date: new Date(Date.now() + 3600000 * 48).toISOString(),
+          created_at: new Date().toISOString(),
+          logs: [{ timestamp: new Date().toISOString(), status: 'submitted', notes: 'Citizen complaint submitted via guided wizard.', officer_name: 'System AI' }]
+        },
+        {
+          id: 'SPT-2026-000125',
+          citizen_uid: 'citizen-demo-id',
+          vendor_name: 'Super Save Retailers',
+          vendor_address: 'Vastrapur, Ahmedabad',
+          oil_type: 'Sunflower Oil',
+          brand_name: 'GoldenShield Sunflower',
+          batch_number: 'SF-991',
+          mfg_date: '2026-04-12',
+          expiry_date: '2026-12-12',
+          purchase_date: '2026-07-15',
+          price: 210,
+          quantity_ml: 1000,
+          description: 'AI spectral scan flagged this batch with 42% purity score.',
+          status: 'laboratory_testing',
+          assigned_inspector_id: 'Inspector Rajesh',
+          assigned_sub_inspector_id: 'Sub-Inspector Mohan',
+          sla_due_date: new Date(Date.now() - 3600000 * 12).toISOString(), // Overdue
+          created_at: new Date(Date.now() - 3600000 * 72).toISOString(),
+          logs: [
+            { timestamp: new Date(Date.now() - 3600000 * 72).toISOString(), status: 'submitted', notes: 'Citizen report uploaded.', officer_name: 'System AI' },
+            { timestamp: new Date(Date.now() - 3600000 * 48).toISOString(), status: 'assigned_to_sub_inspector', notes: 'Dispatched to Sub-Inspector Mohan.', officer_name: 'Inspector Rajesh' },
+            { timestamp: new Date(Date.now() - 3600000 * 24).toISOString(), status: 'laboratory_testing', notes: 'Site inspection done. Sample sealed and dispatched to lab.', officer_name: 'Sub-Inspector Mohan' }
+          ]
+        }
+      ];
+      setComplaints(loadedComplaints);
+
+      // 2. Fetch sub-inspectors
+      const loadedSubs = [
+        { uid: 'sub-1', name: 'Mohan Lal', employee_code: 'FSSAI-SI-091', district: 'Gandhinagar', availability_status: 'available', photo_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80' },
+        { uid: 'sub-2', name: 'Rakesh Patel', employee_code: 'FSSAI-SI-092', district: 'Ahmedabad', availability_status: 'on_field', photo_url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&q=80' },
+        { uid: 'sub-3', name: 'Sunita Sharma', employee_code: 'FSSAI-SI-093', district: 'Vadodara', availability_status: 'available', photo_url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=100&q=80' }
+      ];
+      setSubInspectors(loadedSubs);
+
+      // 3. Fetch audit logs
+      const loadedLogs = [
+        { log_id: 'log-1', action_performed: 'CASE_ASSIGNMENT', user_id: 'food_inspector@fssai.gov.in', role: 'food_inspector', timestamp: new Date(Date.now() - 3600000).toISOString(), notes: 'Assigned case SPT-2026-000125 to Sub-Inspector Mohan' },
+        { log_id: 'log-2', action_performed: 'DEVICE_CALIBRATION', user_id: 'admin@pureoil.gov.in', role: 'admin', timestamp: new Date(Date.now() - 3600000 * 4).toISOString(), notes: 'Calibrated spectral sensor ref code DEV-901' }
+      ];
+      setAuditLogs(loadedLogs);
+
     } catch (e) {
-      console.error('Error fetching data:', e);
+      console.error(e);
     } finally {
       setLoading(false);
     }
   };
 
-  // Latest Scan Object
-  const latestScan = useMemo(() => {
-    if (scans.length > 0) return scans[0];
-    return {
-      id: 'demo-latest-01',
-      oil_type: 'Mustard Oil',
-      purity: 94.2,
-      confidence_score: 98,
-      quality: 'Safe',
-      vendor: 'Amul Vendor Center',
-      timestamp: new Date().toISOString()
+  const addLocalAuditLog = async (action, details) => {
+    const newLog = {
+      log_id: `log-${Date.now()}`,
+      action_performed: action,
+      user_id: profile?.email || 'regulatory@pureoil.gov.in',
+      role: currentRole,
+      timestamp: new Date().toISOString(),
+      notes: details
     };
-  }, [scans]);
+    setAuditLogs(prev => [newLog, ...prev]);
+    await supabase.from('audit_logs').insert(newLog);
+  };
 
-  // Personal Stats Computation
-  const personalStats = useMemo(() => {
-    const total = scans.length > 0 ? scans.length : 14;
-    const puritySum = scans.reduce((acc, val) => acc + parseFloat(val.purity || 0), 0);
-    const avgPurity = scans.length > 0 ? Math.round(puritySum / scans.length) : 94;
-    const unsafeCount = scans.filter(s => s.quality === 'Unsafe').length;
+  // --- TRANSITIONS ---
+  const handleStatusTransition = async (complaintId, nextStatus, notesText) => {
+    const updated = complaints.map(c => {
+      if (c.id === complaintId) {
+        const nextLogs = c.logs ? [...c.logs] : [];
+        nextLogs.push({
+          timestamp: new Date().toISOString(),
+          status: nextStatus,
+          notes: notesText,
+          officer_name: profile?.name || 'Authorized Officer'
+        });
+        return {
+          ...c,
+          status: nextStatus,
+          logs: nextLogs,
+          assigned_sub_inspector_id: selectedSubInspectorId ? subInspectors.find(s=>s.uid === selectedSubInspectorId)?.name : c.assigned_sub_inspector_id,
+          labPurity: actionInput.labPurity || c.labPurity,
+          labAdulterant: actionInput.labAdulterant || c.labAdulterant,
+          warningAmount: actionInput.warningAmount || c.warningAmount
+        };
+      }
+      return c;
+    });
 
-    return [
-      { id: 'samples', title: 'Samples Tested', value: `${total}`, unit: 'Scans', icon: Beaker, color: 'text-[#d4af37]', bg: 'bg-[#d4af37]/10' },
-      { id: 'purity', title: 'Average Purity', value: `${avgPurity}%`, unit: 'Score', icon: ShieldCheck, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-      { id: 'unsafe', title: 'Unsafe Samples', value: `${unsafeCount}`, unit: 'Found', icon: ShieldAlert, color: 'text-red-400', bg: 'bg-red-500/10' },
-      { id: 'reports', title: 'Reports Submitted', value: `${unsafeCount + 2}`, unit: 'Filed', icon: FileText, color: 'text-amber-400', bg: 'bg-amber-500/10' },
-      { id: 'vendors', title: 'Trusted Vendors', value: '4', unit: 'Verified', icon: Building, color: 'text-blue-400', bg: 'bg-blue-500/10' },
-      { id: 'donations', title: 'Food Donations', value: '6', unit: 'Rescues', icon: Heart, color: 'text-rose-400', bg: 'bg-rose-500/10' },
-      { id: 'score', title: 'Food Safety Score', value: '92', unit: '/ 100', icon: Award, color: 'text-purple-400', bg: 'bg-purple-500/10' },
-      { id: 'complaints', title: 'Complaint Status', value: '2', unit: 'Resolved', icon: CheckCircle2, color: 'text-teal-400', bg: 'bg-teal-500/10' }
-    ];
-  }, [scans]);
+    setComplaints(updated);
+    addLocalAuditLog('COMPLAINT_TRANSITION', `Complaint ${complaintId} advanced to ${nextStatus}. Notes: ${notesText}`);
+    await supabase.from('complaints').update({ status: nextStatus }).eq('id', complaintId);
+    setSelectedComplaint(null);
+  };
 
-  // Chart dataset for Full Analytics Modal
-  const activeChartData = useMemo(() => {
-    if (chartTimeRange === 'Daily') {
-      return [
-        { label: '04:00', count: 1, avgPurity: 96 },
-        { label: '08:00', count: 3, avgPurity: 95 },
-        { label: '12:00', count: 8, avgPurity: 92 },
-        { label: '16:00', count: 5, avgPurity: 96 },
-        { label: '20:00', count: 4, avgPurity: 97 },
-        { label: '23:00', count: 1, avgPurity: 98 }
-      ];
-    } else if (chartTimeRange === 'Monthly') {
-      return [
-        { label: 'W1', count: 42, avgPurity: 94 },
-        { label: 'W2', count: 38, avgPurity: 95 },
-        { label: 'W3', count: 45, avgPurity: 93 },
-        { label: 'W4', count: 32, avgPurity: 96 }
-      ];
-    } else if (chartTimeRange === 'Yearly') {
-      return [
-        { label: 'Jan', count: 120, avgPurity: 94 },
-        { label: 'Feb', count: 145, avgPurity: 93 },
-        { label: 'Mar', count: 160, avgPurity: 95 },
-        { label: 'Apr', count: 180, avgPurity: 92 },
-        { label: 'May', count: 210, avgPurity: 96 },
-        { label: 'Jun', count: 230, avgPurity: 95 },
-        { label: 'Jul', count: 195, avgPurity: 96 }
-      ];
+  // --- COMPLAINT SUBMISSION ---
+  const handleCreateComplaint = async () => {
+    const newId = `SPT-2026-${Math.floor(100000 + Math.random() * 900000)}`;
+    const newComp = {
+      id: newId,
+      citizen_uid: profile?.email || 'citizen-id',
+      vendor_name: complaintForm.vendorName,
+      vendor_address: `${complaintForm.vendorAddress}, ${complaintForm.city}, ${complaintForm.state} - ${complaintForm.pin}`,
+      oil_type: complaintForm.oilType,
+      brand_name: complaintForm.brandName,
+      batch_number: complaintForm.batchNumber,
+      mfg_date: complaintForm.mfgDate,
+      expiry_date: complaintForm.expiryDate || new Date(Date.now() + 3600000 * 24 * 180).toISOString().split('T')[0],
+      purchase_date: complaintForm.purchaseDate,
+      price: parseFloat(complaintForm.price || 0),
+      quantity_ml: parseInt(complaintForm.quantity || 0),
+      description: complaintForm.description,
+      status: 'submitted',
+      assigned_inspector_id: 'Inspector Rajesh',
+      assigned_sub_inspector_id: null,
+      sla_due_date: new Date(Date.now() + 3600000 * 48).toISOString(),
+      created_at: new Date().toISOString(),
+      logs: [{ timestamp: new Date().toISOString(), status: 'submitted', notes: 'Citizen complaint wizard submission complete.', officer_name: 'System AI' }]
+    };
+
+    setComplaints([newComp, ...complaints]);
+    addLocalAuditLog('COMPLAINT_SUBMIT', `Created new complaint: ${newId} for ${complaintForm.brandName}`);
+    await supabase.from('complaints').insert(newComp);
+    setComplaintWizardOpen(false);
+    setComplaintStep(1);
+    alert(`Complaint submitted successfully! Registration ID: ${newId}`);
+  };
+
+  // --- AUTO ASSIGN SUB INSPECTOR ---
+  const handleAutoAssign = (complaintId) => {
+    const availableSI = subInspectors.find(s => s.availability_status === 'available');
+    if (availableSI) {
+      setSelectedSubInspectorId(availableSI.uid);
+      handleStatusTransition(complaintId, 'assigned_to_sub_inspector', `Auto Assigned to ${availableSI.name} based on availability and district workload.`);
+    } else {
+      alert("No Sub Inspectors currently available. Please select manually.");
     }
-    return [
-      { label: 'Mon', count: 18, avgPurity: 95 },
-      { label: 'Tue', count: 24, avgPurity: 93 },
-      { label: 'Wed', count: 28, avgPurity: 96 },
-      { label: 'Thu', count: 22, avgPurity: 94 },
-      { label: 'Fri', count: 30, avgPurity: 97 },
-      { label: 'Sat', count: 15, avgPurity: 98 },
-      { label: 'Sun', count: 12, avgPurity: 96 }
-    ];
-  }, [chartTimeRange]);
+  };
+
+  // Filter SI by search query
+  const filteredSubInspectors = useMemo(() => {
+    return subInspectors.filter(si => 
+      si.name.toLowerCase().includes(subInspectorSearch.toLowerCase()) ||
+      si.employee_code.toLowerCase().includes(subInspectorSearch.toLowerCase()) ||
+      si.district.toLowerCase().includes(subInspectorSearch.toLowerCase())
+    );
+  }, [subInspectors, subInspectorSearch]);
+
+  const activeChartData = [
+    { name: 'Inspector Rajesh', cases: 8, rating: 94 },
+    { name: 'Mohan Lal', cases: 14, rating: 92 },
+    { name: 'Rakesh Patel', cases: 11, rating: 88 },
+    { name: 'Sunita Sharma', cases: 9, rating: 96 }
+  ];
 
   return (
     <div className="min-h-screen theme-bg theme-text pb-28 pt-safe relative overflow-x-hidden">
       
-      {/* Background Gold Ambient Glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[250px] bg-[#d4af37] opacity-[0.07] rounded-full blur-[120px] pointer-events-none" />
+      {/* ambient background */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[500px] h-[250px] bg-[#d4af37] opacity-[0.06] rounded-full blur-[120px] pointer-events-none" />
 
-      {/* ── 1. HEADER & BRANDING ────────────────────────────────────────────── */}
+      {/* Header */}
       <div className="px-5 pt-4 pb-3 flex items-center justify-between border-b border-[var(--border-color)] bg-[var(--bg-card)]/80 backdrop-blur-md sticky top-0 z-30">
         <div className="flex items-center gap-3">
-          <img src="/food360-logo.jpg" alt="Food 360 Logo" className="w-10 h-10 rounded-xl object-cover border border-[#d4af37]/40 shadow-md" />
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg font-black tracking-tight text-white">
-                Food <span className="text-[#d4af37]">360</span>
-              </h1>
-              <span className="bg-[#d4af37]/20 text-[#d4af37] border border-[#d4af37]/40 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
-                <Award size={10} /> Gold Inspector
-              </span>
-            </div>
-            <p className="text-[10px] text-gray-400 font-medium">{greeting}, {profile?.name ? profile.name.split(' ')[0] : 'Harshil'} 👋 • {formattedDate}</p>
+          <img src="/food360-logo.jpg" alt="SpectraTrust Logo" className="w-10 h-10 rounded-xl object-cover border border-[#d4af37]/40 shadow-md" />
+          <div className="text-left">
+            <h1 className="text-lg font-black tracking-tight text-white">
+              Spectra<span className="text-[#d4af37]">Trust</span>
+            </h1>
+            <p className="text-[9px] text-[#d4af37] font-black uppercase tracking-wider leading-none">
+              Portal: {currentRole.replace('_', ' ')} Command
+            </p>
           </div>
         </div>
 
         <button 
-          onClick={() => setShowNotifications(!showNotifications)}
-          className="p-2.5 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-color)] text-gray-400 hover:text-white hover:border-[#d4af37] transition-colors relative"
+          onClick={logout}
+          className="px-3.5 py-1.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-500 font-black text-[9px] uppercase tracking-widest transition-all"
         >
-          <Bell size={18} />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-amber-500 rounded-full animate-ping" />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-amber-500 rounded-full" />
+          Sign Out
         </button>
       </div>
 
       <div className="p-4 space-y-5 max-w-lg mx-auto">
 
-        {/* ── 2. HERO CARD: LATEST OIL SCAN ───────────────────────────────── */}
-        <div className="card p-5 rounded-3xl border border-[#d4af37]/40 bg-gradient-to-br from-[var(--bg-card)] via-[var(--bg-card)] to-[#d4af37]/10 relative overflow-hidden shadow-glow-gold">
-          <div className="flex items-center justify-between mb-3 border-b border-[var(--border-color)] pb-2.5">
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-[#d4af37]">Latest Oil Scan</span>
-            </div>
-            <span className="text-[10px] font-bold text-gray-400 font-mono">
-              {new Date(latestScan.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </span>
-          </div>
-
-          <div className="flex items-start justify-between gap-3 mb-4">
-            <div>
-              <h2 className="text-xl font-black text-white tracking-tight">{latestScan.oil_type || 'Mustard Oil'}</h2>
-              <p className="text-[11px] text-gray-400 mt-0.5 font-medium">{latestScan.vendor || 'Local Vendor'}</p>
-            </div>
-
-            <div className="text-right">
-              <div className="text-2xl font-black font-mono text-[#d4af37]">
-                {parseFloat(latestScan.purity || 94.2).toFixed(1)}%
+        {/* ── CITIZEN DASHBOARD ── */}
+        {currentRole === 'citizen' && (
+          <div className="space-y-5 text-left">
+            {/* Quick Actions Panel */}
+            <div className="card p-5 rounded-3xl border border-[#d4af37]/30 bg-[var(--bg-card)] space-y-4">
+              <div className="flex justify-between items-center border-b border-[var(--border-color)] pb-3">
+                <span className="text-xs font-black uppercase tracking-wider text-white">Citizen Command Center</span>
+                <span className="text-[9px] font-bold text-[#d4af37]">SpectraTrust Consumer Guard</span>
               </div>
-              <span className={`inline-block text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded mt-1 ${
-                latestScan.quality === 'Unsafe' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-              }`}>
-                {latestScan.quality === 'Unsafe' ? 'ADULTERATED' : 'SAFE'}
-              </span>
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between text-xs text-gray-300 bg-[var(--bg-elevated)] p-3 rounded-2xl border border-[var(--border-color)] mb-4">
-            <span className="font-bold flex items-center gap-1.5">
-              <Sparkles size={14} className="text-[#d4af37]" /> AI Confidence Score:
-            </span>
-            <span className="font-mono font-black text-emerald-400">{latestScan.confidence_score || 98}%</span>
-          </div>
-
-          <button
-            onClick={() => navigate('/scan')}
-            className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-[#f5c842] to-[#d4af37] text-black font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-glow-gold hover:brightness-110 active:scale-95 transition-all"
-          >
-            <ScanLine size={16} />
-            Scan Again
-          </button>
-        </div>
-
-        {/* ── 3. QUICK ACTION GRID (2 Columns x 3 Rows) ─────────────────────── */}
-        <div>
-          <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2.5 pl-1">Quick Actions</h3>
-          <div className="grid grid-cols-2 gap-3">
-            
-            <button
-              onClick={() => navigate('/scan')}
-              className="p-4 rounded-2xl bg-[var(--bg-card)] border border-[#d4af37]/30 hover:border-[#d4af37] text-left transition-all group flex flex-col justify-between h-24"
-            >
-              <div className="w-9 h-9 rounded-xl bg-[#d4af37]/15 text-[#d4af37] flex items-center justify-center group-hover:scale-110 transition-transform">
-                <ScanLine size={18} />
-              </div>
-              <div>
-                <p className="text-xs font-black theme-text uppercase tracking-wider">Oil Scan</p>
-                <p className="text-[9px] text-gray-400">Test Purity Now</p>
-              </div>
-            </button>
-
-            <button
-              onClick={() => setShowComplaintModal(true)}
-              className="p-4 rounded-2xl bg-[var(--bg-card)] border border-red-500/30 hover:border-red-400 text-left transition-all group flex flex-col justify-between h-24"
-            >
-              <div className="w-9 h-9 rounded-xl bg-red-500/15 text-red-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <ShieldAlert size={18} />
-              </div>
-              <div>
-                <p className="text-xs font-black theme-text uppercase tracking-wider">Report Adulteration</p>
-                <p className="text-[9px] text-gray-400">Submit FSSAI Notice</p>
-              </div>
-            </button>
-
-            <button
-              onClick={() => navigate('/testing-centres')}
-              className="p-4 rounded-2xl bg-[var(--bg-card)] border border-emerald-500/30 hover:border-emerald-400 text-left transition-all group flex flex-col justify-between h-24"
-            >
-              <div className="w-9 h-9 rounded-xl bg-emerald-500/15 text-emerald-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <MapPin size={18} />
-              </div>
-              <div>
-                <p className="text-xs font-black theme-text uppercase tracking-wider">Testing Centres</p>
-                <p className="text-[9px] text-gray-400">Map & Labs</p>
-              </div>
-            </button>
-
-            <button
-              onClick={() => navigate('/nutrition')}
-              className="p-4 rounded-2xl bg-[var(--bg-card)] border border-blue-500/30 hover:border-blue-400 text-left transition-all group flex flex-col justify-between h-24"
-            >
-              <div className="w-9 h-9 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Apple size={18} />
-              </div>
-              <div>
-                <p className="text-xs font-black theme-text uppercase tracking-wider">AI Meal Planner</p>
-                <p className="text-[9px] text-gray-400">Nutrition Coach</p>
-              </div>
-            </button>
-
-            <button
-              onClick={() => navigate('/community')}
-              className="p-4 rounded-2xl bg-[var(--bg-card)] border border-rose-500/30 hover:border-rose-400 text-left transition-all group flex flex-col justify-between h-24"
-            >
-              <div className="w-9 h-9 rounded-xl bg-rose-500/15 text-rose-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Heart size={18} />
-              </div>
-              <div>
-                <p className="text-xs font-black theme-text uppercase tracking-wider">Food Donation</p>
-                <p className="text-[9px] text-gray-400">Rescue Excess Food</p>
-              </div>
-            </button>
-
-            <button
-              onClick={() => navigate('/hotspots')}
-              className="p-4 rounded-2xl bg-[var(--bg-card)] border border-purple-500/30 hover:border-purple-400 text-left transition-all group flex flex-col justify-between h-24"
-            >
-              <div className="w-9 h-9 rounded-xl bg-purple-500/15 text-purple-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Compass size={18} />
-              </div>
-              <div>
-                <p className="text-xs font-black theme-text uppercase tracking-wider">Safety Heatmap</p>
-                <p className="text-[9px] text-gray-400">Adulteration Zones</p>
-              </div>
-            </button>
-
-          </div>
-        </div>
-
-        {/* ── 4. PERSONAL STATS (Horizontal Swipe Carousel) ───────────────────── */}
-        <div>
-          <div className="flex items-center justify-between mb-2.5 pl-1">
-            <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400">Personal Statistics</h3>
-            <span className="text-[9px] text-[#d4af37] font-bold">Swipe →</span>
-          </div>
-
-          <div className="flex overflow-x-auto gap-3 pb-2 custom-scrollbar snap-x snap-mandatory">
-            {personalStats.map(stat => {
-              const StatIcon = stat.icon;
-              return (
-                <div
-                  key={stat.id}
-                  onClick={() => setSelectedStatModal(stat)}
-                  className="snap-start shrink-0 w-36 p-4 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] hover:border-[#d4af37]/50 transition-all cursor-pointer flex flex-col justify-between h-28"
+              <div className="grid grid-cols-2 gap-3">
+                <button 
+                  onClick={() => { setComplaintStep(1); setComplaintWizardOpen(true); }}
+                  className="p-4 rounded-2xl bg-[#d4af37]/10 border border-[#d4af37]/30 hover:border-[#d4af37] text-left transition-all flex flex-col justify-between h-24"
                 >
-                  <div className="flex justify-between items-center">
-                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider truncate">{stat.title}</span>
-                    <div className={`p-1.5 rounded-lg ${stat.bg} ${stat.color}`}>
-                      <StatIcon size={14} />
+                  <Plus size={20} className="text-[#d4af37]" />
+                  <div>
+                    <span className="text-xs font-black uppercase tracking-wider text-white">File Complaint</span>
+                    <p className="text-[8px] text-gray-400">Report Adulteration</p>
+                  </div>
+                </button>
+                <button 
+                  onClick={() => setShowFssaiConfirm(true)}
+                  className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 hover:border-red-400 text-left transition-all flex flex-col justify-between h-24"
+                >
+                  <AlertCircle size={20} className="text-red-400" />
+                  <div>
+                    <span className="text-xs font-black uppercase tracking-wider text-white">Report to FSSAI</span>
+                    <p className="text-[8px] text-gray-400">Official Portal</p>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Timelines of filed complaints */}
+            <div>
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">My Filed Complaints History</h3>
+              <div className="space-y-3">
+                {complaints.map(comp => (
+                  <div key={comp.id} className="card p-4 rounded-2xl border border-[var(--border-color)] space-y-3">
+                    <div className="flex justify-between items-center border-b border-[var(--border-color)] pb-2 text-[9px] font-bold">
+                      <span className="text-gray-400">ID: {comp.id}</span>
+                      <span className="text-amber-400 uppercase">{comp.status.replace(/_/g, ' ')}</span>
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black text-white">{comp.brand_name} ({comp.oil_type})</h4>
+                      <p className="text-[10px] text-gray-400 mt-0.5">{comp.vendor_name} • {comp.vendor_address}</p>
+                    </div>
+
+                    {/* Timeline Tracker */}
+                    <div className="pt-2 border-t border-[var(--border-color)] space-y-2">
+                      <span className="text-[9px] font-bold text-gray-400 block uppercase">Logistics status track:</span>
+                      <div className="grid grid-cols-2 gap-2 text-[9px] bg-[var(--bg-elevated)] p-2 rounded-xl">
+                        <div>
+                          <span className="text-gray-400 block">Current officer</span>
+                          <span className="text-white font-bold">{comp.assigned_sub_inspector_id || comp.assigned_inspector_id || 'Assigned soon'}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400 block">SLA Target Date</span>
+                          <span className="text-red-400 font-mono font-bold">{new Date(comp.sla_due_date).toLocaleDateString()}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                  <div>
-                    <p className={`text-xl font-black font-mono ${stat.color}`}>{stat.value}</p>
-                    <p className="text-[9px] text-gray-400 font-medium">{stat.unit}</p>
-                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── VENDOR DASHBOARD ── */}
+        {currentRole === 'vendor' && (
+          <div className="space-y-5 text-left">
+            <div className="card p-5 rounded-3xl border border-[var(--border-color)] space-y-4">
+              <div className="flex justify-between items-center border-b border-[var(--border-color)] pb-3">
+                <span className="text-xs font-black uppercase tracking-wider text-white">Merchant Trust Registry</span>
+                <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">Active</span>
+              </div>
+              <div className="grid grid-cols-2 gap-3 text-center">
+                <div className="bg-[var(--bg-elevated)] p-3 rounded-2xl border border-[var(--border-color)]">
+                  <span className="text-[9px] text-gray-400 font-bold block">TRUST SCORE</span>
+                  <span className="text-2xl font-black text-emerald-400 font-mono">94 <span className="text-xs text-gray-500">/ 100</span></span>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* ── 5. AI HEALTH SNAPSHOT ─────────────────────────────────────────── */}
-        <div className="card p-5 rounded-3xl border border-[var(--border-color)] bg-[var(--bg-card)] space-y-4">
-          <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
-            <div className="flex items-center gap-2">
-              <Sparkles size={16} className="text-[#d4af37]" />
-              <h3 className="text-xs font-black uppercase tracking-wider text-white">AI Health Snapshot</h3>
-            </div>
-            <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-              Optimal Safety
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 text-center">
-            <div className="bg-[var(--bg-elevated)] p-3 rounded-2xl border border-[var(--border-color)]">
-              <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Food Safety Score</span>
-              <p className="text-2xl font-black text-emerald-400 font-mono mt-0.5">92 <span className="text-xs text-gray-500 font-normal">/ 100</span></p>
-            </div>
-            <div className="bg-[var(--bg-elevated)] p-3 rounded-2xl border border-[var(--border-color)]">
-              <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Nutrition Score</span>
-              <p className="text-2xl font-black text-blue-400 font-mono mt-0.5">88 <span className="text-xs text-gray-500 font-normal">/ 100</span></p>
-            </div>
-          </div>
-
-          <div className="bg-[#d4af37]/10 p-3.5 rounded-2xl border border-[#d4af37]/30 text-xs text-gray-300 space-y-1">
-            <span className="font-extrabold text-[#d4af37] uppercase tracking-wider text-[10px] block">Today's AI Rationale</span>
-            <p className="leading-relaxed text-[11px] italic">
-              "Your overall oil safety is high (94.2% avg). Continue verifying vendor samples and pair pure oils with protein-rich meals."
-            </p>
-          </div>
-
-          <div className="space-y-1.5 pt-1">
-            <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider text-gray-400">
-              <span>Weekly Scan Goal</span>
-              <span className="text-[#d4af37]">14 / 15 Scans (93%)</span>
-            </div>
-            <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-[#f5c842] to-[#d4af37] rounded-full" style={{ width: '93%' }} />
-            </div>
-          </div>
-        </div>
-
-        {/* ── 6. RECENT ACTIVITY TIMELINE ────────────────────────────────────── */}
-        <div>
-          <div className="flex items-center justify-between mb-2.5 pl-1">
-            <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400">Recent Activity Timeline</h3>
-            <span className="text-[9px] text-gray-400 font-bold">{scans.length > 0 ? scans.length : 3} Items</span>
-          </div>
-
-          <div className="space-y-2">
-            {(scans.length > 0 ? scans.slice(0, 3) : [
-              { id: '1', oil_type: 'Mustard Oil', purity: 94.2, quality: 'Safe', timestamp: new Date().toISOString(), vendor: 'Ahmedabad' },
-              { id: '2', oil_type: 'Groundnut Oil', purity: 96.5, quality: 'Safe', timestamp: new Date(Date.now() - 3600000 * 24).toISOString(), vendor: 'Surat' },
-              { id: '3', oil_type: 'Sunflower Oil', purity: 45.0, quality: 'Unsafe', timestamp: new Date(Date.now() - 3600000 * 48).toISOString(), vendor: 'Vadodara' }
-            ]).map(item => (
-              <div
-                key={item.id}
-                onClick={() => navigate(`/scan/${item.id}`)}
-                className="p-3.5 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] hover:border-[#d4af37]/40 transition-all cursor-pointer flex items-center justify-between group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs ${
-                    item.quality === 'Unsafe' ? 'bg-red-500/15 text-red-400' : 'bg-emerald-500/15 text-emerald-400'
-                  }`}>
-                    <Beaker size={16} />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold theme-text">{item.oil_type}</h4>
-                    <p className="text-[9px] text-gray-400">{item.vendor || 'Local Market'} • {new Date(item.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <span className="text-sm font-black font-mono theme-text">{parseFloat(item.purity).toFixed(1)}%</span>
-                    <span className={`block text-[8px] font-black uppercase tracking-widest ${
-                      item.quality === 'Unsafe' ? 'text-red-400' : 'text-emerald-400'
-                    }`}>
-                      {item.quality === 'Unsafe' ? 'UNSAFE' : 'PURE'}
-                    </span>
-                  </div>
-                  <ChevronRight size={16} className="text-gray-500 group-hover:translate-x-1 transition-transform" />
+                <div className="bg-[var(--bg-elevated)] p-3 rounded-2xl border border-[var(--border-color)]">
+                  <span className="text-[9px] text-gray-400 font-bold block">COMPLIANCE RATING</span>
+                  <span className="text-2xl font-black text-emerald-400 font-mono">Grade A</span>
                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ── 7. VIEW FULL ANALYTICS BUTTON ──────────────────────────────────── */}
-        <div className="card p-5 rounded-3xl border border-blue-500/30 bg-gradient-to-r from-blue-500/10 to-purple-500/10 flex items-center justify-between gap-4">
-          <div>
-            <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
-              <BarChart2 size={18} className="text-blue-400" /> Full Analytics
-            </h3>
-            <p className="text-[10px] text-gray-400 mt-1">Inspect weekly volume, pie charts & regional purity maps.</p>
-          </div>
-
-          <button
-            onClick={() => setShowFullAnalytics(true)}
-            className="py-2.5 px-4 rounded-xl bg-blue-500 text-black font-black text-xs uppercase tracking-wider shrink-0 hover:bg-blue-400 transition-colors shadow-glow-blue"
-          >
-            View →
-          </button>
-        </div>
-
-        {/* ── 8. COMMUNITY IMPACT SUMMARY CARD ────────────────────────────────── */}
-        <div className="card p-5 rounded-3xl border border-rose-500/30 bg-[var(--bg-card)] space-y-3">
-          <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-2.5">
-            <div className="flex items-center gap-2">
-              <Heart size={16} className="text-rose-400" />
-              <h3 className="text-xs font-black uppercase tracking-wider text-white">Community Impact</h3>
             </div>
-            <span className="text-[9px] font-bold text-rose-400">Food Rescue</span>
-          </div>
 
-          <div className="grid grid-cols-4 gap-2 text-center">
-            <div className="bg-[var(--bg-elevated)] p-2 rounded-xl">
-              <span className="text-[8px] text-gray-400 font-bold uppercase block">Donations</span>
-              <span className="text-sm font-black text-rose-400 font-mono">6</span>
-            </div>
-            <div className="bg-[var(--bg-elevated)] p-2 rounded-xl">
-              <span className="text-[8px] text-gray-400 font-bold uppercase block">Reports</span>
-              <span className="text-sm font-black text-amber-400 font-mono">3</span>
-            </div>
-            <div className="bg-[var(--bg-elevated)] p-2 rounded-xl">
-              <span className="text-[8px] text-gray-400 font-bold uppercase block">Vendors</span>
-              <span className="text-sm font-black text-blue-400 font-mono">4</span>
-            </div>
-            <div className="bg-[var(--bg-elevated)] p-2 rounded-xl">
-              <span className="text-[8px] text-gray-400 font-bold uppercase block">Saved</span>
-              <span className="text-sm font-black text-emerald-400 font-mono">120</span>
+            {/* Warnings list */}
+            <div>
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Warnings notice board & appeals</h3>
+              <div className="space-y-3">
+                {complaints.filter(c=>c.status === 'appeal_window').map(c => (
+                  <div key={c.id} className="card p-4 rounded-2xl border border-red-500/20 bg-red-500/5 space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] text-red-400 font-bold uppercase tracking-wider">Warning Notice Issued</span>
+                      <span className="text-[9px] text-gray-400 font-mono">ID: {c.id}</span>
+                    </div>
+                    <p className="text-xs text-gray-300">A complaint has been filed regarding: {c.brand_name}. Please upload compliance certificate or submit appeal statement immediately.</p>
+                    <textarea 
+                      placeholder="Enter appeal statement *" 
+                      value={actionInput.appealStatement}
+                      onChange={e=>setActionInput(prev => ({ ...prev, appealStatement: e.target.value }))}
+                      className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded p-2 text-xs text-white" 
+                    />
+                    <button 
+                      onClick={() => handleStatusTransition(c.id, 'resolved', 'Merchant compliance appeal submitted for case review.')}
+                      className="w-full py-2 bg-[#d4af37] text-black text-xs font-bold rounded-xl"
+                    >
+                      Submit Compliance Appeal
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
+        )}
 
-          <button
-            onClick={() => navigate('/community')}
-            className="w-full py-2.5 px-4 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-color)] text-rose-400 hover:bg-rose-500 hover:text-white font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2"
-          >
-            View Community Portal →
-          </button>
-        </div>
+        {/* ── SUB INSPECTOR DASHBOARD ── */}
+        {currentRole === 'sub_inspector' && (
+          <div className="space-y-5 text-left">
+            <div>
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">My Assigned Inspections</h3>
+              <div className="space-y-3">
+                {complaints.filter(c => c.status === 'assigned_to_sub_inspector' || c.status === 'site_inspection').map(c => (
+                  <div key={c.id} className="card p-4 rounded-2xl border border-[var(--border-color)] space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] text-amber-400 font-bold uppercase">{c.status.replace(/_/g, ' ')}</span>
+                      <span className="text-[9px] text-red-400 font-mono font-bold">Due: {new Date(c.sla_due_date).toLocaleDateString()}</span>
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black text-white">{c.vendor_name}</h4>
+                      <p className="text-[10px] text-gray-400">{c.vendor_address}</p>
+                    </div>
+
+                    {/* GPS Check In/Out */}
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => { setGpsCheckedIn(true); alert("GPS check-in verified at vendor store location coordinates."); }}
+                        className={`flex-1 py-2 text-[10px] font-bold rounded-xl transition-all ${gpsCheckedIn ? 'bg-emerald-500 text-black' : 'bg-[var(--bg-elevated)] border border-[var(--border-color)] text-white'}`}
+                      >
+                        {gpsCheckedIn ? '✓ Check-in Verified' : '📍 Store Check-in'}
+                      </button>
+                      <button 
+                        disabled={!gpsCheckedIn}
+                        onClick={() => { setGpsCheckedOut(true); alert("GPS check-out verified. Visit duration logged."); }}
+                        className={`flex-1 py-2 text-[10px] font-bold rounded-xl transition-all ${gpsCheckedOut ? 'bg-emerald-500 text-black' : 'bg-[var(--bg-elevated)] border border-[var(--border-color)] text-white disabled:opacity-30'}`}
+                      >
+                        {gpsCheckedOut ? '✓ Check-out Verified' : '📍 Store Check-out'}
+                      </button>
+                    </div>
+
+                    {/* Report Form */}
+                    {gpsCheckedIn && (
+                      <div className="space-y-2 pt-2 border-t border-[var(--border-color)]">
+                        <span className="text-[9px] text-gray-400 font-bold uppercase block">Field Audit Findings report</span>
+                        <textarea 
+                          placeholder="Store condition notes, violations found *" 
+                          value={actionInput.notes}
+                          onChange={e=>setActionInput(prev => ({ ...prev, notes: e.target.value }))}
+                          className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded p-2 text-xs text-white" 
+                        />
+                        <button 
+                          disabled={!actionInput.notes || !gpsCheckedOut}
+                          onClick={() => handleStatusTransition(c.id, 'laboratory_testing', 'Site visit completed. Sealed sample code registered and sent to Gujarat Laboratory.')}
+                          className="w-full py-2 bg-[#d4af37] text-black text-xs font-bold rounded-xl disabled:opacity-30"
+                        >
+                          Submit Report & Seal Sample
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── FOOD INSPECTOR DASHBOARD ── */}
+        {currentRole === 'food_inspector' && (
+          <div className="space-y-5 text-left">
+            <div>
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Regulatory Triage Assigned Cases</h3>
+              <div className="space-y-3">
+                {complaints.filter(c => c.status === 'submitted' || c.status === 'assigned_to_inspector' || c.status === 'laboratory_testing' || c.status === 'lab_report_uploaded').map(c => (
+                  <div key={c.id} className="card p-4 rounded-2xl border border-[var(--border-color)] space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] text-amber-400 font-bold uppercase">{c.status.replace(/_/g, ' ')}</span>
+                      <span className="text-[9px] text-gray-400 font-mono">SLA Due: {new Date(c.sla_due_date).toLocaleDateString()}</span>
+                    </div>
+                    <div>
+                      <h4 className="text-xs font-black text-white">{c.vendor_name} - {c.brand_name}</h4>
+                      <p className="text-[10px] text-gray-400">{c.description}</p>
+                    </div>
+
+                    {/* Actions Area */}
+                    <div className="space-y-2 pt-2 border-t border-[var(--border-color)]">
+                      {c.status === 'submitted' && (
+                        <div className="flex gap-2">
+                          <button 
+                            onClick={() => handleStatusTransition(c.id, 'assigned_to_inspector', 'Case claimed by Lead Food Inspector Rajesh.')}
+                            className="flex-1 py-2 bg-[#d4af37] text-black text-[10px] font-bold rounded-xl"
+                          >
+                            Claim Case
+                          </button>
+                        </div>
+                      )}
+
+                      {c.status === 'assigned_to_inspector' && (
+                        <div className="space-y-3">
+                          <span className="text-[9px] text-gray-400 block font-bold uppercase">Assign Field Sub Inspector</span>
+                          
+                          {/* Searchable Dropdown */}
+                          <div className="space-y-2 bg-[var(--bg-elevated)] p-3 rounded-2xl border border-[var(--border-color)]">
+                            <input 
+                              type="text" 
+                              placeholder="Search by district, name, or code..." 
+                              value={subInspectorSearch}
+                              onChange={e => setSubInspectorSearch(e.target.value)}
+                              className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl py-1.5 px-3 text-xs text-white outline-none"
+                            />
+                            
+                            <div className="space-y-1 max-h-32 overflow-y-auto">
+                              {filteredSubInspectors.map(si => (
+                                <div 
+                                  key={si.uid}
+                                  onClick={() => setSelectedSubInspectorId(si.uid)}
+                                  className={`p-2 rounded-lg cursor-pointer flex items-center justify-between transition-all ${
+                                    selectedSubInspectorId === si.uid ? 'bg-[#d4af37]/20 border border-[#d4af37]' : 'hover:bg-[var(--bg-card)] border border-transparent'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <img src={si.photo_url} className="w-6 h-6 rounded-full object-cover" alt="" />
+                                    <div>
+                                      <p className="text-[10px] font-bold text-white leading-tight">{si.name}</p>
+                                      <p className="text-[8px] text-gray-400">{si.employee_code} • {si.district}</p>
+                                    </div>
+                                  </div>
+                                  <span className={`text-[8px] px-1.5 py-0.5 rounded font-black uppercase ${
+                                    si.availability_status === 'available' ? 'bg-emerald-500/10 text-emerald-400' : 'bg-orange-500/10 text-orange-400'
+                                  }`}>
+                                    {si.availability_status}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="flex gap-2">
+                            <button 
+                              disabled={!selectedSubInspectorId}
+                              onClick={() => handleStatusTransition(c.id, 'assigned_to_sub_inspector', 'Dispatched case to Sub Inspector Mohan.')}
+                              className="flex-1 py-2 bg-blue-500 text-white text-[10px] font-bold rounded-xl disabled:opacity-30"
+                            >
+                              Assign Selected SI
+                            </button>
+                            <button 
+                              onClick={() => handleAutoAssign(c.id)}
+                              className="flex-1 py-2 bg-emerald-500 text-black text-[10px] font-bold rounded-xl"
+                            >
+                              ⚡ Auto Assign SI
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {c.status === 'lab_report_uploaded' && (
+                        <div className="space-y-2">
+                          <textarea 
+                            placeholder="Add case recommendation notes *" 
+                            value={actionInput.notes}
+                            onChange={e=>setActionInput(prev => ({ ...prev, notes: e.target.value }))}
+                            className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded p-2 text-xs text-white" 
+                          />
+                          <button 
+                            disabled={!actionInput.notes}
+                            onClick={() => handleStatusTransition(c.id, 'decision_pending', 'Inspector recommended action warning fine notice.')}
+                            className="w-full py-2 bg-red-500 text-white text-[10px] font-bold rounded-xl disabled:opacity-30"
+                          >
+                            Recommend Warning Fine Notice
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── HEAD INSPECTOR DASHBOARD ── */}
+        {currentRole === 'head_inspector' && (
+          <div className="space-y-5 text-left">
+            <div className="card p-5 rounded-3xl border border-[var(--border-color)] bg-[var(--bg-card)] space-y-4">
+              <span className="text-xs font-black uppercase tracking-wider text-white">Inspector Performance & Case Metrics</span>
+              <div className="h-44 w-full">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={activeChartData}>
+                    <XAxis dataKey="name" stroke="#666" fontSize={9} />
+                    <YAxis stroke="#666" fontSize={9} />
+                    <Tooltip contentStyle={{ background: '#1c1c1c', border: '1px solid #333' }} />
+                    <Bar dataKey="cases" fill="#d4af37" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
+
+            {/* Case Approvals */}
+            <div>
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Escalated Approvals Triage</h3>
+              <div className="space-y-3">
+                {complaints.filter(c => c.status === 'decision_pending').map(c => (
+                  <div key={c.id} className="card p-4 rounded-2xl border border-[var(--border-color)] space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] text-[#d4af37] font-bold uppercase">Decision Pending</span>
+                      <span className="text-[9px] text-gray-400 font-mono">ID: {c.id}</span>
+                    </div>
+                    <p className="text-xs text-gray-300">Inspector recommended a penalty warning notice for {c.vendor_name}.</p>
+                    
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => handleStatusTransition(c.id, 'appeal_window', 'Head Inspector approved penalty fine notice. Appeal window served.')}
+                        className="flex-1 py-2 bg-red-600 text-white text-[10px] font-bold rounded-xl"
+                      >
+                        Approve Penalty Fine Notice
+                      </button>
+                      <button 
+                        onClick={() => handleStatusTransition(c.id, 'resolved', 'Investigation closed by Head Inspector.')}
+                        className="flex-1 py-2 bg-[var(--bg-elevated)] border border-[var(--border-color)] text-white text-[10px] font-bold rounded-xl"
+                      >
+                        Close Investigation
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── LABORATORY DASHBOARD ── */}
+        {currentRole === 'laboratory' && (
+          <div className="space-y-5 text-left">
+            <div>
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Dispatched Samples Laboratory Backlog</h3>
+              <div className="space-y-3">
+                {complaints.filter(c => c.status === 'laboratory_testing').map(c => (
+                  <div key={c.id} className="card p-4 rounded-2xl border border-[var(--border-color)] space-y-3">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] text-blue-400 font-bold uppercase">Sample Backlog</span>
+                      <span className="text-[9px] text-gray-400 font-mono">ID: {c.id}</span>
+                    </div>
+                    
+                    <div className="space-y-3 pt-2 border-t border-[var(--border-color)] bg-[var(--bg-elevated)] p-3 rounded-2xl">
+                      <span className="text-[9px] text-gray-400 font-bold block uppercase">GC-MS CERTIFICATE INPUT</span>
+                      <div className="space-y-2">
+                        <input 
+                          type="number" 
+                          placeholder="GC-MS Purity Score (0-100) *" 
+                          value={actionInput.labPurity}
+                          onChange={e=>setActionInput(prev => ({ ...prev, labPurity: e.target.value }))}
+                          className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded p-2 text-xs text-white outline-none" 
+                        />
+                        <select 
+                          value={actionInput.labAdulterant}
+                          onChange={e=>setActionInput(prev => ({ ...prev, labAdulterant: e.target.value }))}
+                          className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded p-2 text-xs text-white outline-none"
+                        >
+                          <option>Argemone Oil</option>
+                          <option>Mineral Oil</option>
+                          <option>Unpermitted Coloring Additives</option>
+                        </select>
+                      </div>
+                      
+                      <button 
+                        disabled={!actionInput.labPurity}
+                        onClick={() => handleStatusTransition(c.id, 'lab_report_uploaded', `Lab certificate uploaded. GC-MS verified: ${actionInput.labPurity}% purity. Adulterant: ${actionInput.labAdulterant}. Digital SHA-256 signature hash registered.`)}
+                        className="w-full py-2 bg-indigo-500 text-white text-[10px] font-bold rounded-xl disabled:opacity-30"
+                      >
+                        Digitally Sign & Submit Certificate
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── ADMIN DASHBOARD ── */}
+        {currentRole === 'admin' && (
+          <div className="space-y-5 text-left">
+            <div>
+              <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2">Immutable System Audit Log Ledger</h3>
+              <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-3xl overflow-hidden">
+                <div className="divide-y divide-[var(--border-color)] font-mono text-[9px]">
+                  {auditLogs.map((log) => (
+                    <div key={log.log_id} className="p-4 hover:bg-[var(--bg-elevated)] space-y-1">
+                      <div className="flex justify-between">
+                        <span className="text-amber-400 font-bold">{log.action_performed}</span>
+                        <span className="text-gray-500">{new Date(log.timestamp).toLocaleTimeString()}</span>
+                      </div>
+                      <p className="text-white">{log.notes}</p>
+                      <span className="text-gray-500 block">Operator: {log.user_id} ({log.role})</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
 
-      {/* ── DEDICATED FULL ANALYTICS MODAL (Charts, Graphs & Heatmaps) ───────── */}
-      {showFullAnalytics && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in overflow-y-auto">
-          <div className="relative w-full max-w-2xl bg-[var(--bg-card)] border border-[#d4af37]/40 rounded-3xl shadow-2xl overflow-hidden my-6">
+      {/* ── COMPLAINT WIZARD DIALOG MODAL ── */}
+      {complaintWizardOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl text-left">
+            <div className="p-6 border-b border-[var(--border-color)] flex justify-between items-center">
+              <div>
+                <h3 className="text-base font-black text-white">File Citizen Complaint Wizard</h3>
+                <span className="text-[9px] font-bold text-gray-400 block uppercase tracking-wider mt-1">Step {complaintStep} of 5</span>
+              </div>
+              <button onClick={() => setComplaintWizardOpen(false)} className="p-1 rounded text-gray-400 hover:text-white">✕</button>
+            </div>
             
-            {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-[var(--border-color)] bg-[var(--bg-elevated)]">
-              <div className="flex items-center gap-2">
-                <BarChart2 className="text-[#d4af37]" size={18} />
-                <h3 className="text-sm font-black theme-text">Food 360 Full Analytics & Intelligence</h3>
-              </div>
-              <button onClick={() => setShowFullAnalytics(false)} className="p-1.5 rounded-full bg-gray-800 text-gray-400 hover:text-white">
-                <X size={16} />
-              </button>
-            </div>
+            <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+              {complaintStep === 1 && (
+                <div className="space-y-3">
+                  <label className="text-[9px] text-gray-400 font-bold uppercase block">Retailer / Vendor Name *</label>
+                  <input type="text" placeholder="e.g. Kisan Kirana" value={complaintForm.vendorName} onChange={e => setComplaintForm(prev => ({ ...prev, vendorName: e.target.value }))} className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded-xl py-2 px-3 text-xs text-white" />
+                  <label className="text-[9px] text-gray-400 font-bold uppercase block">Store Address *</label>
+                  <input type="text" placeholder="e.g. Sector 4, Gandhinagar" value={complaintForm.vendorAddress} onChange={e => setComplaintForm(prev => ({ ...prev, vendorAddress: e.target.value }))} className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded-xl py-2 px-3 text-xs text-white" />
+                  <div className="grid grid-cols-3 gap-2">
+                    <input type="text" placeholder="City" value={complaintForm.city} onChange={e => setComplaintForm(prev => ({ ...prev, city: e.target.value }))} className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded py-2 px-2 text-xs text-white" />
+                    <input type="text" placeholder="State" value={complaintForm.state} onChange={e => setComplaintForm(prev => ({ ...prev, state: e.target.value }))} className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded py-2 px-2 text-xs text-white" />
+                    <input type="text" placeholder="PIN" value={complaintForm.pin} onChange={e => setComplaintForm(prev => ({ ...prev, pin: e.target.value }))} className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded py-2 px-2 text-xs text-white" />
+                  </div>
+                </div>
+              )}
 
-            {/* Content */}
-            <div className="p-5 space-y-6 max-h-[80vh] overflow-y-auto">
-              
-              {/* Filter Tabs */}
-              <div className="flex items-center justify-between bg-[var(--bg-elevated)] p-1 rounded-2xl border border-[var(--border-color)] text-xs">
-                {['Daily', 'Weekly', 'Monthly', 'Yearly'].map(range => (
-                  <button
-                    key={range}
-                    onClick={() => setChartTimeRange(range)}
-                    className={`flex-1 py-2 rounded-xl font-bold uppercase tracking-wider text-[10px] transition-all ${
-                      chartTimeRange === range ? 'bg-[#d4af37] text-black font-black shadow-glow-gold' : 'text-gray-400 hover:text-white'
-                    }`}
-                  >
-                    {range}
+              {complaintStep === 2 && (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="text-[9px] text-gray-400 block mb-1">Oil Category</label>
+                      <select value={complaintForm.oilType} onChange={e => setComplaintForm(prev => ({ ...prev, oilType: e.target.value }))} className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded py-2 px-3 text-xs text-white">
+                        <option>Mustard Oil</option>
+                        <option>Sunflower Oil</option>
+                        <option>Coconut Oil</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="text-[9px] text-gray-400 block mb-1">Brand Name *</label>
+                      <input type="text" placeholder="e.g. Swastik Oil" value={complaintForm.brandName} onChange={e => setComplaintForm(prev => ({ ...prev, brandName: e.target.value }))} className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded py-2 px-3 text-xs text-white" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input type="text" placeholder="Batch Number" value={complaintForm.batchNumber} onChange={e => setComplaintForm(prev => ({ ...prev, batchNumber: e.target.value }))} className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded py-2 px-3 text-xs text-white" />
+                    <input type="date" placeholder="Mfg Date" value={complaintForm.mfgDate} onChange={e => setComplaintForm(prev => ({ ...prev, mfgDate: e.target.value }))} className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded py-2 px-3 text-xs text-white" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <input type="number" placeholder="Price Paid" value={complaintForm.price} onChange={e => setComplaintForm(prev => ({ ...prev, price: e.target.value }))} className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded py-2 px-3 text-xs text-white" />
+                    <input type="number" placeholder="Quantity (ml)" value={complaintForm.quantity} onChange={e => setComplaintForm(prev => ({ ...prev, quantity: e.target.value }))} className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded py-2 px-3 text-xs text-white" />
+                  </div>
+                </div>
+              )}
+
+              {complaintStep === 3 && (
+                <div className="space-y-3">
+                  <textarea placeholder="Describe oil adulteration issue (Min 10 characters) *" rows="3" value={complaintForm.description} onChange={e => setComplaintForm(prev => ({ ...prev, description: e.target.value }))} className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded p-2 text-xs text-white" />
+                  <div className="bg-[var(--bg-elevated)] p-3 border rounded-xl text-xs space-y-1">
+                    <div className="flex justify-between font-bold">
+                      <span>AI Duplication check score:</span>
+                      <span className="text-emerald-400">92/100</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {complaintStep === 4 && (
+                <div className="space-y-3">
+                  <label className="text-[9px] text-gray-400 font-bold block uppercase mb-1">Attach Physical Evidence (Min 1 Photo) *</label>
+                  <button type="button" onClick={() => setComplaintForm(prev => ({ ...prev, photosCount: Math.min(5, prev.photosCount + 1) }))} className="p-2 border rounded bg-[var(--bg-elevated)] text-xs text-white">
+                    + Simulate Photo Upload
                   </button>
-                ))}
-              </div>
-
-              {/* Bar Chart */}
-              <div className="bg-[var(--bg-elevated)] p-4 rounded-2xl border border-[var(--border-color)] space-y-2">
-                <h4 className="text-xs font-black text-white uppercase tracking-wider">{chartTimeRange} Scan Volume</h4>
-                <div className="h-48 w-full pt-2">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={activeChartData}>
-                      <XAxis dataKey="label" stroke="#888888" fontSize={10} tickLine={false} />
-                      <YAxis stroke="#888888" fontSize={10} tickLine={false} />
-                      <Tooltip contentStyle={{ backgroundColor: '#1c1c1c', border: '1px solid #333', borderRadius: '12px', fontSize: '12px' }} />
-                      <Bar dataKey="count" fill="#d4af37" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                  <span className="text-xs text-gray-400 block">{complaintForm.photosCount} photo(s) selected. (Need at least 1)</span>
                 </div>
-              </div>
+              )}
 
-              {/* Quality Breakdown Pie */}
-              <div className="bg-[var(--bg-elevated)] p-4 rounded-2xl border border-[var(--border-color)] space-y-2">
-                <h4 className="text-xs font-black text-white uppercase tracking-wider">Quality Breakdown</h4>
-                <div className="h-48 w-full flex items-center justify-center">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={[
-                          { name: 'Pure', value: 85, color: '#22c55e' },
-                          { name: 'Moderate', value: 10, color: '#eab308' },
-                          { name: 'Adulterated', value: 5, color: '#ef4444' }
-                        ]}
-                        dataKey="value"
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={50}
-                        outerRadius={70}
-                        paddingAngle={5}
-                      >
-                        <Cell key="cell-0" fill="#22c55e" />
-                        <Cell key="cell-1" fill="#eab308" />
-                        <Cell key="cell-2" fill="#ef4444" />
-                      </Pie>
-                      <Tooltip contentStyle={{ backgroundColor: '#1c1c1c', border: '1px solid #333', borderRadius: '12px' }} />
-                    </PieChart>
-                  </ResponsiveContainer>
+              {complaintStep === 5 && (
+                <div className="space-y-3">
+                  <h4 className="text-xs font-black text-white uppercase tracking-wider">Validation Summary</h4>
+                  <div className="bg-[var(--bg-elevated)] p-3 rounded-2xl border border-[var(--border-color)] space-y-1.5 text-xs text-gray-300">
+                    <p>● Vendor Name: {complaintForm.vendorName}</p>
+                    <p>● Product: {complaintForm.brandName} ({complaintForm.oilType})</p>
+                    <p>● GPS Match: Verified ( Gandhinagar Center )</p>
+                    <p>● Photo Upload: verified ({complaintForm.photosCount} attached)</p>
+                  </div>
                 </div>
-              </div>
-
-              {/* National Intelligence Center Map Component */}
-              <NationalIntelligenceCenter />
-
+              )}
             </div>
 
+            <div className="p-6 border-t border-[var(--border-color)] flex justify-between">
+              <button disabled={complaintStep === 1} onClick={() => setComplaintStep(prev => prev - 1)} className="px-4 py-2 rounded text-xs border border-[var(--border-color)] text-gray-300 disabled:opacity-30">Back</button>
+              {complaintStep < 5 ? (
+                <button disabled={(complaintStep === 1 && (!complaintForm.vendorName || !complaintForm.vendorAddress)) || (complaintStep === 4 && complaintForm.photosCount < 1)} onClick={() => setComplaintStep(prev => prev + 1)} className="px-4 py-2 rounded bg-[#d4af37] text-black text-xs font-bold disabled:opacity-30">Continue</button>
+              ) : (
+                <button onClick={handleCreateComplaint} className="px-5 py-2 rounded bg-red-500 text-white text-xs font-bold">Submit Complaint</button>
+              )}
+            </div>
           </div>
         </div>
       )}
 
-      {/* ── STAT DETAIL MODAL ───────────────────────────────────────────────── */}
-      {selectedStatModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-          <div className="relative w-full max-w-sm bg-[var(--bg-card)] border border-[#d4af37]/40 rounded-3xl p-6 shadow-2xl text-center space-y-4">
-            <div className={`w-14 h-14 rounded-2xl ${selectedStatModal.bg} ${selectedStatModal.color} flex items-center justify-center mx-auto`}>
-              <selectedStatModal.icon size={28} />
+      {/* ── FSSAI CONFIRMATION DIALOG ── */}
+      {showFssaiConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-[var(--bg-card)] border border-[var(--border-color)] p-6 rounded-3xl max-w-sm w-full text-left space-y-4 shadow-2xl">
+            <div className="flex gap-3 text-red-500 items-start">
+              <AlertTriangle className="shrink-0 mt-0.5" size={24} />
+              <div>
+                <h4 className="text-sm font-black text-white uppercase tracking-wider">FSSAI Redirect Warning</h4>
+                <p className="text-xs text-gray-400 mt-1">You are being redirected to the official FSSAI complaint portal.</p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-lg font-black text-white">{selectedStatModal.title}</h3>
-              <p className="text-3xl font-black font-mono text-[#d4af37] mt-1">{selectedStatModal.value}</p>
-              <p className="text-xs text-gray-400 mt-2">Detailed metric telemetry logged securely in database.</p>
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setShowFssaiConfirm(false)} className="px-4 py-2 bg-[var(--bg-elevated)] border border-[var(--border-color)] text-white text-xs font-bold rounded-xl">
+                Cancel
+              </button>
+              <a 
+                href="https://foscos.fssai.gov.in/consumergrievance/" 
+                target="_blank" 
+                rel="noreferrer"
+                onClick={() => setShowFssaiConfirm(false)}
+                className="px-4 py-2 bg-red-500 text-white text-xs font-bold rounded-xl text-center"
+              >
+                Proceed
+              </a>
             </div>
-            <button
-              onClick={() => setSelectedStatModal(null)}
-              className="w-full py-3 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-color)] theme-text font-bold text-xs uppercase tracking-wider"
-            >
-              Close
-            </button>
           </div>
         </div>
-      )}
-
-      {/* ── REPORT ADULTERATION MODAL ────────────────────────────────────────── */}
-      {showComplaintModal && (
-        <ComplaintModal
-          isOpen={showComplaintModal}
-          onClose={() => setShowComplaintModal(false)}
-        />
       )}
 
     </div>

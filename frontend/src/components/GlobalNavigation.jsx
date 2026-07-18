@@ -1,7 +1,7 @@
 import { 
   X, Home, ScanLine, Clock, MapIcon, Users,
   BookOpen, FileText, User, Settings, Info,
-  LogOut, LayoutDashboard, Zap, Apple
+  LogOut, LayoutDashboard, Zap, Apple, Heart
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
@@ -9,19 +9,24 @@ import { useApp } from '../context/AppContext';
 export default function GlobalNavigation() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { isMenuOpen, setMenuOpen, logout } = useApp();
+  const { isMenuOpen, setMenuOpen, logout, profile } = useApp();
+  
+  const role = profile?.role || 'citizen';
 
   const menuItems = [
-    { id: 'home', label: 'Dashboard', desc: 'System Overview & Analytics', icon: Home, path: '/home' },
-    { id: 'scan', label: 'Oil Analysis', desc: 'Real-time Adulteration Check', icon: ScanLine, path: '/scan' },
-    { id: 'hotspots', label: 'Safety Hotspots', desc: 'Interactive Adulteration Map', icon: MapIcon, path: '/hotspots' },
-    { id: 'community', label: 'Community Rescue', desc: 'Food Donation & NGO Portal', icon: Users, path: '/community' },
-    { id: 'nutrition', label: 'AI Nutrition', desc: 'Smart Meal Planner & Pantry', icon: Apple, path: '/nutrition' },
-    { id: 'learning', label: 'Learning Center', desc: 'Documentation & Guides', icon: BookOpen, path: '/learning' },
-    { id: 'reports', label: 'System Reports', desc: 'Logs & Formal Analytics', icon: FileText, path: '/reports' },
-    { id: 'profile', label: 'Profile Settings', desc: 'Inspector Identity & Config', icon: User, path: '/profile' },
-    { id: 'about', label: 'About System', desc: 'Software Version & Compliance', icon: Info, path: '/about' },
+    { id: 'home', label: 'Dashboard', desc: 'System Overview & Analytics', icon: Home, path: '/home', roles: ['citizen', 'vendor', 'inspector', 'laboratory', 'ngo', 'senior_officer', 'admin'] },
+    { id: 'scan', label: 'Oil Analysis', desc: 'Real-time Adulteration Check', icon: ScanLine, path: '/scan', roles: ['citizen', 'inspector', 'admin'] },
+    { id: 'hotspots', label: 'Safety Hotspots', desc: 'Interactive Adulteration Map', icon: MapIcon, path: '/hotspots', roles: ['citizen', 'inspector', 'senior_officer', 'admin'] },
+    { id: 'community', label: 'Safety Intelligence', desc: 'Complaints, Recalls & Labs', icon: Users, path: '/community', roles: ['citizen', 'vendor', 'inspector', 'laboratory', 'ngo', 'senior_officer', 'admin'] },
+    { id: 'relief', label: 'Food Relief Network', desc: 'Surplus Food & NGO Logistics', icon: Heart, path: '/relief', roles: ['citizen', 'ngo', 'volunteer', 'admin'] },
+    { id: 'nutrition', label: 'AI Nutrition', desc: 'Smart Meal Planner & Pantry', icon: Apple, path: '/nutrition', roles: ['citizen', 'admin'] },
+    { id: 'learning', label: 'Learning Center', desc: 'Documentation & Guides', icon: BookOpen, path: '/learning', roles: ['citizen', 'vendor', 'inspector', 'admin'] },
+    { id: 'reports', label: 'System Reports', desc: 'Regulatory Logs & Analytics', icon: FileText, path: '/reports', roles: ['inspector', 'senior_officer', 'admin'] },
+    { id: 'profile', label: 'Profile Settings', desc: 'Identity & Accreditation', icon: User, path: '/profile', roles: ['citizen', 'vendor', 'inspector', 'laboratory', 'ngo', 'senior_officer', 'admin'] },
+    { id: 'about', label: 'About System', desc: 'Software Version & Compliance', icon: Info, path: '/about', roles: ['citizen', 'vendor', 'inspector', 'laboratory', 'ngo', 'senior_officer', 'admin'] },
   ];
+
+  const filteredMenuItems = menuItems.filter(item => item.roles.includes(role));
 
   if (!isMenuOpen) return null;
 
@@ -39,10 +44,10 @@ export default function GlobalNavigation() {
         {/* Header */}
         <div className="p-8 flex items-center justify-between border-b border-[var(--border-color)]">
            <div className="flex items-center gap-3">
-              <img src="/food360-logo.jpg" alt="Food 360 Logo" className="w-10 h-10 rounded-xl object-cover shadow-lg border border-[#d4af37]/30" />
+              <img src="/food360-logo.jpg" alt="SpectraTrust Logo" className="w-10 h-10 rounded-xl object-cover shadow-lg border border-[#d4af37]/30" />
               <div>
-                 <h2 className="text-sm font-black theme-text uppercase tracking-widest leading-none">Food 360 Control</h2>
-                 <p className="text-[9px] text-[var(--text-muted)] font-bold uppercase tracking-widest mt-1">Universal Drawer</p>
+                 <h2 className="text-xs font-black theme-text uppercase tracking-widest leading-none">SpectraTrust Portal</h2>
+                 <p className="text-[8px] text-[#d4af37] font-bold uppercase tracking-widest mt-1">Role: {role.replace('_', ' ')}</p>
               </div>
            </div>
            <button onClick={() => setMenuOpen(false)} className="w-8 h-8 rounded-full bg-[var(--bg-elevated)] flex items-center justify-center text-[var(--text-muted)] hover:theme-text transition-colors">
@@ -53,7 +58,7 @@ export default function GlobalNavigation() {
         {/* Navigation List */}
         <div className="flex-1 overflow-y-auto px-4 py-8 custom-scrollbar">
            <div className="grid gap-2">
-              {menuItems.map((item) => {
+              {filteredMenuItems.map((item) => {
                  const isActive = location.pathname === item.path;
                  return (
                     <button
@@ -62,13 +67,13 @@ export default function GlobalNavigation() {
                           navigate(item.path);
                           setMenuOpen(false);
                        }}
-                       className={`group flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 ${isActive ? 'bg-brand-500/10 border border-brand-500/25 shadow-sm' : 'hover:bg-[var(--hover-bg)] border border-transparent'}`}
+                       className={`group flex items-center gap-4 p-4 rounded-2xl transition-all duration-300 ${isActive ? 'bg-[#d4af37]/10 border border-[#d4af37]/25 shadow-sm' : 'hover:bg-[var(--hover-bg)] border border-transparent'}`}
                     >
-                       <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 ${isActive ? 'bg-brand-500 text-black' : 'bg-[var(--bg-elevated)] shadow-sm text-[var(--text-muted)] group-hover:theme-text'}`}>
+                       <div className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 ${isActive ? 'bg-[#d4af37] text-black' : 'bg-[var(--bg-elevated)] shadow-sm text-[var(--text-muted)] group-hover:theme-text'}`}>
                           <item.icon size={22} />
                        </div>
                        <div className="text-left">
-                          <p className={`text-[11px] font-black uppercase tracking-wider ${isActive ? 'text-brand-500 font-extrabold' : 'theme-text'}`}>
+                          <p className={`text-[11px] font-black uppercase tracking-wider ${isActive ? 'text-[#d4af37] font-extrabold' : 'theme-text'}`}>
                              {item.label}
                           </p>
                           <p className="text-[9px] text-[var(--text-muted)] font-medium leading-none mt-1">
@@ -94,7 +99,7 @@ export default function GlobalNavigation() {
               <LogOut size={16} /> Sign Out System
            </button>
            <p className="text-[8px] text-[var(--text-muted)] font-bold text-center uppercase tracking-widest">
-              v1.2.0 • Build 2026.29.06
+              SpectraTrust Framework v2.0
            </p>
         </div>
       </div>

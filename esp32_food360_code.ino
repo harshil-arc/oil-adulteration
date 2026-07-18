@@ -510,9 +510,17 @@ void loop() {
         break;
       case 2:
         {
-          String levelText = currentPrediction.estimatedMix;
-          if (currentPrediction.purity >= 90) levelText = "0% (Pure)";
-          renderScreen3Adulteration(levelText.c_str());
+          char levelBuf[30];
+          if (!currentPrediction.hasPrediction || currentPrediction.oilType == "--") {
+            snprintf(levelBuf, sizeof(levelBuf), "--");
+          } else if (currentPrediction.purity >= 90.0) {
+            snprintf(levelBuf, sizeof(levelBuf), "0%% (Pure)");
+          } else {
+            float adultPct = 100.0 - currentPrediction.purity;
+            if (adultPct <= 0.0) adultPct = 54.0;
+            snprintf(levelBuf, sizeof(levelBuf), "%.1f%%", adultPct);
+          }
+          renderScreen3Adulteration(levelBuf);
         }
         break;
       case 3:

@@ -16,6 +16,7 @@ import Calibrate from './pages/scan/Calibrate';
 import History from './pages/History';
 import Hotspots from './pages/Hotspots';
 import Community from './pages/Community';
+import FoodReliefNetwork from './pages/FoodReliefNetwork';
 import Profile from './pages/Profile';
 import Nutrition from './pages/Nutrition';
 import TestingCentres from './pages/TestingCentres';
@@ -53,6 +54,7 @@ export default function App() {
                       <Route path="/home" element={<Home />} />
                       <Route path="/ngo-dashboard" element={<Navigate to="/community" replace />} />
                       <Route path="/community" element={<Community />} />
+                      <Route path="/relief" element={<FoodReliefNetwork />} />
                       <Route path="/scan" element={<QRLanding />} />
                       <Route path="/scan/bluetooth" element={<BluetoothScan />} />
                       <Route path="/scan/local" element={<LocalRouter />} />

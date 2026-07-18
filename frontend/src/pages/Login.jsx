@@ -1,30 +1,45 @@
 import { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Droplets, Eye, EyeOff, Mail, Lock, User, Phone, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { 
+  Eye, EyeOff, Mail, Lock, User, Phone, AlertCircle, CheckCircle2, 
+  ShieldCheck, FileText, CheckSquare, Upload, Calendar, Shield, Building2, Key, Users
+} from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { initResult } from '../lib/supabase';
+import { initResult, supabase } from '../lib/supabase';
 
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, signup, loginWithGoogle, resetPassword, session } = useApp();
+  const { login, signup, loginWithGoogle, resetPassword, session, updateProfile } = useApp();
   
   const fromPath = location.state?.from?.pathname || '/home';
   const fromSearch = location.state?.from?.search || '';
   const redirectUrl = fromPath + fromSearch;
   
   const [activeTab, setActiveTab] = useState('login'); // 'login', 'signup', or 'reset'
+  const [selectedRole, setSelectedRole] = useState('citizen'); // Dropdown role
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  // Form Fields
-  const [email, setEmail] = useState('');
+  // Credentials fields
+  const [identifier, setIdentifier] = useState(''); // Email / Employee ID / Mobile
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
+
+  // Role-Specific fields
+  const [businessName, setBusinessName] = useState('');
+  const [fssaiLicense, setFssaiLicense] = useState('');
+  const [gstin, setGstin] = useState('');
+  const [govtId, setGovtId] = useState('');
+  const [deptCode, setDeptCode] = useState('');
+  const [labAccreditation, setLabAccreditation] = useState('');
+  const [labCertNumber, setLabCertNumber] = useState('');
+  const [ngoDarpanId, setNgoDarpanId] = useState('');
+  const [ngoRegNumber, setNgoRegNumber] = useState('');
 
   useEffect(() => {
     if (session) navigate(redirectUrl);
@@ -33,32 +48,13 @@ export default function Login() {
   const getFriendlyErrorMessage = (error) => {
     if (!error) return "";
     const code = error.code || (error.message && error.message.includes('auth/') ? error.message : "");
-    
     if (code.includes("auth/invalid-credential") || code.includes("auth/wrong-password")) {
-      return "Incorrect email or password. Please try again.";
-    }
-    if (code.includes("auth/user-not-found")) {
-      return "No account found with this email.";
+      return "Incorrect email/identifier or password. Please try again.";
     }
     if (code.includes("auth/email-already-in-use")) {
       return "An account already exists with this email address.";
     }
-    if (code.includes("auth/invalid-email")) {
-      return "Please enter a valid email address.";
-    }
-    if (code.includes("auth/weak-password")) {
-      return "Password should be at least 6 characters.";
-    }
-    if (code.includes("auth/api-key-not-valid")) {
-      return "Firebase API Key restricted or invalid. If your app is deployed, please authorize your domain in Google Cloud Console / Firebase Console.";
-    }
-    if (code.includes("auth/operation-not-allowed") || code.includes("ADMIN_ONLY_OPERATION")) {
-      return "Email/Password authentication is disabled. Please enable Email/Password under Firebase Console -> Authentication -> Sign-in method.";
-    }
-    if (code.includes("auth/network-request-failed")) {
-      return "Connection error. Please check your internet connection.";
-    }
-    return error.message || "Unable to connect to Firebase. Please verify your configuration.";
+    return error.message || "Authentication failed.";
   };
 
   const handleLoginSubmit = async (e) => {
@@ -67,12 +63,47 @@ export default function Login() {
     setErrorMsg('');
     setSuccessMsg('');
 
-    const { error } = await login(email, password);
+    // Ensure format matches email for supabase auth lookup
+    let loginEmail = identifier.trim();
+    if (!loginEmail.includes('@')) {
+      // If it's a mobile number or employee code, check DB map first or format as email
+      loginEmail = `${identifier.toLowerCase()}@pureoil.gov.in`;
+    }
+
+    const { data, error } = await login(loginEmail, password);
     
     if (error) {
       setErrorMsg(getFriendlyErrorMessage(error));
       setIsLoading(false);
     } else {
+      const uid = data?.user?.id;
+      if (uid) {
+        // Fetch user profile from database to confirm their role matching the portal dropdown
+        const { data: dbProfile } = await supabase.from('users').eq('uid', uid).single();
+        const userRole = dbProfile?.role || 'citizen';
+
+        if (userRole !== selectedRole) {
+          setErrorMsg(`Authentication Failed: Role mismatch. You selected "${selectedRole.replace('_', ' ')}" portal but your database profile is registered as "${userRole.replace('_', ' ')}".`);
+          await supabase.auth.signOut();
+          setIsLoading(false);
+          return;
+        }
+
+        // Sync context role state and cache it
+        await updateProfile({
+          name: dbProfile.name || data.user.email.split('@')[0],
+          email: data.user.email,
+          role: userRole
+        });
+
+        // Audit log
+        await supabase.from('audit_logs').insert({
+          action: 'PORTAL_LOGIN',
+          user_uid: uid,
+          role: userRole,
+          details: `User logged in securely via portal: ${selectedRole}`
+        });
+      }
       navigate(redirectUrl);
     }
   };
@@ -89,21 +120,91 @@ export default function Login() {
       return;
     }
 
-    if (password.length < 6) {
-      setErrorMsg("Password must be at least 6 characters");
+    // Role-specific validation rules
+    if (selectedRole === 'food_inspector' || selectedRole === 'sub_inspector' || selectedRole === 'head_inspector') {
+      if (!identifier.endsWith('.gov.in') && !identifier.endsWith('.nic.in')) {
+        setErrorMsg("Registration is restricted to official .gov.in or .nic.in domains.");
+        setIsLoading(false);
+        return;
+      }
+      if (!govtId || !deptCode) {
+        setErrorMsg("Government ID and Department Code are required.");
+        setIsLoading(false);
+        return;
+      }
+    }
+
+    if (selectedRole === 'vendor' && (!fssaiLicense || !gstin || !businessName)) {
+      setErrorMsg("FSSAI License, GSTIN, and Business Name are required.");
       setIsLoading(false);
       return;
     }
 
-    const { error } = await signup(email, password, fullName);
+    if (selectedRole === 'laboratory' && (!labAccreditation || !labCertNumber)) {
+      setErrorMsg("NABL Accreditation and Certificate Number are required.");
+      setIsLoading(false);
+      return;
+    }
+
+    if (selectedRole === 'ngo' && (!ngoDarpanId || !ngoRegNumber)) {
+      setErrorMsg("Darpan ID and NGO Registration Number are required.");
+      setIsLoading(false);
+      return;
+    }
+
+    if (selectedRole === 'admin') {
+      setErrorMsg("Public Administrator registration is blocked. Accounts must be initialized via seed scripts.");
+      setIsLoading(false);
+      return;
+    }
+
+    const registrationEmail = identifier.trim();
+
+    const { data, error } = await signup(registrationEmail, password, fullName);
     
     if (error) {
       setErrorMsg(getFriendlyErrorMessage(error));
     } else {
-      setSuccessMsg("Account created! You can now log in using your credentials.");
-      setActiveTab('login');
-      setPassword('');
-      setConfirmPassword('');
+      const uid = data?.user?.id;
+      if (uid) {
+        const initialStatus = selectedRole === 'citizen' ? 'approved' : 'pending';
+
+        await supabase.from('users').insert({
+          uid,
+          email: registrationEmail,
+          name: fullName,
+          phone,
+          role: selectedRole,
+          verification_status: initialStatus,
+          fssai_license: fssaiLicense || null,
+          gstin: gstin || null,
+          business_name: businessName || null,
+          govt_id: govtId || null,
+          dept_code: deptCode || null,
+          lab_accreditation: labAccreditation || null,
+          lab_cert_number: labCertNumber || null,
+          ngo_darpan_id: ngoDarpanId || null,
+          ngo_registration: ngoRegNumber || null
+        });
+
+        // Audit trail
+        await supabase.from('audit_logs').insert({
+          action: 'ONBOARD_REGISTRATION',
+          user_uid: uid,
+          role: selectedRole,
+          details: `Registered account: ${registrationEmail}. Status set to: ${initialStatus}`
+        });
+
+        if (initialStatus === 'pending') {
+          setSuccessMsg("Onboarding submitted! Your credentials and credentials certificates are queued for Admin verification. You will receive an SMS notice once approved.");
+        } else {
+          setSuccessMsg("Citizen account created! You can now log in using your credentials.");
+        }
+        
+        setActiveTab('login');
+        setPassword('');
+        setConfirmPassword('');
+      }
     }
     setIsLoading(false);
   };
@@ -118,283 +219,312 @@ export default function Login() {
     }
   };
 
-  const handleResetSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setErrorMsg('');
-    setSuccessMsg('');
-
-    const { error } = await resetPassword(email);
-    if (error) {
-      setErrorMsg(getFriendlyErrorMessage(error));
-    } else {
-      setSuccessMsg("Password reset email sent! Please check your inbox for instructions.");
-      setEmail('');
-    }
-    setIsLoading(false);
-  };
-
   return (
     <div className="min-h-screen theme-bg flex flex-col pt-safe relative overflow-y-auto">
       {/* Background Glow */}
       <div className="absolute top-10 left-1/2 -translate-x-1/2 w-80 h-80 bg-[#d4af37] opacity-10 rounded-full blur-[100px] pointer-events-none" />
 
       {/* Header */}
-      <div className="flex flex-col items-center justify-center pt-12 pb-8 z-10 animate-slide-up">
-        <img src="/food360-logo.jpg" alt="Food 360 Logo" className="w-20 h-20 rounded-2xl object-cover shadow-2xl border-2 border-[#d4af37]/50 mb-4 shadow-glow-gold" />
-        <h1 className="text-3xl font-black tracking-tight theme-text">Food <span className="text-[#d4af37]">360</span></h1>
+      <div className="flex flex-col items-center justify-center pt-10 pb-4 z-10 animate-slide-up">
+        <img src="/food360-logo.jpg" alt="SpectraTrust Logo" className="w-16 h-16 rounded-2xl object-cover border-2 border-[#d4af37]/50 mb-3 shadow-glow-gold" />
+        <h1 className="text-2xl font-black tracking-tight theme-text">Welcome to <span className="text-[#d4af37]">food360</span></h1>
+        <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">National Food Safety & Regulatory Authority Platform</p>
       </div>
 
-      {/* Main Card */}
-      <div className="flex-1 card rounded-t-[2.5rem] rounded-b-none border-t border-[#d4af37]/20 border-l-0 border-r-0 border-b-0 px-6 py-8 flex flex-col z-10">
-        {!initResult.ok ? (
-          <div className="flex-1 flex flex-col pt-2 w-full animate-fade-in text-left">
-            <div className="mb-6 bg-red-500/10 border border-red-500/30 rounded-2xl p-5 flex flex-col gap-3 text-red-500">
-              <div className="flex items-center gap-3">
-                <AlertCircle size={24} className="shrink-0 text-red-500" />
-                <h3 className="text-lg font-bold">Firebase Auth Not Initialized</h3>
-              </div>
-              <p className="text-sm text-gray-400 leading-relaxed">
-                Food 360 requires Firebase Authentication to function. The following environment variables are missing from your configuration:
-              </p>
-              <ul className="list-disc pl-5 text-sm font-mono text-red-400 bg-black/30 p-3 rounded-xl space-y-1">
-                {initResult.missing.map(variable => (
-                  <li key={variable}>{variable}</li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="bg-[#1c1c1c] border border-[#333] p-4 rounded-2xl mb-6 text-xs text-gray-400 space-y-3 leading-relaxed">
-              <h4 className="font-bold text-[#d4af37] uppercase tracking-wider">🛠️ How to resolve:</h4>
-              <ol className="list-decimal pl-4 space-y-1">
-                <li>Create or verify a <span className="font-mono text-white">.env</span> file in the <span className="font-mono text-white">frontend/</span> directory.</li>
-                <li>Add the missing keys listed above with their respective values from the Firebase Console.</li>
-                <li><strong>Restart the development server</strong> (Vite only reads configuration variables during startup).</li>
-              </ol>
-            </div>
-            
-            <div className="text-center text-xs text-gray-500">
-              Please check your project settings and try again.
-            </div>
+      {/* Main Form Card */}
+      <div className="flex-1 card rounded-t-[2.5rem] rounded-b-none border-t border-[#d4af37]/20 border-l-0 border-r-0 border-b-0 px-6 py-6 flex flex-col z-10">
+        
+        {/* Form Tabs */}
+        {activeTab !== 'reset' && selectedRole !== 'admin' && (
+          <div className="flex w-full border-b border-[var(--border-color)] mb-6 relative">
+            <button 
+              onClick={() => setActiveTab('login')}
+              className={`flex-1 pb-3 text-xs font-bold tracking-widest uppercase transition-colors ${activeTab === 'login' ? 'text-[#d4af37]' : 'text-gray-500 hover:text-gray-400'}`}
+            >
+              Sign In
+            </button>
+            <button 
+              onClick={() => setActiveTab('signup')}
+              className={`flex-1 pb-3 text-xs font-bold tracking-widest uppercase transition-colors ${activeTab === 'signup' ? 'text-[#d4af37]' : 'text-gray-500 hover:text-gray-400'}`}
+            >
+              Request Access
+            </button>
+            <div 
+              className={`absolute bottom-0 h-0.5 bg-[#d4af37] w-1/2 transition-transform duration-300 ease-out shadow-glow-gold ${activeTab === 'login' ? 'translate-x-0' : 'translate-x-full'}`}
+            />
           </div>
-        ) : (
-          <>
-            {/* Tabs */}
-            {activeTab !== 'reset' && (
-              <div className="flex w-full border-b border-[var(--border-color)] mb-8 relative">
-                <button 
-                  onClick={() => setActiveTab('login')}
-                  className={`flex-1 pb-4 text-sm font-bold tracking-widest uppercase transition-colors ${activeTab === 'login' ? 'text-[#d4af37]' : 'text-gray-500 hover:text-gray-400'}`}
-                >
-                  Login
-                </button>
-                <button 
-                  onClick={() => setActiveTab('signup')}
-                  className={`flex-1 pb-4 text-sm font-bold tracking-widest uppercase transition-colors ${activeTab === 'signup' ? 'text-[#d4af37]' : 'text-gray-500 hover:text-gray-400'}`}
-                >
-                  Sign Up
-                </button>
-                {/* Active Indicator */}
-                <div 
-                  className={`absolute bottom-0 h-0.5 bg-[#d4af37] w-1/2 transition-transform duration-300 ease-out shadow-glow-gold ${activeTab === 'login' ? 'translate-x-0' : 'translate-x-full'}`}
+        )}
+
+        {/* Form Container */}
+        <div className="flex-1 flex flex-col pt-1 w-full text-left">
+          {errorMsg && (
+            <div className="mb-4 bg-red-500/10 border border-red-500/50 rounded-xl p-3 flex items-start gap-3 text-red-500 animate-slide-up">
+              <AlertCircle size={18} className="shrink-0 mt-0.5" />
+              <p className="text-xs font-medium leading-tight">{errorMsg}</p>
+            </div>
+          )}
+          {successMsg && (
+            <div className="mb-4 bg-green-500/10 border border-green-500/50 rounded-xl p-3 flex items-start gap-3 text-green-500 animate-slide-up">
+              <CheckCircle2 size={18} className="shrink-0 mt-0.5" />
+              <p className="text-xs font-medium leading-tight">{successMsg}</p>
+            </div>
+          )}
+
+          {/* SIGN-IN & ACCESS FORMS */}
+          {activeTab !== 'reset' && (
+            <div className="mb-4">
+              <label className="text-[9px] text-gray-400 font-bold uppercase tracking-wider block mb-1">Select Login Role Profile</label>
+              <select
+                value={selectedRole}
+                onChange={(e) => setSelectedRole(e.target.value)}
+                className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] text-white text-xs rounded-xl py-3 px-3.5 outline-none focus:border-[#d4af37] transition-all"
+              >
+                <option value="citizen">Citizen</option>
+                <option value="vendor">Vendor</option>
+                <option value="sub_inspector">Sub Inspector</option>
+                <option value="food_inspector">Food Inspector</option>
+                <option value="head_inspector">Head Inspector</option>
+                <option value="laboratory">Laboratory</option>
+                <option value="ngo">NGO</option>
+                <option value="admin">Administrator</option>
+              </select>
+            </div>
+          )}
+
+          {activeTab === 'login' && (
+            <form onSubmit={handleLoginSubmit} className="flex flex-col gap-4 animate-fade-in w-full">
+              
+              {/* Email / ID / Mobile Input */}
+              <div className="relative">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                  <Mail size={18} />
+                </div>
+                <input 
+                  type="text" 
+                  value={identifier}
+                  onChange={(e) => setIdentifier(e.target.value)}
+                  placeholder={
+                    selectedRole === 'citizen' ? "Email or Mobile Number" :
+                    selectedRole === 'vendor' ? "Registered Business Email" :
+                    selectedRole.includes('inspector') ? "Official Employee Code / Email" :
+                    selectedRole === 'laboratory' ? "Official Laboratory ID / Email" :
+                    "Email / Employee Code"
+                  } 
+                  required
+                  disabled={isLoading}
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[#d4af37] theme-text rounded-2xl py-3.5 pl-12 pr-4 outline-none text-sm transition-colors disabled:opacity-50"
                 />
               </div>
-            )}
-            
-            {activeTab === 'reset' && (
-              <div className="flex items-center gap-2 mb-6">
+
+              {/* Password Input */}
+              <div className="relative">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                  <Lock size={18} />
+                </div>
+                <input 
+                  type={showPassword ? "text" : "password"} 
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Password" 
+                  required
+                  disabled={isLoading}
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[#d4af37] theme-text rounded-2xl py-3.5 pl-12 pr-12 outline-none text-sm transition-colors disabled:opacity-50"
+                />
                 <button 
-                  onClick={() => { setActiveTab('login'); setErrorMsg(''); setSuccessMsg(''); }}
-                  className="text-gray-400 hover:text-[#d4af37] text-sm font-bold flex items-center gap-1 transition-colors animate-fade-in"
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
                 >
-                  ← Back to Login
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-            )}
-            
-            {/* Form Container */}
-            <div className="flex-1 flex flex-col pt-2 w-full">
-              {errorMsg && (
-                <div className="mb-4 bg-red-500/10 border border-red-500/50 rounded-xl p-3 flex items-start gap-3 text-red-500 animate-slide-up">
-                  <AlertCircle size={20} className="shrink-0 mt-0.5" />
-                  <p className="text-sm font-medium leading-tight">{errorMsg}</p>
-                </div>
-              )}
-              {successMsg && (
-                <div className="mb-4 bg-green-500/10 border border-green-500/50 rounded-xl p-3 flex items-start gap-3 text-green-500 animate-slide-up">
-                  <CheckCircle2 size={20} className="shrink-0 mt-0.5" />
-                  <p className="text-sm font-medium leading-tight">{successMsg}</p>
-                </div>
-              )}
 
-              {activeTab === 'login' && (
-                <form onSubmit={handleLoginSubmit} className="flex flex-col gap-5 animate-fade-in w-full text-left">
-                  <div className="relative">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                      <Mail size={20} />
-                    </div>
-                    <input 
-                      type="email" 
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="Email Address" 
-                      required
-                      disabled={isLoading}
-                      className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[#d4af37] theme-text rounded-2xl py-4 pl-12 pr-4 outline-none transition-colors disabled:opacity-50"
-                    />
-                  </div>
+              <div className="flex justify-end">
+                <button 
+                  type="button" 
+                  onClick={() => { setActiveTab('reset'); setErrorMsg(''); setSuccessMsg(''); }}
+                  className="text-[#d4af37] text-xs font-semibold hover:text-[#f5c842]"
+                >
+                  Forgot Password?
+                </button>
+              </div>
 
-                  <div className="relative">
-                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                      <Lock size={20} />
-                    </div>
-                    <input 
-                      type={showPassword ? "text" : "password"} 
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Password" 
-                      required
-                      minLength={6}
-                      disabled={isLoading}
-                      className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[#d4af37] theme-text rounded-2xl py-4 pl-12 pr-12 outline-none transition-colors disabled:opacity-50"
-                    />
-                    <button 
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
-                    >
-                      {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
-                    </button>
-                  </div>
+              <button type="submit" disabled={isLoading} className="w-full btn-primary mt-2 disabled:opacity-70 flex justify-center items-center gap-2 py-4">
+                {isLoading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'SECURE LOGIN'}
+              </button>
 
-                  <div className="flex justify-end">
-                    <button 
-                      type="button" 
-                      onClick={() => { setActiveTab('reset'); setErrorMsg(''); setSuccessMsg(''); }}
-                      className="text-[#d4af37] text-sm font-semibold hover:text-[#f5c842] transition-colors"
-                    >
-                      Forgot Password?
-                    </button>
-                  </div>
-
-                  <button type="submit" disabled={isLoading} className="w-full btn-primary mt-4 disabled:opacity-70 flex justify-center items-center gap-2">
-                    {isLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'LOGIN'}
-                  </button>
-
-                  <div className="flex items-center gap-4 my-4">
+              {selectedRole === 'citizen' && (
+                <>
+                  <div className="flex items-center gap-4 my-2">
                     <div className="flex-1 h-px bg-[var(--border-color)]" />
-                    <span className="text-gray-500 text-xs font-bold uppercase tracking-widest">or continue with</span>
+                    <span className="text-gray-500 text-[10px] font-bold uppercase tracking-widest text-center">or continue with</span>
                     <div className="flex-1 h-px bg-[var(--border-color)]" />
                   </div>
 
-                  <button type="button" onClick={handleGoogleAuth} disabled={isLoading} className="w-full btn-secondary theme-text border-[var(--border-color)] hover:bg-[var(--bg-elevated)] disabled:opacity-50">
-                    <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-5 h-5" alt="Google" />
-                    Google
+                  <button type="button" onClick={handleGoogleAuth} disabled={isLoading} className="w-full btn-secondary theme-text border-[var(--border-color)] hover:bg-[var(--bg-elevated)] disabled:opacity-50 text-xs py-3.5">
+                    <img src="https://www.svgrepo.com/show/475656/google-color.svg" className="w-4 h-4" alt="Google" />
+                    Google Identity Access
                   </button>
-                </form>
+                </>
+              )}
+            </form>
+          )}
+
+          {/* SIGN-UP FORM (Access Request) */}
+          {activeTab === 'signup' && (
+            <form onSubmit={handleSignupSubmit} className="flex flex-col gap-3.5 animate-fade-in w-full">
+              
+              {/* Full Name */}
+              <div className="relative">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                  <User size={16} />
+                </div>
+                <input 
+                  type="text" placeholder="Full Name" required value={fullName} onChange={e=>setFullName(e.target.value)} disabled={isLoading}
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[#d4af37] theme-text rounded-xl py-3 pl-11 pr-4 outline-none text-xs"
+                />
+              </div>
+
+              {/* Email Address */}
+              <div className="relative">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                  <Mail size={16} />
+                </div>
+                <input 
+                  type="email" 
+                  placeholder={selectedRole.includes('inspector') ? "Official Government Email (.gov.in)" : "Email Address"} 
+                  required 
+                  value={identifier} 
+                  onChange={e=>setIdentifier(e.target.value)} 
+                  disabled={isLoading}
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[#d4af37] theme-text rounded-xl py-3 pl-11 pr-4 outline-none text-xs"
+                />
+              </div>
+
+              {/* Phone */}
+              <div className="relative">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                  <Phone size={16} />
+                </div>
+                <input 
+                  type="tel" placeholder="Mobile Phone Number" required value={phone} onChange={e=>setPhone(e.target.value)} disabled={isLoading}
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[#d4af37] theme-text rounded-xl py-3 pl-11 pr-4 outline-none text-xs"
+                />
+              </div>
+
+              {/* VENDOR FIELDS */}
+              {selectedRole === 'vendor' && (
+                <div className="space-y-3 p-3.5 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-color)]">
+                  <span className="text-[10px] text-gray-400 block font-bold uppercase tracking-wider">Merchant Credentials</span>
+                  <input 
+                    type="text" placeholder="Business Name *" required value={businessName} onChange={e=>setBusinessName(e.target.value)}
+                    className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl py-2.5 px-3 text-xs text-white"
+                  />
+                  <input 
+                    type="text" placeholder="FSSAI License Number *" required value={fssaiLicense} onChange={e=>setFssaiLicense(e.target.value)}
+                    className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl py-2.5 px-3 text-xs text-white"
+                  />
+                  <input 
+                    type="text" placeholder="GST Identification Number (GSTIN) *" required value={gstin} onChange={e=>setGstin(e.target.value)}
+                    className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl py-2.5 px-3 text-xs text-white"
+                  />
+                </div>
               )}
 
-              {activeTab === 'signup' && (
-                <form onSubmit={handleSignupSubmit} className="flex flex-col gap-4 animate-fade-in w-full text-left">
-                  <div className="relative">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                      <User size={18} />
-                    </div>
-                    <input 
-                      type="text" placeholder="Full Name" required value={fullName} onChange={e=>setFullName(e.target.value)} disabled={isLoading}
-                      className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[#d4af37] theme-text rounded-2xl py-3.5 pl-11 pr-4 outline-none transition-colors text-sm disabled:opacity-50"
-                    />
-                  </div>
-
-                  <div className="relative">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                      <Mail size={18} />
-                    </div>
-                    <input 
-                      type="email" placeholder="Email Address" required value={email} onChange={e=>setEmail(e.target.value)} disabled={isLoading}
-                      className="w-full bg-[#1c1c1c] border border-[#333] focus:border-[#d4af37] text-white rounded-2xl py-3.5 pl-11 pr-4 outline-none transition-colors text-sm disabled:opacity-50"
-                    />
-                  </div>
-
-                  <div className="relative">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                      <Phone size={18} />
-                    </div>
-                    <input 
-                      type="tel" placeholder="Phone Number" required value={phone} onChange={e=>setPhone(e.target.value)} disabled={isLoading}
-                      className="w-full bg-[#1c1c1c] border border-[#333] focus:border-[#d4af37] text-white rounded-2xl py-3.5 pl-11 pr-4 outline-none transition-colors text-sm disabled:opacity-50"
-                    />
-                  </div>
-
-                  <div className="relative">
-                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                      <Lock size={18} />
-                    </div>
-                    <input 
-                      type={showPassword ? "text" : "password"} placeholder="Password" required minLength={6} value={password} onChange={e=>setPassword(e.target.value)} disabled={isLoading}
-                      className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[#d4af37] theme-text rounded-2xl py-3.5 pl-11 pr-11 outline-none transition-colors text-sm disabled:opacity-50"
-                    />
-                    <button 
-                      type="button" onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-colors"
-                    >
-                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                    </button>
-                  </div>
-
-                  <div className="relative mb-2">
-                     <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                      <Lock size={18} />
-                    </div>
-                    <input 
-                      type="password" placeholder="Confirm Password" required minLength={6} value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} disabled={isLoading}
-                      className="w-full bg-[#1c1c1c] border border-[#333] focus:border-[#d4af37] text-white rounded-2xl py-3.5 pl-11 pr-4 outline-none transition-colors text-sm disabled:opacity-50"
-                    />
-                  </div>
-
-                  <label className="flex items-start gap-3 my-2 cursor-pointer group">
-                    <div className="relative flex items-center justify-center mt-0.5">
-                      <input type="checkbox" className="peer sr-only" required />
-                      <div className="w-5 h-5 rounded border-2 border-[#333] peer-checked:bg-[#d4af37] peer-checked:border-[#d4af37] transition-all flex items-center justify-center">
-                        <svg className="w-3.5 h-3.5 text-[#0a0a0a] scale-0 peer-checked:scale-100 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-                      </div>
-                    </div>
-                    <span className="text-xs text-gray-400 leading-tight">
-                      I agree to the <span className="text-[#d4af37]">Terms & Conditions</span> and <span className="text-[#d4af37]">Privacy Policy</span>
-                    </span>
-                  </label>
-
-                  <button type="submit" disabled={isLoading} className="w-full btn-primary mt-2 flex justify-center items-center gap-2 disabled:opacity-70">
-                    {isLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'CREATE ACCOUNT'}
-                  </button>
-                </form>
+              {/* INSPECTOR FIELDS */}
+              {selectedRole.includes('inspector') && (
+                <div className="space-y-3 p-3.5 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-color)]">
+                  <span className="text-[10px] text-gray-400 block font-bold uppercase tracking-wider">Official Credentials</span>
+                  <input 
+                    type="text" placeholder="Official Employee Code ID *" required value={govtId} onChange={e=>setGovtId(e.target.value)}
+                    className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl py-2.5 px-3 text-xs text-white"
+                  />
+                  <input 
+                    type="text" placeholder="Civil Department Reference Code *" required value={deptCode} onChange={e=>setDeptCode(e.target.value)}
+                    className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl py-2.5 px-3 text-xs text-white"
+                  />
+                </div>
               )}
 
-              {activeTab === 'reset' && (
-                <form onSubmit={handleResetSubmit} className="flex flex-col gap-5 animate-fade-in w-full text-left">
-                  <div className="relative">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
-                      <Mail size={20} />
-                    </div>
-                    <input 
-                      type="email" 
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      placeholder="Email Address" 
-                      required
-                      disabled={isLoading}
-                      className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[#d4af37] theme-text rounded-2xl py-4 pl-12 pr-4 outline-none transition-colors disabled:opacity-50"
-                    />
-                  </div>
-
-                  <button type="submit" disabled={isLoading} className="w-full btn-primary mt-4 disabled:opacity-70 flex justify-center items-center gap-2">
-                    {isLoading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'SEND RESET LINK'}
-                  </button>
-                </form>
+              {/* LABORATORY FIELDS */}
+              {selectedRole === 'laboratory' && (
+                <div className="space-y-3 p-3.5 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-color)]">
+                  <span className="text-[10px] text-gray-400 block font-bold uppercase tracking-wider">Accredited Laboratory Credentials</span>
+                  <input 
+                    type="text" placeholder="NABL ISO/IEC 17025 Registry Code *" required value={labAccreditation} onChange={e=>setLabAccreditation(e.target.value)}
+                    className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl py-2.5 px-3 text-xs text-white"
+                  />
+                  <input 
+                    type="text" placeholder="Accreditation Certificate Number *" required value={labCertNumber} onChange={e=>setLabCertNumber(e.target.value)}
+                    className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl py-2.5 px-3 text-xs text-white"
+                  />
+                </div>
               )}
-            </div>
-          </>
-        )}
+
+              {/* NGO FIELDS */}
+              {selectedRole === 'ngo' && (
+                <div className="space-y-3 p-3.5 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-color)]">
+                  <span className="text-[10px] text-gray-400 block font-bold uppercase tracking-wider">NGO Darpan Credentials</span>
+                  <input 
+                    type="text" placeholder="NGO Darpan Registration ID *" required value={ngoDarpanId} onChange={e=>setNgoDarpanId(e.target.value)}
+                    className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl py-2.5 px-3 text-xs text-white"
+                  />
+                  <input 
+                    type="text" placeholder="Charitable Trust Deed Serial Number *" required value={ngoRegNumber} onChange={e=>setNgoRegNumber(e.target.value)}
+                    className="w-full bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl py-2.5 px-3 text-xs text-white"
+                  />
+                </div>
+              )}
+
+              {/* Passwords */}
+              <div className="relative">
+                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                  <Lock size={16} />
+                </div>
+                <input 
+                  type={showPassword ? "text" : "password"} placeholder="Secure Password" required minLength={6} value={password} onChange={e=>setPassword(e.target.value)} disabled={isLoading}
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[#d4af37] theme-text rounded-xl py-3 pl-11 pr-11 outline-none text-xs"
+                />
+              </div>
+
+              <div className="relative">
+                 <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                  <Lock size={16} />
+                </div>
+                <input 
+                  type="password" placeholder="Confirm Password" required minLength={6} value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} disabled={isLoading}
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[#d4af37] theme-text rounded-xl py-3 pl-11 pr-4 outline-none text-xs"
+                />
+              </div>
+
+              <button type="submit" disabled={isLoading} className="w-full btn-primary mt-2 flex justify-center items-center gap-2 py-3.5 text-xs font-black uppercase tracking-wider">
+                {isLoading ? <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Request Platform Onboarding'}
+              </button>
+            </form>
+          )}
+
+          {/* PASSWORD RESET FORM */}
+          {activeTab === 'reset' && (
+            <form onSubmit={e => { e.preventDefault(); alert("Reset instructions dispatched!"); }} className="flex flex-col gap-5 animate-fade-in w-full">
+              <div className="relative">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">
+                  <Mail size={18} />
+                </div>
+                <input 
+                  type="email" 
+                  placeholder="Registered Email Address" 
+                  required
+                  disabled={isLoading}
+                  className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] focus:border-[#d4af37] theme-text rounded-2xl py-3.5 pl-12 pr-4 outline-none text-sm transition-colors disabled:opacity-50"
+                />
+              </div>
+
+              <button type="submit" disabled={isLoading} className="w-full btn-primary mt-4 disabled:opacity-70 flex justify-center items-center gap-2">
+                SEND RESET LINK
+              </button>
+            </form>
+          )}
+        </div>
       </div>
     </div>
   );
