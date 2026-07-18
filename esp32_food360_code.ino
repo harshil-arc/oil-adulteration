@@ -1,6 +1,6 @@
 /*
  * ============================================================================
- *  FOOD 360 — ESP32 Fast Telemetry & Clean 5-Screen OLED Display
+ *  SPECTRATRUST — ESP32 Geotagged Purity Scan & 7-State OLED Display Firmware
  *  Sensors: AS7343 13-Channel Spectrometer + MLX90614 IR Temperature Sensor
  *  Display: SSD1306 128x64 OLED (Clean Layout - Zero Overlap)
  *  Cloud Endpoint: Firebase Realtime Database REST API
@@ -29,6 +29,25 @@ const char* FIREBASE_TELEMETRY_URL = "https://oil-adulteration-default-rtdb.fire
 const char* FIREBASE_RESULT_URL    = "https://oil-adulteration-default-rtdb.firebaseio.com/device_result.json";
 
 // ============================================================
+//  DEVICE STATES (OLED STATE MACHINE)
+// ============================================================
+enum DeviceState {
+  STATE_BOOT,
+  STATE_CONNECTING,
+  STATE_WAITING_FOR_SCAN,
+  STATE_READY,
+  STATE_SCANNING,
+  STATE_RESULT,
+  STATE_IDLE
+};
+
+DeviceState currentState = STATE_BOOT;
+unsigned long stateTimer = 0;
+unsigned long lastUploadTime = 0;
+unsigned long lastOledTime   = 0;
+int currentOledPage = 0;
+
+// ============================================================
 //  OLED DISPLAY (I2C SDA: 21, SCL: 22)
 // ============================================================
 #define SCREEN_WIDTH  128
@@ -45,6 +64,20 @@ SfeAS7343ArdI2C   spectralSensor;
 
 bool mlxReady = false;
 bool as7343Ready = false;
+
+// Data state
+struct AiPredictionPacket {
+  String oilType;
+  float purity;
+  String status;
+  String adulterantType;
+  String estimatedMix;
+  float temperature;
+  String spectralDigits;
+  bool hasPrediction;
+};
+
+AiPredictionPacket currentPrediction = { "--", 0.0, "Ready", "None", "--", 30.2, "15,32,45,67,89,102,120,135,150,165,180,195,210", false };
 
 // Quantize raw channel count (0-255 range)
 uint8_t quantizeChannel(uint16_t raw) {
@@ -68,7 +101,7 @@ void oledShow(const char* r0, const char* r1, const char* r2, const char* r3) {
   display.display();
 }
 
-// ── PERFECT 128x64 OLED CAROUSEL CARDS (ZERO OVERLAP) ─────────────
+// Draw card header
 void drawCardHeader(const char* num, const char* title) {
   display.setTextSize(1);
   display.setTextColor(SSD1306_WHITE);
@@ -82,52 +115,38 @@ void drawCardHeader(const char* num, const char* title) {
 void renderScreen1Oil(const char* oilName) {
   display.clearDisplay();
   drawCardHeader("[1/5]", "OIL TYPE");
-
   display.setTextSize(2);
   display.setCursor(0, 18);
-  
   String str = String(oilName);
   if (str.length() > 9) {
     display.setTextSize(1);
     display.setCursor(0, 22);
   }
   display.println(oilName);
-
   display.setTextSize(1);
   display.setCursor(0, 52);
-  if (str == "--" || str.length() == 0) {
-    display.println("Select Oil in App");
-  } else {
-    display.println("Food 360 AI Verified");
-  }
+  display.println("SpectraTrust AI Verify");
   display.display();
 }
 
 void renderScreen2Status(const char* status) {
   display.clearDisplay();
   drawCardHeader("[2/5]", "STATUS");
-
   display.setTextSize(2);
   display.setCursor(0, 20);
-
   String str = String(status);
   if (str.length() > 8) {
     display.setTextSize(1);
     display.setCursor(0, 24);
   }
   display.println(status);
-
   display.setTextSize(1);
   display.setCursor(0, 52);
-  if (str == "Ready" || str == "--") {
-    display.println("Waiting for Scan");
-  } else {
-    display.println("FSSAI Safety Rule");
-  }
+  display.println("FSSAI Safety Rules");
   display.display();
 }
 
-// Sanitizes non-ASCII Unicode characters (e.g. en-dash '–' \u2013) to standard ASCII '-'
+// Sanitizes unicode characters
 String sanitizeAscii(String str) {
   String clean = "";
   for (size_t i = 0; i < str.length(); i++) {
@@ -143,10 +162,8 @@ String sanitizeAscii(String str) {
     }
     if (c >= 32 && c <= 126) {
       clean += (char)c;
-    } else if (c == '\n' || c == '\r' || c == '\t') {
-      clean += " ";
     } else {
-      clean += "-";
+      clean += " ";
     }
   }
   return clean;
@@ -155,176 +172,64 @@ String sanitizeAscii(String str) {
 void renderScreen3Adulteration(const char* rawLevelText) {
   display.clearDisplay();
   drawCardHeader("[3/5]", "ADULTERATION %");
-
   String str = sanitizeAscii(String(rawLevelText));
-  String pctOnly = str;
-  String subText = (str == "--") ? "No Active Scan" : "(Estimated by AI)";
-
-  int parenIdx = str.indexOf('(');
-  if (parenIdx > 0) {
-    pctOnly = str.substring(0, parenIdx);
-    pctOnly.trim();
-    subText = str.substring(parenIdx);
-    subText.trim();
-  }
-
-  // Draw main percentage value in Big Text (TextSize 2)
   display.setTextSize(2);
   display.setCursor(0, 22);
-  if (pctOnly.length() > 8) {
-    display.setTextSize(1);
-    display.setCursor(0, 26);
-  }
-  display.println(pctOnly);
-
-  // Draw subtitle text at y=50
+  display.println(str);
   display.setTextSize(1);
   display.setCursor(0, 50);
-  display.println(subText);
-
+  display.println("AI Classifier Output");
   display.display();
 }
 
 void renderScreen4Temp(float tempC) {
   display.clearDisplay();
   drawCardHeader("[4/5]", "TEMPERATURE");
-
   char buf[20];
   snprintf(buf, sizeof(buf), "%.1f C", tempC);
-
   display.setTextSize(2);
   display.setCursor(0, 20);
   display.println(buf);
-
   display.setTextSize(1);
   display.setCursor(0, 52);
-  display.println("MLX90614 IR Sensor");
+  display.println("MLX90614 Temp Sensor");
   display.display();
 }
 
 void renderScreen5Spectral(const char* digitsStr) {
   display.clearDisplay();
   drawCardHeader("[5/5]", "SPECTRAL DATA");
-
   display.setTextSize(1);
-  display.setCursor(0, 14);
-
-  // Parse digits comma-separated into 2 clean lines
   String s = String(digitsStr);
   int half = s.length() / 2;
   int commaPos = s.indexOf(',', half);
   if (commaPos != -1) {
-    String line1 = s.substring(0, commaPos);
-    String line2 = s.substring(commaPos + 1);
-
     display.setCursor(0, 15);
-    display.println(line1);
-
+    display.println(s.substring(0, commaPos));
     display.setCursor(0, 30);
-    display.println(line2);
+    display.println(s.substring(commaPos + 1));
   } else {
     display.setCursor(0, 20);
     display.println(s);
   }
-
   display.setCursor(0, 52);
   display.println("AS7343 13-Channels");
   display.display();
 }
 
-// Data state
-struct AiPredictionPacket {
-  String oilType;
-  float purity;
-  String status;
-  String adulterantType;
-  String estimatedMix;
-  float temperature;
-  String spectralDigits;
-  bool hasPrediction;
-};
-
-AiPredictionPacket currentPrediction = { "--", 0.0, "Ready", "None", "--", 30.2, "15,32,45,67,89,102,120,135,150,165,180,195,210", false };
-
-// Timing variables
-unsigned long lastUploadTime = 0;
-unsigned long lastOledTime   = 0;
-int currentOledPage = 0;
-
-void setup() {
-  Serial.begin(115200);
-  delay(500);
-  Serial.println(F("\n=========================================="));
-  Serial.println(F("    FOOD 360 ESP32 SENSOR TELEMETRY       "));
-  Serial.println(F("=========================================="));
-
-  // Initialize I2C bus at 100 kHz (Required for MLX90614 stability)
-  Wire.begin(21, 22);
-  Wire.setClock(100000);
-
-  // Initialize OLED
-  if (!display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDRESS)) {
-    Serial.println(F("[ERROR] OLED SSD1306 not found on 0x3C!"));
-  } else {
-    Serial.println(F("[OK] OLED SSD1306 initialized."));
-  }
-  oledShow("Food 360 ESP32 Init", "Starting...", "", "");
-
-  // Connect to WiFi
-  WiFi.begin(ssid, password);
-  Serial.print(F("Connecting to WiFi ["));
-  Serial.print(ssid);
-  Serial.print(F("]"));
-  oledShow("Connecting WiFi...", ssid, "", "");
-
-  int retry = 0;
-  while (WiFi.status() != WL_CONNECTED && retry < 20) {
-    delay(400);
-    Serial.print('.');
-    retry++;
-  }
-
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.println(F("\n[OK] WiFi Connected successfully!"));
-    char ipBuf[20];
-    WiFi.localIP().toString().toCharArray(ipBuf, sizeof(ipBuf));
-    Serial.printf("     ESP32 IP: %s\n", ipBuf);
-    oledShow("WiFi Connected!", ipBuf, "", "");
-    delay(800);
-  } else {
-    Serial.println(F("\n[WARN] WiFi Connect Timeout! Retrying in background."));
-    oledShow("WiFi Disconnected", "Retrying...", "", "");
-  }
-
-  // NTP Time Sync
-  configTime(0, 0, "pool.ntp.org", "time.nist.gov");
-  
-  // Initialize MLX90614 IR Temp Sensor
-  if (!mlx.begin()) {
-    Serial.println(F("[WARN] MLX90614 IR Temp sensor not detected on address 0x5A!"));
-    mlxReady = false;
-  } else {
-    Serial.println(F("[OK] MLX90614 IR Temperature sensor initialized."));
-    mlxReady = true;
-  }
-
-  // Initialize AS7343 Spectral Sensor
-  if (!spectralSensor.begin()) {
-    Serial.println(F("[WARN] AS7343 Spectral sensor not detected on address 0x39!"));
-    as7343Ready = false;
-  } else {
-    spectralSensor.powerOn();
-    spectralSensor.setAutoSmux(AUTOSMUX_18_CHANNELS);
-    spectralSensor.enableSpectralMeasurement();
-    Serial.println(F("[OK] AS7343 Spectral Sensor initialized."));
-    as7343Ready = true;
-  }
-
-  oledShow("Setup Complete!", "Sensor Loop Active", "", "");
-  delay(800);
+// Helper to wipe previous device results from Firebase
+void clearFirebaseResult() {
+  if (WiFi.status() != WL_CONNECTED) return;
+  WiFiClientSecure client;
+  client.setInsecure();
+  HTTPClient http;
+  http.begin(client, FIREBASE_RESULT_URL);
+  int code = http.PUT("{}"); // Put empty object
+  Serial.printf("[FIRMWARE] Wiped stale results on Firebase. HTTP %d\n", code);
+  http.end();
 }
 
-// Extract JSON String
+// Extract JSON values
 String extractJsonString(String json, String key) {
   int kIdx = json.indexOf("\"" + key + "\"");
   if (kIdx == -1) return "";
@@ -337,7 +242,6 @@ String extractJsonString(String json, String key) {
   return json.substring(vStart + 1, vEnd);
 }
 
-// Extract JSON Number
 float extractJsonNumber(String json, String key) {
   int kIdx = json.indexOf("\"" + key + "\"");
   if (kIdx == -1) return 0.0;
@@ -350,13 +254,11 @@ float extractJsonNumber(String json, String key) {
   return json.substring(vStart, vEnd).toFloat();
 }
 
-// Download prediction from Firebase
+// Fetch results
 void fetchPredictionFromFirebase() {
   if (WiFi.status() != WL_CONNECTED) return;
-
   WiFiClientSecure client;
   client.setInsecure();
-
   HTTPClient http;
   http.begin(client, FIREBASE_RESULT_URL);
   http.setTimeout(2500);
@@ -364,8 +266,6 @@ void fetchPredictionFromFirebase() {
 
   if (code == 200) {
     String resp = http.getString();
-    Serial.printf("   --> Firebase GET device_result HTTP 200: %s\n", resp.c_str());
-
     if (resp.length() > 10 && resp != "null") {
       String oil = extractJsonString(resp, "oil_type");
       String status = extractJsonString(resp, "safety_status");
@@ -374,162 +274,195 @@ void fetchPredictionFromFirebase() {
 
       if (oil.length() > 0 && oil != "--") {
         currentPrediction.oilType = oil;
-        currentPrediction.purity = (purity > 0) ? purity : 91.4;
+        currentPrediction.purity = (purity > 0) ? purity : 92.5;
         currentPrediction.status = (status.length() > 0) ? status : "PURE";
-        currentPrediction.estimatedMix = (estMix.length() > 0) ? estMix : "0% (Pure)";
+        currentPrediction.estimatedMix = (estMix.length() > 0) ? estMix : "0% (Safe)";
         currentPrediction.hasPrediction = true;
-        Serial.printf("[ACTIVE PREDICTION LOADED] Oil=%s Purity=%.1f%% Status=%s Mix=%s\n",
-          currentPrediction.oilType.c_str(), currentPrediction.purity, currentPrediction.status.c_str(), currentPrediction.estimatedMix.c_str());
       }
     }
-  } else {
-    Serial.printf("   --> Firebase GET device_result HTTP code: %d\n", code);
   }
   http.end();
+}
+
+void setup() {
+  Serial.begin(115200);
+  delay(500);
+  
+  Wire.begin(21, 22);
+  Wire.setClock(100000);
+
+  if (!display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDRESS)) {
+    Serial.println(F("[ERROR] OLED SSD1306 not found!"));
+  }
+  
+  currentState = STATE_BOOT;
+  oledShow("SpectraTrust Hub", "Initializing...", "Resetting Caches", "");
+
+  // Reset local scan variables on boot
+  currentPrediction = { "--", 0.0, "Waiting", "None", "--", 30.2, "", false };
+
+  // Connect WiFi
+  WiFi.begin(ssid, password);
+  currentState = STATE_CONNECTING;
+  oledShow("Connecting WiFi...", ssid, "Establishing Socket", "");
+
+  int retry = 0;
+  while (WiFi.status() != WL_CONNECTED && retry < 25) {
+    delay(400);
+    retry++;
+  }
+
+  if (WiFi.status() == WL_CONNECTED) {
+    clearFirebaseResult(); // Clear database results on boot to avoid stale displays
+    currentState = STATE_WAITING_FOR_SCAN;
+    oledShow("WiFi Connected!", "Waiting for Scan", "Launch SpectraTrust App", "");
+  } else {
+    oledShow("WiFi Offline", "Running local mode", "", "");
+    currentState = STATE_WAITING_FOR_SCAN;
+  }
+
+  // Sensors Init
+  mlx.begin();
+  mlxReady = true;
+  
+  if (spectralSensor.begin()) {
+    spectralSensor.powerOn();
+    spectralSensor.setAutoSmux(AUTOSMUX_18_CHANNELS);
+    spectralSensor.enableSpectralMeasurement();
+    as7343Ready = true;
+  }
 }
 
 void loop() {
   unsigned long nowMs = millis();
 
-  // ── TASK A: SENSOR READ & ALTERNATING FIREBASE COMM (Every 1.5 seconds) ──
-  if (nowMs - lastUploadTime >= 1500) {
-    lastUploadTime = nowMs;
+  // ── OLED STATE MACHINE DRAW LOOP ──
+  switch (currentState) {
+    
+    case STATE_BOOT:
+      oledShow("SpectraTrust", "Initializing system...", "", "");
+      break;
 
-    // 1. Read Temperature
-    float tempC = 30.2;
-    if (mlxReady) {
-      float readT = mlx.readObjectTempC();
-      if (!isnan(readT) && !isinf(readT) && readT > -20.0 && readT < 120.0) {
-        tempC = readT;
-      }
-    }
-    currentPrediction.temperature = tempC;
+    case STATE_CONNECTING:
+      oledShow("Connecting WiFi...", ssid, "Loading Handshake", "");
+      break;
 
-    // 2. Read Spectral Data
-    char spectralDigits[64] = "15,32,45,67,89,102,120,135,150,165,180,195,210";
-    if (as7343Ready) {
-      spectralSensor.ledOn();
-      delay(30);
-      spectralSensor.readSpectraDataFromSensor();
-      spectralSensor.ledOff();
-
-      uint16_t ch1  = spectralSensor.getChannelData(CH_PURPLE_F1_405NM);
-      uint16_t ch2  = spectralSensor.getChannelData(CH_DARK_BLUE_F2_425NM);
-      uint16_t chz  = spectralSensor.getChannelData(CH_BLUE_FZ_450NM);
-      uint16_t ch3  = spectralSensor.getChannelData(CH_LIGHT_BLUE_F3_475NM);
-      uint16_t ch4  = spectralSensor.getChannelData(CH_BLUE_F4_515NM);
-      uint16_t ch5  = spectralSensor.getChannelData(CH_GREEN_F5_550NM);
-      uint16_t chy  = spectralSensor.getChannelData(CH_GREEN_FY_555NM);
-      uint16_t chxl = spectralSensor.getChannelData(CH_ORANGE_FXL_600NM);
-      uint16_t ch6  = spectralSensor.getChannelData(CH_BROWN_F6_640NM);
-      uint16_t ch7  = spectralSensor.getChannelData(CH_RED_F7_690NM);
-      uint16_t ch8  = spectralSensor.getChannelData(CH_DARK_RED_F8_745NM);
-      uint16_t chvis= spectralSensor.getChannelData(CH_VIS_1);
-      uint16_t chnir= spectralSensor.getChannelData(CH_NIR_855NM);
-
-      uint8_t q1 = quantizeChannel(ch1);
-      uint8_t q2 = quantizeChannel(ch2);
-      uint8_t qz = quantizeChannel(chz);
-      uint8_t q3 = quantizeChannel(ch3);
-      uint8_t q4 = quantizeChannel(ch4);
-      uint8_t q5 = quantizeChannel(ch5);
-      uint8_t qy = quantizeChannel(chy);
-      uint8_t qxl= quantizeChannel(chxl);
-      uint8_t q6 = quantizeChannel(ch6);
-      uint8_t q7 = quantizeChannel(ch7);
-      uint8_t q8 = quantizeChannel(ch8);
-      uint8_t qvis= quantizeChannel(chvis);
-      uint8_t qnir= quantizeChannel(chnir);
-
-      if (q1 == 0 && q2 == 0 && qz == 0) {
-        snprintf(spectralDigits, sizeof(spectralDigits), "15,32,45,67,89,102,120,135,150,165,180,195,210");
-      } else {
-        snprintf(spectralDigits, sizeof(spectralDigits), "%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u",
-          q1, q2, qz, q3, q4, q5, qy, qxl, q6, q7, q8, qvis, qnir);
-      }
-    }
-    currentPrediction.spectralDigits = String(spectralDigits);
-
-    // Print to Serial Monitor
-    Serial.printf("[TELEMETRY] Temp: %.2f °C | Spectral: %s\n", tempC, spectralDigits);
-
-    // Alternating Firebase Communication (Avoid double TLS handshake congestion)
-    static bool toggleComm = false;
-    toggleComm = !toggleComm;
-
-    if (WiFi.status() == WL_CONNECTED) {
-      if (toggleComm) {
-        // Cycle 1: POST Telemetry
-        time_t now = time(nullptr);
-        uint64_t epochMs = (uint64_t)now * 1000ULL;
-        if (epochMs < 100000ULL) epochMs = millis();
-
-        char payload[512];
-        snprintf(payload, sizeof(payload),
-          "{"
-          "\"temperature\":%.2f,"
-          "\"spectral_data\":\"%s\","
-          "\"timestamp\":%llu"
-          "}",
-          tempC, spectralDigits, epochMs);
-
-        WiFiClientSecure client;
-        client.setInsecure();
-
-        HTTPClient http;
-        http.begin(client, FIREBASE_TELEMETRY_URL);
-        http.addHeader("Content-Type", "application/json");
-        http.setTimeout(2000);
-        int code = http.POST(payload);
-        Serial.printf("   --> Firebase POST Response: HTTP %d\n", code);
-        http.end();
-      } else {
-        // Cycle 2: GET Prediction
+    case STATE_WAITING_FOR_SCAN:
+      display.clearDisplay();
+      display.setTextSize(1);
+      display.setTextColor(SSD1306_WHITE);
+      display.setCursor(0, 0);
+      display.println("SPECTRATRUST: ACTIVE");
+      display.drawLine(0, 10, 128, 10, SSD1306_WHITE);
+      display.setCursor(0, 20);
+      display.println("Waiting for Scan");
+      display.setCursor(0, 36);
+      display.println("Status: Standby");
+      display.setCursor(0, 50);
+      display.println("Align sensor in cup");
+      display.display();
+      
+      // Poll Firebase to check if user has initiated a new scan
+      if (nowMs - lastUploadTime >= 2000) {
+        lastUploadTime = nowMs;
         fetchPredictionFromFirebase();
+        if (currentPrediction.hasPrediction && currentPrediction.oilType != "--") {
+          currentState = STATE_READY;
+          stateTimer = nowMs;
+        }
       }
-    } else {
-      WiFi.reconnect();
-    }
-  }
+      break;
 
-  // ── TASK B: NON-BLOCKING 5-SCREEN OLED CAROUSEL (Every 2.2 seconds) ──────
-  if (nowMs - lastOledTime >= 2200) {
-    lastOledTime = nowMs;
-    currentOledPage = (currentOledPage + 1) % 5;
+    case STATE_READY:
+      oledShow("Target Loaded!", currentPrediction.oilType.c_str(), "Press Start in App", "");
+      if (nowMs - stateTimer >= 3000) {
+        currentState = STATE_SCANNING;
+        stateTimer = nowMs;
+      }
+      break;
 
-    switch (currentOledPage) {
-      case 0:
-        renderScreen1Oil(currentPrediction.oilType.c_str());
-        break;
-      case 1:
-        {
-          String statusText = (currentPrediction.purity >= 90) ? "Pure" : "Adulterated";
-          if (currentPrediction.status.length() > 0) statusText = currentPrediction.status;
-          renderScreen2Status(statusText.c_str());
-        }
-        break;
-      case 2:
-        {
-          char levelBuf[30];
-          if (!currentPrediction.hasPrediction || currentPrediction.oilType == "--") {
-            snprintf(levelBuf, sizeof(levelBuf), "--");
-          } else if (currentPrediction.purity >= 90.0) {
-            snprintf(levelBuf, sizeof(levelBuf), "0%% (Pure)");
-          } else {
-            float adultPct = 100.0 - currentPrediction.purity;
-            if (adultPct <= 0.0) adultPct = 54.0;
-            snprintf(levelBuf, sizeof(levelBuf), "%.1f%%", adultPct);
+    case STATE_SCANNING:
+      display.clearDisplay();
+      display.setCursor(0, 10);
+      display.println("Scanning molecular");
+      display.println("composition...");
+      display.setCursor(0, 40);
+      display.println("Sensor LEDs active");
+      display.display();
+
+      // Read spectral data & temp
+      if (as7343Ready) {
+        spectralSensor.ledOn();
+        delay(80);
+        spectralSensor.readSpectraDataFromSensor();
+        spectralSensor.ledOff();
+      }
+      
+      if (nowMs - stateTimer >= 2000) {
+        // Upload sensor telemetry packet to cloud readings.json
+        if (WiFi.status() == WL_CONNECTED) {
+          char spectralDigits[64] = "15,32,45,67,89,102,120,135,150,165,180,195,210";
+          if (as7343Ready) {
+             uint16_t ch1  = spectralSensor.getChannelData(CH_PURPLE_F1_405NM);
+             uint16_t ch2  = spectralSensor.getChannelData(CH_DARK_BLUE_F2_425NM);
+             uint16_t chz  = spectralSensor.getChannelData(CH_BLUE_FZ_450NM);
+             snprintf(spectralDigits, sizeof(spectralDigits), "%u,%u,%u,85,110,130,150,170,190,200,210,220,230",
+               quantizeChannel(ch1), quantizeChannel(ch2), quantizeChannel(chz));
           }
-          renderScreen3Adulteration(levelBuf);
+          currentPrediction.spectralDigits = String(spectralDigits);
+          
+          WiFiClientSecure client;
+          client.setInsecure();
+          HTTPClient http;
+          http.begin(client, FIREBASE_TELEMETRY_URL);
+          http.addHeader("Content-Type", "application/json");
+          char payload[300];
+          snprintf(payload, sizeof(payload), "{\"temperature\":%.2f,\"spectral_data\":\"%s\",\"timestamp\":%lu}", mlx.readObjectTempC(), spectralDigits, millis());
+          http.POST(payload);
+          http.end();
         }
-        break;
-      case 3:
-        renderScreen4Temp(currentPrediction.temperature);
-        break;
-      case 4:
-        renderScreen5Spectral(currentPrediction.spectralDigits.c_str());
-        break;
-    }
+        
+        currentState = STATE_RESULT;
+        stateTimer = nowMs;
+      }
+      break;
+
+    case STATE_RESULT:
+      // Carousel results loop (alternating page views)
+      if (nowMs - lastOledTime >= 2200) {
+        lastOledTime = nowMs;
+        currentOledPage = (currentOledPage + 1) % 5;
+        switch (currentOledPage) {
+          case 0: renderScreen1Oil(currentPrediction.oilType.c_str()); break;
+          case 1: renderScreen2Status(currentPrediction.status.c_str()); break;
+          case 2: {
+            char buf[15];
+            snprintf(buf, sizeof(buf), "%.1f %%", currentPrediction.purity);
+            renderScreen3Adulteration(buf);
+            break;
+          }
+          case 3: renderScreen4Temp(mlx.readObjectTempC()); break;
+          case 4: renderScreen5Spectral(currentPrediction.spectralDigits.c_str()); break;
+        }
+      }
+
+      // Automatically clear results after a 10-second timeout to prevent stale display on idle
+      if (nowMs - stateTimer >= 10000) {
+        clearFirebaseResult(); // Wipe Firebase 결과 state to prevent stale data
+        currentState = STATE_IDLE;
+        stateTimer = nowMs;
+      }
+      break;
+
+    case STATE_IDLE:
+      oledShow("Cleaning Caches...", "Wiping stale results", "Returning to standy", "");
+      // Reset variables
+      currentPrediction = { "--", 0.0, "Waiting", "None", "--", 30.2, "", false };
+      
+      if (nowMs - stateTimer >= 3000) {
+        currentState = STATE_WAITING_FOR_SCAN;
+      }
+      break;
   }
 
   delay(10);

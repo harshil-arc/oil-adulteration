@@ -317,24 +317,98 @@ const DEMO_HOTSPOT_SHOPS = [
   }
 ];
 
-  const fetchData = async () => {
-    try {
-      const { data: shopsData } = await supabase.from('shops').select('*');
-      const { data: scansData } = await supabase.from('analysis_results').select('*').order('timestamp', { ascending: false });
-      
-      if (shopsData && shopsData.length > 0) {
-        const mergedMap = new Map();
-        DEMO_HOTSPOT_SHOPS.forEach(s => mergedMap.set(s.id, s));
-        shopsData.forEach(s => mergedMap.set(s.id || s.name, s));
-        setShops(Array.from(mergedMap.values()));
-      } else {
-        setShops(DEMO_HOTSPOT_SHOPS);
+  const compileContributedShops = (scansList) => {
+    const clusters = {};
+    scansList.forEach(scan => {
+      if (!scan.latitude || !scan.longitude) return;
+      const latRounded = Math.round(parseFloat(scan.latitude) * 100) / 100;
+      const lngRounded = Math.round(parseFloat(scan.longitude) * 100) / 100;
+      const key = `${latRounded.toFixed(2)}_${lngRounded.toFixed(2)}_${scan.oil_type}`;
+
+      if (!clusters[key]) {
+        clusters[key] = {
+          id: `clust-${key}`,
+          name: `Verified Reports Area`,
+          vendor: `Anonymized Scan Center`,
+          oil_type: scan.oil_type,
+          latitude: latRounded,
+          longitude: lngRounded,
+          reports_count: 0,
+          unsafe_count: 0,
+          purity_sum: 0,
+          last_verified: scan.timestamp || scan.created_at || new Date().toISOString()
+        };
       }
 
-      if (scansData) setScans(scansData);
+      clusters[key].reports_count += 1;
+      clusters[key].purity_sum += parseFloat(scan.purity || 0);
+      if (scan.quality === 'Unsafe') {
+        clusters[key].unsafe_count += 1;
+      }
+    });
+
+    return Object.values(clusters).map(c => {
+      const avgPurity = Math.round(c.purity_sum / c.reports_count);
+      let status = 'safe';
+      if (c.unsafe_count > 0 && (c.unsafe_count / c.reports_count) >= 0.5) {
+        status = 'adulterated';
+      } else if (c.unsafe_count > 0 || avgPurity < 90) {
+        status = 'moderate';
+      }
+
+      return {
+        id: c.id,
+        name: `${c.oil_type} Scan Zone`,
+        vendor: `${c.reports_count} contributed scan(s) in this sector`,
+        address: `Sector Coordinate: [${c.latitude.toFixed(3)}, ${c.longitude.toFixed(3)}]`,
+        oil_type: c.oil_type,
+        status: status,
+        last_purity: avgPurity,
+        latitude: c.latitude,
+        longitude: c.longitude,
+        reports_count: c.reports_count,
+        last_verified: new Date(c.last_verified).toLocaleDateString()
+      };
+    });
+  };
+
+  const fetchData = async () => {
+    try {
+      const { data: scansData } = await supabase
+        .from('analysis_results')
+        .select('*')
+        .order('timestamp', { ascending: false });
+
+      if (scansData) {
+        const contributed = scansData.filter(s => s.is_anonymized_contribution && s.latitude && s.longitude);
+        setScans(contributed);
+        
+        const compiled = compileContributedShops(contributed.length > 0 ? contributed : [
+          {
+            id: 'mock-contributed-1',
+            oil_type: 'Mustard Oil',
+            purity: 92,
+            quality: 'Safe',
+            timestamp: new Date().toISOString(),
+            latitude: 23.2156,
+            longitude: 72.6369,
+            is_anonymized_contribution: true
+          },
+          {
+            id: 'mock-contributed-2',
+            oil_type: 'Sunflower Oil',
+            purity: 45,
+            quality: 'Unsafe',
+            timestamp: new Date().toISOString(),
+            latitude: 23.0225,
+            longitude: 72.5714,
+            is_anonymized_contribution: true
+          }
+        ]);
+        setShops(compiled);
+      }
     } catch (e) {
-      console.error(e);
-      setShops(DEMO_HOTSPOT_SHOPS);
+      console.error("Error loading contributed hotspots:", e);
     } finally {
       setLoading(false);
     }
@@ -694,16 +768,20 @@ const DEMO_HOTSPOT_SHOPS = [
               let color = '#22c55e'; // Green
               if (shop.status === 'adulterated') color = '#ef4444'; // Red
               else if (shop.status === 'moderate') color = '#f97316'; // Orange
-              else if (shop.last_purity < 75) color = '#eab308'; // Yellow
+
+              // Scale size and intensity by the number of contributed reports in that zone
+              const count = shop.reports_count || 1;
+              const radius = Math.min(1200 + count * 600, 4500);
+              const opacity = Math.min(0.12 + count * 0.08, 0.65);
 
               return (
                 <Circle 
                   key={`heat-${shop.id}`}
                   center={[parseFloat(shop.latitude), parseFloat(shop.longitude)]}
-                  radius={2800}
+                  radius={radius}
                   pathOptions={{
                     fillColor: color,
-                    fillOpacity: 0.18,
+                    fillOpacity: opacity,
                     stroke: false
                   }}
                 />

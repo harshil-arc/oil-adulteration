@@ -23,6 +23,7 @@ export default function ScanFlow() {
   const [scanResult, setScanResult] = useState(null);
   const [localLiveData, setLocalLiveData] = useState(null);
   const [selectedOilType, setSelectedOilType] = useState('Mustard Oil');
+  const [contributeOptIn, setContributeOptIn] = useState(false);
 
   // --- Step 0: Selectors ---
   const handleSelectMethod = (m) => {
@@ -250,6 +251,60 @@ export default function ScanFlow() {
     setStep(3);
     setProgress(0);
     setScanResult(null);
+  };
+
+  const handleSaveResult = async (contributeAnonymously) => {
+    setLoading(true);
+    let coords = { latitude: null, longitude: null };
+    
+    if (contributeAnonymously) {
+      try {
+        const position = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(resolve, reject, { 
+            timeout: 5000, 
+            enableHighAccuracy: true 
+          });
+        });
+        coords.latitude = position.coords.latitude;
+        coords.longitude = position.coords.longitude;
+      } catch (err) {
+        console.warn("Location permission denied or timed out. Saving without coordinates.");
+        alert("Location Access Required: Geotagged contribution failed. Saving scan locally.");
+        contributeAnonymously = false;
+      }
+    }
+
+    // Generate or fetch Device ID
+    let deviceId = localStorage.getItem('spectratrust_device_id');
+    if (!deviceId) {
+      deviceId = 'DEV-' + Math.random().toString(36).substring(2, 10).toUpperCase();
+      localStorage.setItem('spectratrust_device_id', deviceId);
+    }
+
+    const payload = {
+      oil_type: selectedOilType,
+      purity: parseFloat(scanResult.purity || 94.2),
+      quality: scanResult.quality || 'Safe',
+      adulteration_percentage: parseFloat(scanResult.adulteration || (100 - (scanResult.purity || 94.2))),
+      confidence_score: parseFloat(scanResult.confidence_score || 98),
+      sensor_readings: localLiveData || liveData || {},
+      connection_type: deviceInfo?.method || 'WiFi',
+      timestamp: new Date().toISOString(),
+      vendor: contributeAnonymously ? 'Anonymized Source' : 'My Local Scan',
+      is_anonymized_contribution: contributeAnonymously,
+      latitude: coords.latitude,
+      longitude: coords.longitude,
+      device_id: deviceId
+    };
+
+    const { error } = await supabase.from('analysis_results').insert(payload);
+    setLoading(false);
+    if (error) {
+      alert("Error saving scan result to database: " + error.message);
+    } else {
+      alert(contributeAnonymously ? "Anonymized report contributed to National Food Safety Heatmap!" : "Scan result saved successfully.");
+      navigate('/home');
+    }
   };
 
   // ================= RENDERERS =================
@@ -686,23 +741,45 @@ export default function ScanFlow() {
                  </div>
               </div>
 
+              {/* Anonymized Heatmap Contribution Card */}
+              <div className="card bg-[var(--bg-elevated)] border border-[var(--border-color)] p-4 rounded-2xl space-y-3 mb-4 text-left">
+                <div className="flex items-start gap-3">
+                  <input 
+                    type="checkbox" 
+                    id="contributeToggle"
+                    checked={contributeOptIn}
+                    onChange={(e) => setContributeOptIn(e.target.checked)}
+                    className="mt-1 cursor-pointer w-4 h-4 rounded border-gray-600 bg-gray-800 text-[#d4af37] focus:ring-[#d4af37]"
+                  />
+                  <label htmlFor="contributeToggle" className="cursor-pointer">
+                    <span className="text-xs font-black text-white block">📍 Contribute to National Heatmap (Anonymized)</span>
+                    <span className="text-[10px] text-gray-400 block mt-0.5 leading-relaxed">
+                      Share your anonymized scan results to help identify adulteration hotspots. Location permission will be requested dynamically to geotag this specific reading via mobile GPS.
+                    </span>
+                  </label>
+                </div>
+              </div>
+
               <div className="mt-auto flex flex-col gap-3 px-2">
-                 {scanResult.quality === 'Unsafe' ? (
+                 <button 
+                  disabled={loading}
+                  onClick={() => handleSaveResult(contributeOptIn)}
+                  className="btn-primary w-full py-4 text-sm font-black tracking-widest"
+                 >
+                   {loading ? "SAVING..." : "SAVE SCAN & SUBMIT"}
+                 </button>
+                 {scanResult.quality === 'Unsafe' && (
                    <button 
-                    onClick={() => navigate('/home')}
+                    onClick={() => {
+                      alert("Opening citizen complaint wizard in enforcement mode...");
+                      navigate('/home', { state: { openComplaintWizard: true, oilType: selectedOilType } });
+                    }}
                     className="w-full bg-red-600 hover:bg-red-700 text-white font-black py-4 rounded-[20px] shadow-glow-red border-0 uppercase tracking-widest text-sm"
                    >
-                     FILE ENFORCEMENT REPORT
-                   </button>
-                 ) : (
-                   <button 
-                    onClick={() => navigate('/home')}
-                    className="btn-primary w-full py-4 text-sm font-black tracking-widest"
-                   >
-                     GENERATE DIGITAL CERTIFICATE
+                     FILE ENFORCEMENT COMPLAINT
                    </button>
                  )}
-                 <button onClick={() => setStep(0)} className="btn-secondary w-full py-4 text-sm flex items-center justify-center gap-2 border-[#333]">
+                 <button onClick={() => { setStep(0); setContributeOptIn(false); }} className="btn-secondary w-full py-4 text-sm flex items-center justify-center gap-2 border-[#333]">
                    <RefreshCw size={16} /> NEW INSPECTION
                  </button>
               </div>
