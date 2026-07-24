@@ -33,4 +33,12 @@ export const submitComplaint = (payload) => api.post('/api/complaints', payload)
 export const verifyComplaint = (id) => api.patch(`/api/complaints/${id}/verify`);
 export const rejectComplaint = (id) => api.patch(`/api/complaints/${id}/reject`);
 
+// ── AI Meal Planner & Recipe Recommendation Engine Endpoints ──
+export const getMealRecommendations = (payload) => api.post('/api/meal-planner/recommend', payload);
+export const getDishesCatalog = (params) => api.get('/api/meal-planner/dishes', { params });
+export const generateMealPlan = (payload) => api.post('/api/meal-planner/generate-plan', payload);
+export const scanPantryVision = (formData) => api.post('/api/meal-planner/pantry-scan', formData);
+export const generateShoppingList = (payload) => api.post('/api/meal-planner/shopping-list', payload);
+export const getMealPlannerStats = () => api.get('/api/meal-planner/stats');
+
 export default api;

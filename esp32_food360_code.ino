@@ -3,12 +3,12 @@
  *  SPECTRATRUST — ESP32 Real-Time Sensor Telemetry & OLED Display Firmware
  *  Sensors: AS7343 13-Channel Spectrometer + MLX90614 IR Temperature Sensor
  *  Display: SSD1306 128x64 OLED (Clean Layout - Zero Overlap)
- *  Cloud Endpoint: Firebase Realtime Database REST API
+ *  Cloud Endpoint: Firebase Realtime Database REST API (Fast HTTP Port 80)
  * ============================================================================
  */
 
 #include <WiFi.h>
-#include <WiFiClientSecure.h>
+#include <WiFiClient.h>
 #include <HTTPClient.h>
 #include <Wire.h>
 #include <SparkFun_AS7343.h>
@@ -24,9 +24,9 @@
 const char* ssid     = "atl";
 const char* password = "harshil913";
 
-// Firebase Realtime Database REST Endpoints
-const char* FIREBASE_TELEMETRY_URL = "https://oil-adulteration-default-rtdb.firebaseio.com/readings.json";
-const char* FIREBASE_RESULT_URL    = "https://oil-adulteration-default-rtdb.firebaseio.com/device_result.json";
+// Fast HTTP REST Endpoints (Port 80 - Zero TLS Handshake Latency)
+const char* FIREBASE_TELEMETRY_URL = "http://oil-adulteration-default-rtdb.firebaseio.com/readings.json";
+const char* FIREBASE_RESULT_URL    = "http://oil-adulteration-default-rtdb.firebaseio.com/device_result.json";
 
 // ============================================================
 //  OLED DISPLAY (I2C SDA: 21, SCL: 22)
@@ -55,10 +55,11 @@ struct SensorDataPacket {
   String status;
   bool hasActivePrediction;
   unsigned long predictionTime;
+  String lastScanId;
 };
 
 // Initialized to CLEAN STANDBY state (No hardcoded/stale scan values on startup)
-SensorDataPacket currentData = { 28.5, "--", "--", 0.0, "Standby", false, 0 };
+SensorDataPacket currentData = { 28.5, "--", "--", 0.0, "Standby", false, 0, "" };
 
 // Timing variables
 unsigned long lastUploadTime = 0;
@@ -181,7 +182,7 @@ void renderScreen5Spectral(const char* digitsStr) {
   String s = String(digitsStr);
   if (s == "--" || s.length() < 3) {
     display.setCursor(0, 22);
-    display.println("Reading Sensor...");
+    display.println("Sensor Offline / 0x39");
   } else {
     int half = s.length() / 2;
     int commaPos = s.indexOf(',', half);
@@ -226,32 +227,51 @@ float extractJsonNumber(String json, String key) {
   return json.substring(vStart, vEnd).toFloat();
 }
 
+// Wipe device_result.json from Firebase cloud when result expires or on boot
+void clearCloudResult() {
+  if (WiFi.status() != WL_CONNECTED) return;
+  WiFiClient client;
+  HTTPClient http;
+  http.begin(client, FIREBASE_RESULT_URL);
+  http.setTimeout(1500);
+  int code = http.sendRequest("DELETE");
+  Serial.printf("[FIRMWARE] Wiped result node from Firebase. HTTP %d\n", code);
+  http.end();
+}
+
 // Fetch results pushed from the Mobile/Web App to device_result.json
 void fetchResultsFromApp() {
   if (WiFi.status() != WL_CONNECTED) return;
 
-  WiFiClientSecure client;
-  client.setInsecure();
-
+  WiFiClient client;
   HTTPClient http;
   http.begin(client, FIREBASE_RESULT_URL);
-  http.setTimeout(2500);
+  http.setTimeout(1500);
   int code = http.GET();
 
   if (code == 200) {
     String resp = http.getString();
     if (resp.length() > 10 && resp != "null") {
+      String scanId = extractJsonString(resp, "scan_id");
       String oil = extractJsonString(resp, "oil_type");
       String status = extractJsonString(resp, "safety_status");
       float purity = extractJsonNumber(resp, "purity_percentage");
 
       if (oil.length() > 0 && oil != "--") {
+        bool isNew = (scanId != currentData.lastScanId || currentData.oilType != oil || fabs(currentData.purity - purity) > 0.05);
         currentData.oilType = oil;
-        currentData.purity = (purity > 0) ? purity : 94.2;
-        currentData.status = (status.length() > 0) ? status : "Safe";
+        currentData.purity = purity;
+        currentData.status = (status.length() > 0) ? status : "Ready";
         currentData.hasActivePrediction = true;
         currentData.predictionTime = millis();
-        Serial.printf("[APP RESULT RECEIVED] Oil: %s | Purity: %.1f%% | Status: %s\n", oil.c_str(), currentData.purity, currentData.status.c_str());
+        currentData.lastScanId = scanId;
+
+        if (isNew) {
+          currentOledPage = 0; // Jump OLED to Screen [1/5] OIL TYPE immediately
+          lastOledTime = millis(); // Refresh card timing
+          renderScreen1Oil(currentData.oilType.c_str()); // Redraw immediately on hardware!
+          Serial.printf("[APP RESULT SYNCED] Oil: %s | Purity: %.1f%% | Status: %s | ScanID: %s\n", oil.c_str(), currentData.purity, currentData.status.c_str(), scanId.c_str());
+        }
       }
     }
   }
@@ -314,7 +334,8 @@ void readSensors() {
     Serial.printf("[AS7343 REAL SPECTRAL] F1:%u F2:%u FZ:%u F3:%u F4:%u F5:%u FY:%u FXL:%u F6:%u F7:%u F8:%u VIS:%u NIR:%u\n",
       f1, f2, fz, f3, f4, f5, fy, fxl, f6, f7, f8, vis, nir);
   } else {
-    Serial.println(F("[AS7343 SPECTRAL] Sensor Not Connected or Offline on 0x39"));
+    currentData.spectralDigits = "--";
+    Serial.println(F("[AS7343 SPECTRAL] Sensor Not Connected or Offline on 0x39 / 0x38"));
   }
 }
 
@@ -322,18 +343,16 @@ void readSensors() {
 void uploadTelemetry() {
   if (WiFi.status() != WL_CONNECTED) return;
 
-  WiFiClientSecure client;
-  client.setInsecure();
-
+  WiFiClient client;
   HTTPClient http;
   http.begin(client, FIREBASE_TELEMETRY_URL);
   http.addHeader("Content-Type", "application/json");
-  http.setTimeout(3000);
+  http.setTimeout(2000);
 
   time_t nowSec = time(nullptr);
   uint64_t nowEpoch = (uint64_t)nowSec * 1000ULL;
   if (nowEpoch < 1000000000000ULL) {
-    nowEpoch = 1721800000000ULL + millis(); // High epoch fallback
+    nowEpoch = 1721800000000ULL + millis();
   }
 
   char payload[380];
@@ -356,6 +375,21 @@ void setup() {
   Wire.begin(21, 22);
   Wire.setClock(100000);
 
+  // ── I2C BUS SCANNER ─────────────────────────────────────
+  Serial.println(F("[I2C SCANNER] Scanning bus on SDA:21, SCL:22..."));
+  byte count = 0;
+  for (byte address = 1; address < 127; address++) {
+    Wire.beginTransmission(address);
+    if (Wire.endTransmission() == 0) {
+      Serial.printf("   --> Found I2C device at address 0x%02X\n", address);
+      count++;
+    }
+  }
+  if (count == 0) {
+    Serial.println(F("   [ERROR] No I2C devices found! Check 3.3V, GND, SDA(21), SCL(22) wiring."));
+  }
+  Serial.println(F("==========================================\n"));
+
   if (!display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDRESS)) {
     Serial.println(F("[ERROR] OLED SSD1306 not found!"));
   } else {
@@ -376,6 +410,7 @@ void setup() {
   if (WiFi.status() == WL_CONNECTED) {
     configTime(0, 0, "pool.ntp.org", "time.nist.gov");
     Serial.printf("[OK] WiFi Connected! IP: %s\n", WiFi.localIP().toString().c_str());
+    clearCloudResult(); // Clear stale results on Firebase on boot
     oledShow("WiFi Connected!", WiFi.localIP().toString().c_str(), "Telemetry Stream Active", "");
     delay(800);
   } else {
@@ -391,14 +426,27 @@ void setup() {
     Serial.println(F("[WARN] MLX90614 IR Temp sensor not found on 0x5A."));
   }
 
-  if (spectralSensor.begin()) {
+  // Initialize AS7343 Spectrometer (Try default 0x39, then alternate 0x38)
+  if (spectralSensor.begin(0x39, Wire)) {
     spectralSensor.powerOn();
     spectralSensor.setAutoSmux(AUTOSMUX_18_CHANNELS);
     spectralSensor.enableSpectralMeasurement();
     as7343Ready = true;
     Serial.println(F("[OK] AS7343 Spectral sensor ready on 0x39."));
+  } else if (spectralSensor.begin(0x38, Wire)) {
+    spectralSensor.powerOn();
+    spectralSensor.setAutoSmux(AUTOSMUX_18_CHANNELS);
+    spectralSensor.enableSpectralMeasurement();
+    as7343Ready = true;
+    Serial.println(F("[OK] AS7343 Spectral sensor ready on 0x38."));
+  } else if (spectralSensor.begin()) {
+    spectralSensor.powerOn();
+    spectralSensor.setAutoSmux(AUTOSMUX_18_CHANNELS);
+    spectralSensor.enableSpectralMeasurement();
+    as7343Ready = true;
+    Serial.println(F("[OK] AS7343 Spectral sensor ready on default."));
   } else {
-    Serial.println(F("[WARN] AS7343 Spectral sensor not found on 0x39. Check I2C wiring!"));
+    Serial.println(F("[ERROR] AS7343 Spectral sensor not detected on 0x39 / 0x38. Check wiring or I2C addresses scanned above!"));
   }
 }
 
@@ -414,19 +462,21 @@ void loop() {
     uploadTelemetry();
   }
 
-  // 2. Fetch App Result sync (Every 3 seconds)
-  if (nowMs - lastResultFetch >= 3000) {
+  // 2. Fetch App Result sync (Fast 800ms polling via fast HTTP)
+  if (nowMs - lastResultFetch >= 800) {
     lastResultFetch = nowMs;
     fetchResultsFromApp();
   }
 
-  // 3. Auto-clear active prediction after 15 seconds to return OLED back to clean Standby
-  if (currentData.hasActivePrediction && (nowMs - currentData.predictionTime >= 15000)) {
+  // 3. Auto-clear active prediction after 30 seconds AND wipe node from Firebase
+  if (currentData.hasActivePrediction && (nowMs - currentData.predictionTime >= 30000)) {
     currentData.hasActivePrediction = false;
     currentData.oilType = "--";
     currentData.status = "Standby";
     currentData.purity = 0.0;
-    Serial.println(F("[DISPLAY] Scan display timed out. Returned OLED to Standby mode."));
+    currentData.lastScanId = "";
+    clearCloudResult(); // Clear Firebase cloud node so it doesn't re-trigger
+    Serial.println(F("[DISPLAY] Scan display timed out. Cleared cloud node and returned OLED to Standby mode."));
   }
 
   // 4. Non-blocking OLED Screen Carousel (Every 2.2 seconds)

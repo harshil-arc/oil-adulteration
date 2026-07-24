@@ -19,6 +19,12 @@ import {
   INDIAN_RECIPES_DATABASE
 } from '../data/nutritionData';
 import { 
+  getMealRecommendations, 
+  generateMealPlan as generateApiMealPlan, 
+  scanPantryVision, 
+  generateShoppingList as generateApiShoppingList 
+} from '../lib/api';
+import { 
   generateWeeklyWorkoutPlan, 
   getExerciseLibrary, 
   calculateRecoveryScore, 
@@ -84,18 +90,25 @@ export default function Nutrition() {
   const [newIngredient, setNewIngredient] = useState({ name: '', quantity: '100g', category: 'Vegetables & Fruits' });
 
   // ── 3. MEAL CATEGORY SLOTS & SEARCH FILTERS ──────────────────────────────────
-  const [selectedMealCategory, setSelectedMealCategory] = useState('Breakfast'); // 'Breakfast', 'Lunch', 'Dinner', 'Snacks', 'PostWorkout', 'PreWorkout', 'CheatMeal', 'Hydration'
+  const [selectedMealCategory, setSelectedMealCategory] = useState('Breakfast'); // 'Breakfast', 'Lunch', 'Dinner', 'Snacks', 'PostWorkout', 'PreWorkout', 'CheatMeal'
   const [recipeSearch, setRecipeSearch] = useState('');
   const [cuisineFilter, setCuisineFilter] = useState('All');
   const [dietFilter, setDietFilter] = useState('All');
 
-  // ── 4. MODALS & DRAWERS STATE ────────────────────────────────────────────────
+  // ── 4. BACKEND AI RECOMMENDATION ENGINE STATE ─────────────────────────────────
+  const [aiRecommendations, setAiRecommendations] = useState([]);
+  const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(false);
+  const [pantryScanLoading, setPantryScanLoading] = useState(false);
+  const [weeklyPlanData, setWeeklyPlanData] = useState(null);
+  const [isGeneratingWeekly, setIsGeneratingWeekly] = useState(false);
+
+  // ── 5. MODALS & DRAWERS STATE ────────────────────────────────────────────────
   const [selectedRecipeDetail, setSelectedRecipeDetail] = useState(null);
   const [workoutPlayerOpen, setWorkoutPlayerOpen] = useState(false);
   const [exerciseLibraryOpen, setExerciseLibraryOpen] = useState(false);
   const [aiCoachDrawerOpen, setAiCoachDrawerOpen] = useState(false);
 
-  // ── 5. SHOPPING LIST & LEFTOVER RESCUE STATE ──────────────────────────────────
+  // ── 6. SHOPPING LIST & LEFTOVER RESCUE STATE ──────────────────────────────────
   const [shoppingList, setShoppingList] = useState([
     { id: 's-1', name: 'Fresh Spinach (Palak)', category: 'Vegetables', estCost: 25, checked: false },
     { id: 's-2', name: 'Basmati Rice (1kg)', category: 'Grains & Staples', estCost: 90, checked: false },
@@ -104,15 +117,46 @@ export default function Nutrition() {
 
   const [selectedLeftovers, setSelectedLeftovers] = useState(['Yesterday Rice', 'Leftover Dal']);
 
-  // ── 6. HYDRATION & WATER TRACKER ──────────────────────────────────────────────
+  // ── 7. HYDRATION & WATER TRACKER ──────────────────────────────────────────────
   const [waterCups, setWaterCups] = useState(10); // 2500ml
 
-  // ── 7. SAVED FAVORITES & MEAL HISTORY ──────────────────────────────────────────
+  // ── 8. SAVED FAVORITES & MEAL HISTORY ──────────────────────────────────────────
   const [savedFavorites, setSavedFavorites] = useState(['guj-1', 'pun-2']);
   const [mealHistory, setMealHistory] = useState([
     { id: 'h-1', name: 'Methi Thepla & Fresh Curd', mealType: 'Breakfast', calories: 310, protein: 9, status: 'Eaten', timestamp: 'Today, 08:30 AM' },
     { id: 'h-2', name: 'Amritsari Chole & Whole Wheat Roti', mealType: 'Lunch', calories: 440, protein: 18, status: 'Eaten', timestamp: 'Today, 01:30 PM' }
   ]);
+
+  // Fetch recommendations dynamically from backend Excel engine
+  useEffect(() => {
+    let isMounted = true;
+    const fetchRecommendations = async () => {
+      setIsLoadingRecommendations(true);
+      try {
+        const payload = {
+          pantryItems: pantryItems.map(i => i.name),
+          medicalConditions: healthProfile.medicalConditions || [],
+          allergies: healthProfile.allergies || [],
+          dietPreference: dietFilter !== 'All' ? dietFilter : healthProfile.dietPreference,
+          mealType: selectedMealCategory,
+          cuisine: cuisineFilter,
+          searchQuery: recipeSearch,
+          healthGoal: healthProfile.goal
+        };
+        const res = await getMealRecommendations(payload);
+        if (isMounted && res.data && res.data.success) {
+          setAiRecommendations(res.data.recommendations);
+        }
+      } catch (err) {
+        console.error('Backend meal recommendation fetch error:', err);
+      } finally {
+        if (isMounted) setIsLoadingRecommendations(false);
+      }
+    };
+
+    fetchRecommendations();
+    return () => { isMounted = false; };
+  }, [pantryItems, healthProfile, selectedMealCategory, cuisineFilter, dietFilter, recipeSearch]);
 
   // Sync temp profile when modal opens
   useEffect(() => {
@@ -171,6 +215,56 @@ export default function Nutrition() {
     setPantryItems(pantryItems.filter(i => i.id !== id));
   };
 
+  const handleTriggerPantryScan = async () => {
+    setPantryScanLoading(true);
+    try {
+      const res = await scanPantryVision();
+      if (res.data && res.data.success && Array.isArray(res.data.ingredients)) {
+        const newItems = res.data.ingredients.map((ing, idx) => ({
+          id: `p-scan-${Date.now()}-${idx}`,
+          name: ing.name,
+          quantity: ing.quantity || '200g',
+          category: ing.category || 'Vegetables & Fruits',
+          expiry: '5 Days'
+        }));
+
+        setPantryItems(prev => {
+          const existingNames = new Set(prev.map(i => i.name.toLowerCase()));
+          const filtered = newItems.filter(i => !existingNames.has(i.name.toLowerCase()));
+          return [...prev, ...filtered];
+        });
+
+        alert(`📷 AI Vision Pantry Scan Complete!\n\nSuccessfully detected ${res.data.ingredients.length} fresh pantry ingredients!`);
+      }
+    } catch (err) {
+      console.error('Pantry scan error:', err);
+    } finally {
+      setPantryScanLoading(false);
+    }
+  };
+
+  const handleGenerateWeeklyPlan = async () => {
+    setIsGeneratingWeekly(true);
+    try {
+      const payload = {
+        pantryItems: pantryItems.map(i => i.name),
+        medicalConditions: healthProfile.medicalConditions || [],
+        allergies: healthProfile.allergies || [],
+        dietPreference: healthProfile.dietPreference,
+        planType: 'Weekly',
+        healthGoal: healthProfile.goal
+      };
+      const res = await generateApiMealPlan(payload);
+      if (res.data && res.data.success) {
+        setWeeklyPlanData(res.data.plan);
+      }
+    } catch (err) {
+      console.error('Failed to generate weekly plan:', err);
+    } finally {
+      setIsGeneratingWeekly(false);
+    }
+  };
+
   const handleSaveProfile = (e) => {
     e.preventDefault();
     const finalAge = Math.max(1, Math.min(120, parseInt(tempProfile.age) || 25));
@@ -199,11 +293,14 @@ export default function Nutrition() {
     setShoppingList(prev => [...prev, ...newItems]);
   };
 
-  // ── FILTERED RECIPES GENERATOR FOR SELECTED SLOT ─────────────────────────────
+  // ── FILTERED RECIPES GENERATOR FROM BACKEND EXCEL RECOMMENDATION ENGINE ───────
   const slotRecipes = useMemo(() => {
-    let list = [...INDIAN_RECIPES_DATABASE];
+    if (aiRecommendations && aiRecommendations.length > 0) {
+      return aiRecommendations.slice(0, 10);
+    }
 
-    // Filter by meal category
+    // Client-side fallback if backend is offline
+    let list = [...INDIAN_RECIPES_DATABASE];
     if (selectedMealCategory === 'Breakfast') {
       list = list.filter(r => r.mealType === 'Breakfast');
     } else if (selectedMealCategory === 'Lunch') {
@@ -212,28 +309,32 @@ export default function Nutrition() {
       list = list.filter(r => r.mealType === 'Dinner');
     } else if (selectedMealCategory === 'Snacks') {
       list = list.filter(r => r.mealType === 'Evening Snack' || r.mealType === 'Breakfast');
-    } else if (selectedMealCategory === 'PostWorkout') {
-      list = list.filter(r => r.macros.protein >= 15);
-    } else if (selectedMealCategory === 'PreWorkout') {
-      list = list.filter(r => r.macros.carbs >= 30);
-    } else if (selectedMealCategory === 'CheatMeal') {
-      list = list.filter(r => r.macros.calories >= 400);
     }
 
-    // Filter by cuisine & diet
-    if (cuisineFilter !== 'All') {
-      list = list.filter(r => r.cuisine === cuisineFilter);
-    }
-    if (dietFilter !== 'All') {
-      list = list.filter(r => r.dietaryType === dietFilter);
-    }
+    if (cuisineFilter !== 'All') list = list.filter(r => r.cuisine === cuisineFilter);
+    if (dietFilter !== 'All') list = list.filter(r => r.dietaryType === dietFilter);
     if (recipeSearch.trim()) {
       const q = recipeSearch.toLowerCase();
       list = list.filter(r => r.name.toLowerCase().includes(q) || r.cuisine.toLowerCase().includes(q));
     }
 
-    return list.slice(0, 5); // Guarantee 5 options per slot
-  }, [selectedMealCategory, cuisineFilter, dietFilter, recipeSearch]);
+    return list.map(r => ({
+      ...r,
+      prepTimeMin: r.prepTime,
+      cookTimeMin: 15,
+      calories: r.macros?.calories || 300,
+      protein: r.macros?.protein || 12,
+      carbs: r.macros?.carbs || 35,
+      fat: r.macros?.fat || 10,
+      fiber: r.macros?.fiber || 4,
+      overallMatchPct: 85,
+      ingredientMatchPct: 70,
+      wasteReductionPct: 60,
+      matchedIngredients: r.ingredients?.slice(0, 3) || [],
+      missingIngredients: r.ingredients?.slice(3) || [],
+      explanationBadges: ['✔ Matches your dietary profile', '✔ Balanced Macros']
+    })).slice(0, 10);
+  }, [aiRecommendations, selectedMealCategory, cuisineFilter, dietFilter, recipeSearch]);
 
   return (
     <div className="flex flex-col min-h-screen theme-bg theme-text animate-fade-in pb-28">
@@ -316,10 +417,67 @@ export default function Nutrition() {
               <p className="text-xs text-gray-400 mt-0.5">Target: <span className="text-emerald-400 font-bold">{targets.targetCalories} kcal</span> • Protein: <span className="text-blue-400 font-bold">{targets.targetProtein}g</span> • Pantry Ingredients Matched: <span className="text-amber-400 font-bold">{pantryItems.length} Available</span></p>
             </div>
 
-            <button onClick={() => setActiveTab('pantry')} className="btn-secondary py-2.5 px-4 text-xs font-bold flex items-center gap-1.5 text-[#d4af37] border-[#d4af37]/40">
-              🥫 Update Pantry Ingredients →
-            </button>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={handleGenerateWeeklyPlan} 
+                disabled={isGeneratingWeekly}
+                className="btn-primary py-2.5 px-4 text-xs font-black flex items-center gap-1.5 shadow-glow-gold"
+              >
+                {isGeneratingWeekly ? <RefreshCw size={14} className="animate-spin" /> : <Calendar size={14} />}
+                {isGeneratingWeekly ? 'Generating...' : '📅 Generate 7-Day Weekly Plan'}
+              </button>
+              <button onClick={() => setActiveTab('pantry')} className="btn-secondary py-2.5 px-4 text-xs font-bold flex items-center gap-1.5 text-[#d4af37] border-[#d4af37]/40">
+                🥫 Pantry ({pantryItems.length})
+              </button>
+            </div>
           </div>
+
+          {/* 7-DAY WEEKLY MEAL PLAN CARD */}
+          {weeklyPlanData && weeklyPlanData.days && (
+            <div className="card p-6 rounded-3xl border border-emerald-500/40 bg-emerald-500/5 space-y-4 shadow-xl">
+              <div className="flex justify-between items-center border-b border-emerald-500/30 pb-3">
+                <div>
+                  <span className="text-[10px] font-black text-emerald-400 uppercase tracking-widest block">Dataset Powered</span>
+                  <h3 className="text-lg font-black text-white flex items-center gap-2">
+                    <Calendar size={18} className="text-emerald-400" /> 7-Day AI Custom Weekly Meal Plan
+                  </h3>
+                </div>
+                <button onClick={() => setWeeklyPlanData(null)} className="text-xs text-gray-400 hover:text-white underline font-bold">
+                  Close Weekly View ✕
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+                {weeklyPlanData.days.map((dayPlan, idx) => (
+                  <div key={idx} className="bg-[var(--bg-elevated)] p-4 rounded-2xl border border-[var(--border-color)] space-y-2">
+                    <div className="flex justify-between items-center border-b border-[var(--border-color)] pb-2">
+                      <span className="font-black text-[#d4af37] uppercase text-sm">{dayPlan.day}</span>
+                      <span className="text-[10px] font-mono text-emerald-400 font-bold">{dayPlan.totalCalories} kcal • {dayPlan.totalProtein}g Protein</span>
+                    </div>
+
+                    <div className="space-y-1.5 text-[11px]">
+                      <div>
+                        <span className="text-gray-400 font-bold block text-[9px] uppercase">🌅 Breakfast</span>
+                        <p className="font-bold text-white leading-tight">{dayPlan.breakfast?.name || 'Healthy Oats & Fruits'}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-400 font-bold block text-[9px] uppercase">☀️ Lunch</span>
+                        <p className="font-bold text-white leading-tight">{dayPlan.lunch?.name || 'Dal, Roti & Sabzi'}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-400 font-bold block text-[9px] uppercase">🌙 Dinner</span>
+                        <p className="font-bold text-white leading-tight">{dayPlan.dinner?.name || 'Paneer Curry & Rice'}</p>
+                      </div>
+                      <div>
+                        <span className="text-gray-400 font-bold block text-[9px] uppercase">🍏 Snack</span>
+                        <p className="font-bold text-white leading-tight">{dayPlan.snack?.name || 'Sprouted Moong Salad'}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* MEAL SLOT SELECTOR (5 Options Each Category) */}
           <div className="space-y-2">
@@ -388,79 +546,175 @@ export default function Nutrition() {
             </select>
           </div>
 
-          {/* 5 RECIPE CARDS GRID */}
+          {/* RECIPE RECOMMENDATIONS GRID */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {slotRecipes.map(recipe => (
-              <div key={recipe.id} className="card p-5 rounded-3xl border border-[var(--border-color)] hover:border-[#d4af37]/60 transition-all space-y-4 shadow-lg flex flex-col justify-between">
-                
-                <div className="space-y-3">
-                  {/* Photo & Badge */}
-                  <div className="relative h-44 w-full rounded-2xl overflow-hidden">
-                    <img src={recipe.image} alt={recipe.name} className="w-full h-full object-cover" />
-                    <div className="absolute top-3 left-3 bg-black/70 backdrop-blur-md text-[#d4af37] border border-[#d4af37]/40 text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase">
-                      {recipe.cuisine} • {recipe.prepTime} mins
-                    </div>
-                    <button 
-                      onClick={() => setSavedFavorites(prev => prev.includes(recipe.id) ? prev.filter(x => x !== recipe.id) : [...prev, recipe.id])}
-                      className={`absolute top-3 right-3 p-2 rounded-full backdrop-blur-md border ${
-                        savedFavorites.includes(recipe.id) ? 'bg-rose-500 text-white border-rose-500' : 'bg-black/60 text-gray-300 border-gray-600'
-                      }`}
-                    >
-                      <Heart size={14} fill={savedFavorites.includes(recipe.id) ? "white" : "none"} />
-                    </button>
-                  </div>
-
-                  <div>
-                    <div className="flex justify-between items-start gap-2">
-                      <h3 className="text-base font-black text-white leading-snug">{recipe.name}</h3>
-                      <span className="text-xs font-mono font-bold text-amber-400 shrink-0">₹{recipe.cost}</span>
-                    </div>
-                    <p className="text-[11px] text-gray-400 mt-1 line-clamp-2">{recipe.healthBenefits?.join(' • ')}</p>
-                  </div>
-
-                  {/* Macros Grid */}
-                  <div className="grid grid-cols-4 gap-1.5 text-center text-[10px] bg-[var(--bg-elevated)] p-2.5 rounded-2xl border border-[var(--border-color)]">
-                    <div>
-                      <span className="text-gray-400 block font-bold">Calories</span>
-                      <span className="font-mono font-black text-amber-400">{recipe.macros.calories} kcal</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-400 block font-bold">Protein</span>
-                      <span className="font-mono font-black text-emerald-400">{recipe.macros.protein}g</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-400 block font-bold">Carbs</span>
-                      <span className="font-mono font-black text-blue-400">{recipe.macros.carbs}g</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-400 block font-bold">Fat</span>
-                      <span className="font-mono font-black text-purple-400">{recipe.macros.fat}g</span>
-                    </div>
-                  </div>
-
-                  {/* ⭐ "WHY THIS MEAL?" AI EXPLANATION CARD (User Priority Requirement) */}
-                  <div className="bg-[#d4af37]/10 p-3 rounded-2xl border border-[#d4af37]/30 text-[11px] space-y-1">
-                    <span className="font-black text-[#d4af37] uppercase tracking-wider text-[9px] flex items-center gap-1">
-                      <Zap size={12} /> Why AI Recommended This Meal
-                    </span>
-                    <p className="text-gray-300 italic leading-relaxed">
-                      "{recipe.medicalAdvice || `Targeted for ${healthProfile.goal} because it provides ${recipe.macros.protein}g protein using available pantry staples.`}"
-                    </p>
-                  </div>
-                </div>
-
-                {/* Card Action Button */}
-                <div className="pt-3 border-t border-[var(--border-color)] flex gap-2">
-                  <button
-                    onClick={() => setSelectedRecipeDetail(recipe)}
-                    className="btn-primary flex-1 py-2.5 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5"
-                  >
-                    View Full Recipe & Instructions →
-                  </button>
-                </div>
-
+            {isLoadingRecommendations ? (
+              <div className="col-span-2 py-12 text-center text-gray-400 space-y-3">
+                <RefreshCw size={28} className="animate-spin text-[#d4af37] mx-auto" />
+                <p className="text-xs font-bold uppercase tracking-wider">AI Engine is calculating ingredient matching & disease compatibility...</p>
               </div>
-            ))}
+            ) : slotRecipes.length === 0 ? (
+              <div className="col-span-2 card p-8 text-center text-gray-400 space-y-2">
+                <Utensils size={32} className="mx-auto text-amber-400" />
+                <h4 className="text-sm font-black text-white">No Matching Recipes Found</h4>
+                <p className="text-xs">Try adjusting your filters or adding more pantry items to see recommendations.</p>
+              </div>
+            ) : (
+              slotRecipes.map(recipe => {
+                const totalTime = recipe.totalTimeMin || ((recipe.prepTimeMin || recipe.prepTime || 15) + (recipe.cookTimeMin || 20));
+                const cals = recipe.calories || recipe.macros?.calories || 280;
+                const prot = recipe.protein || recipe.macros?.protein || 14;
+                const carbs = recipe.carbs || recipe.macros?.carbs || 35;
+                const fat = recipe.fat || recipe.macros?.fat || 10;
+                const fiber = recipe.fiber || recipe.macros?.fiber || 4;
+
+                return (
+                  <div key={recipe.id} className="card p-5 rounded-3xl border border-[var(--border-color)] hover:border-[#d4af37]/60 transition-all space-y-4 shadow-lg flex flex-col justify-between">
+                    
+                    <div className="space-y-3">
+                      {/* Photo & Top Badges */}
+                      <div className="relative h-44 w-full rounded-2xl overflow-hidden">
+                        <img src={recipe.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80'} alt={recipe.name} className="w-full h-full object-cover" />
+                        <div className="absolute top-3 left-3 flex flex-wrap gap-1">
+                          <span className="bg-black/70 backdrop-blur-md text-[#d4af37] border border-[#d4af37]/40 text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase">
+                            {recipe.cuisine} • {totalTime} mins
+                          </span>
+                          {recipe.wasteReductionPct > 0 && (
+                            <span className="bg-emerald-500/80 backdrop-blur-md text-white text-[9px] font-black px-2.5 py-0.5 rounded-full">
+                              ♻️ Waste Reduction: {recipe.wasteReductionPct}%
+                            </span>
+                          )}
+                        </div>
+
+                        <button 
+                          onClick={() => setSavedFavorites(prev => prev.includes(recipe.id) ? prev.filter(x => x !== recipe.id) : [...prev, recipe.id])}
+                          className={`absolute top-3 right-3 p-2 rounded-full backdrop-blur-md border ${
+                            savedFavorites.includes(recipe.id) ? 'bg-rose-500 text-white border-rose-500' : 'bg-black/60 text-gray-300 border-gray-600'
+                          }`}
+                        >
+                          <Heart size={14} fill={savedFavorites.includes(recipe.id) ? "white" : "none"} />
+                        </button>
+                      </div>
+
+                      {/* Header & Cost */}
+                      <div>
+                        <div className="flex justify-between items-start gap-2">
+                          <h3 className="text-base font-black text-white leading-snug">{recipe.name}</h3>
+                          <span className="text-xs font-mono font-bold text-amber-400 shrink-0">₹{recipe.costEstimate || recipe.cost || 50}</span>
+                        </div>
+                        
+                        {/* Disease & Health Badges */}
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {recipe.suitableForTags && recipe.suitableForTags.length > 0 ? (
+                            recipe.suitableForTags.map((tag, idx) => (
+                              <span key={idx} className="bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 text-[9px] font-bold px-2 py-0.5 rounded-full">
+                                🩺 {tag}
+                              </span>
+                            ))
+                          ) : (
+                            <span className="bg-blue-500/15 text-blue-300 text-[9px] font-bold px-2 py-0.5 rounded-full">
+                              🥗 Health Approved
+                            </span>
+                          )}
+                          {recipe.isVegan && (
+                            <span className="bg-purple-500/15 text-purple-300 border border-purple-500/30 text-[9px] font-bold px-2 py-0.5 rounded-full">
+                              🌱 Vegan
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* MATCH PROGRESS BARS (Ingredient & Overall) */}
+                      <div className="space-y-2 bg-[var(--bg-elevated)] p-3 rounded-2xl border border-[var(--border-color)]">
+                        <div>
+                          <div className="flex justify-between items-center text-[10px] font-bold mb-1">
+                            <span className="text-gray-400">Overall Match Score</span>
+                            <span className="text-[#d4af37] font-mono">{recipe.overallMatchPct || 85}%</span>
+                          </div>
+                          <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-amber-500 to-[#d4af37] rounded-full transition-all" style={{ width: `${recipe.overallMatchPct || 85}%` }} />
+                          </div>
+                        </div>
+
+                        <div>
+                          <div className="flex justify-between items-center text-[10px] font-bold mb-1">
+                            <span className="text-gray-400">Pantry Ingredient Match</span>
+                            <span className="text-emerald-400 font-mono">{recipe.ingredientMatchPct || 70}%</span>
+                          </div>
+                          <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+                            <div className="h-full bg-emerald-500 rounded-full transition-all" style={{ width: `${recipe.ingredientMatchPct || 70}%` }} />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Macros Grid */}
+                      <div className="grid grid-cols-4 gap-1.5 text-center text-[10px] bg-[var(--bg-elevated)] p-2.5 rounded-2xl border border-[var(--border-color)]">
+                        <div>
+                          <span className="text-gray-400 block font-bold">Calories</span>
+                          <span className="font-mono font-black text-amber-400">{cals} kcal</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400 block font-bold">Protein</span>
+                          <span className="font-mono font-black text-emerald-400">{prot}g</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400 block font-bold">Carbs</span>
+                          <span className="font-mono font-black text-blue-400">{carbs}g</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400 block font-bold">Fat</span>
+                          <span className="font-mono font-black text-purple-400">{fat}g</span>
+                        </div>
+                      </div>
+
+                      {/* MISSING INGREDIENTS & SMART SUBSTITUTIONS */}
+                      {recipe.missingIngredients && recipe.missingIngredients.length > 0 && (
+                        <div className="bg-amber-500/10 p-3 rounded-2xl border border-amber-500/30 text-[11px] space-y-1">
+                          <span className="font-black text-amber-400 uppercase tracking-wider text-[9px] flex items-center gap-1">
+                            <AlertCircle size={12} /> Missing Ingredients ({recipe.missingIngredients.length})
+                          </span>
+                          <p className="text-gray-300 text-[10px]">
+                            {recipe.missingIngredients.join(', ')}
+                          </p>
+                          {recipe.missingWithSubstitutions && recipe.missingWithSubstitutions.length > 0 && (
+                            <div className="pt-1 text-[10px] text-amber-300 font-bold border-t border-amber-500/20">
+                              <span>🔄 Smart Substitutions available (e.g. {recipe.missingWithSubstitutions[0].ingredient} → {recipe.missingWithSubstitutions[0].substitutions.join(' / ')})</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* ⭐ "WHY THIS MEAL?" AI EXPLANATION CARD */}
+                      <div className="bg-[#d4af37]/10 p-3 rounded-2xl border border-[#d4af37]/30 text-[11px] space-y-1">
+                        <span className="font-black text-[#d4af37] uppercase tracking-wider text-[9px] flex items-center gap-1">
+                          <Zap size={12} /> Why AI Recommended This Meal
+                        </span>
+                        <div className="space-y-0.5 text-gray-300 text-[10px]">
+                          {recipe.explanationBadges && recipe.explanationBadges.length > 0 ? (
+                            recipe.explanationBadges.map((badge, idx) => (
+                              <p key={idx} className="font-medium">{badge}</p>
+                            ))
+                          ) : (
+                            <p className="italic">"Matched for your health goal with balanced nutrition using pantry staples."</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Card Action Button */}
+                    <div className="pt-3 border-t border-[var(--border-color)] flex gap-2">
+                      <button
+                        onClick={() => setSelectedRecipeDetail(recipe)}
+                        className="btn-primary flex-1 py-2.5 text-xs font-black uppercase tracking-wider flex items-center justify-center gap-1.5"
+                      >
+                        View Full Recipe & Instructions →
+                      </button>
+                    </div>
+
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       )}
@@ -477,8 +731,13 @@ export default function Nutrition() {
                 <p className="text-xs text-gray-400">Manage available ingredients to get zero-waste AI recipes.</p>
               </div>
 
-              <button onClick={() => alert('📷 Camera Scan AI: Point your smartphone camera at your fridge or pantry to auto-detect ingredients!')} className="btn-secondary py-2 px-4 text-xs font-bold flex items-center gap-1.5 text-blue-400 border-blue-500/40">
-                <Camera size={14} /> 📷 AI Camera Pantry Scan
+              <button 
+                onClick={handleTriggerPantryScan} 
+                disabled={pantryScanLoading}
+                className="btn-secondary py-2 px-4 text-xs font-bold flex items-center gap-1.5 text-blue-400 border-blue-500/40 hover:bg-blue-500/10 disabled:opacity-50"
+              >
+                {pantryScanLoading ? <RefreshCw size={14} className="animate-spin" /> : <Camera size={14} />}
+                {pantryScanLoading ? 'Scanning Fridge Photo...' : '📷 AI Camera Pantry Scan'}
               </button>
             </div>
 

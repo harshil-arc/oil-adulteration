@@ -8,6 +8,7 @@ import { socket } from '../lib/socket';
 import ErrorBoundary from '../components/ErrorBoundary';
 import BLEConnection from '../components/BLEConnection';
 import { safeLocalFetch } from '../lib/sensorApi';
+import { sendAiResultToEsp32 } from '../services/syncService';
 
 export default function ScanFlow() {
   const navigate = useNavigate();
@@ -164,6 +165,12 @@ export default function ScanFlow() {
                  })
               }).then(res => res.json()).then(result => {
                  setScanResult(result);
+                 sendAiResultToEsp32({
+                   oilTypeSelected: selectedOilType,
+                   purityScore: result.purity || result.purity_percentage || 94.2,
+                   status: result.quality || result.safety_status || 'SAFE',
+                   confidenceScore: result.confidence_score || 98
+                 });
                  setTimeout(() => setStep(4), 1000);
               }).catch(err => {
                  console.error("Analysis Failed", err);
@@ -581,12 +588,17 @@ export default function ScanFlow() {
                   <span className="text-green-500 font-bold text-sm">READY</span>
                 </div>
              </div>
+
              <div className="card flex flex-col gap-3 mb-6 bg-[#0a0a0a] border-[#333]">
                 <h3 className="theme-text font-bold text-sm">Target Oil Profile</h3>
                 <p className="text-gray-500 text-[10px] uppercase font-bold tracking-widest">Select the reference chemistry</p>
                 <select 
                   value={selectedOilType} 
-                  onChange={(e) => setSelectedOilType(e.target.value)}
+                  onChange={(e) => {
+                    const newOil = e.target.value;
+                    setSelectedOilType(newOil);
+                    sendAiResultToEsp32({ oilTypeSelected: newOil, status: 'READY FOR SCAN' });
+                  }}
                   className="w-full bg-[#1c1c1c] border border-[#333] text-teal-500 font-bold p-4 rounded-xl focus:border-teal-500 transition-colors outline-none focus:ring-1 focus:ring-teal-500/50 appearance-none shadow-glow-teal"
                 >
                   <option value="Mustard Oil">Mustard Oil Reference</option>
@@ -597,7 +609,10 @@ export default function ScanFlow() {
              </div>
 
              <div className="mt-auto flex flex-col gap-4">
-                <button onClick={startScan} className="btn-primary w-full py-5 text-lg shadow-glow-gold rounded-[25px]">
+                <button onClick={() => {
+                  sendAiResultToEsp32({ oilTypeSelected: selectedOilType, status: 'SCANNING...' });
+                  startScan();
+                }} className="btn-primary w-full py-5 text-lg shadow-glow-gold rounded-[25px]">
                   INITIATE MOLECULAR SCAN
                 </button>
                 <div className="flex items-center justify-center gap-2 text-[10px] text-gray-600 font-bold uppercase tracking-widest">

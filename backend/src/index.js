@@ -14,6 +14,11 @@ const complaintRoutes = require('./routes/complaintRoutes');
 const messRoutes = require('./routes/messRoutes'); // Legacy
 const platformRoutes = require('./routes/platformRoutes');
 const offlineRoutes = require('./routes/offlineRoutes');
+const mealPlannerRoutes = require('./routes/mealPlannerRoutes');
+const mealPlannerService = require('./services/mealPlannerService');
+
+// Initialize Meal Planner Excel Dataset on Startup
+mealPlannerService.loadDatabase();
 
 const app = express();
 const server = http.createServer(app);
@@ -175,6 +180,7 @@ app.use('/api/shops', shopRoutes);
 app.use('/api/complaints', complaintRoutes);
 app.use('/api/mess', messRoutes); // Legacy
 app.use('/api/platform', platformRoutes);
+app.use('/api/meal-planner', mealPlannerRoutes);
 app.use('/api/', offlineRoutes);
 
 // ── 404 handler ───────────────────────────────────────────

@@ -45,13 +45,30 @@ export default function RecipeDetailModal({ isOpen, onClose, recipe, onAddToShop
     ],
     suitableFor = ["Diabetes", "Muscle Building", "Weight Loss", "PCOS", "High Protein"],
     whoShouldAvoid = ["Severe Lactose Intolerance (use Tofu substitute)"],
-    substitutions = [
-      "Substitute Paneer with Organic Tofu for a 100% Vegan & Lactose-Free version.",
-      "Substitute Multigrain Bread with Bajra or Jowar Roti for a Gluten-Free meal."
-    ],
-    medicalAdvice = "Low glycemic index with high protein satiety helps prevent blood glucose spikes, making this an ideal breakfast for Diabetics and PCOS management.",
-    aiReasoning = "Selected for Weight Loss & High Protein goals because it provides 24g protein per serving while utilizing Paneer and Tomatoes currently available in your pantry."
+    substitutions = [],
+    medicalAdvice = "",
+    aiReasoning = "",
+    overallMatchPct = 0,
+    ingredientMatchPct = 0,
+    wasteReductionPct = 0,
+    matchedIngredients = [],
+    missingIngredients = [],
+    missingWithSubstitutions = [],
+    suitableForTags = [],
+    avoidIfTags = [],
+    explanationBadges = [],
+    fiber = 0,
+    sugar = 0,
+    sodium = 0
   } = recipe;
+
+  // Fallback calculations for instructions if missing in row
+  const recipeInstructions = recipe.instructions || [
+    `Prep all ingredients: ${ingredients.slice(0, 3).join(', ')}.`,
+    `Heat pan on medium flame with oil/ghee and temper spices.`,
+    `Add main ingredients and cook thoroughly for ${recipe.cookTimeMin || recipe.prepTime || 15} minutes until tender.`,
+    `Garnish with fresh herbs and serve hot.`
+  ];
 
   const handleAddShopping = () => {
     if (onAddToShoppingList) {
@@ -191,7 +208,7 @@ export default function RecipeDetailModal({ isOpen, onClose, recipe, onAddToShop
               <BookOpen size={14} className="text-blue-400" /> Step-by-Step Cooking Instructions
             </h3>
             <ol className="space-y-2.5">
-              {instructions.map((step, idx) => (
+              {recipeInstructions.map((step, idx) => (
                 <li key={idx} className="bg-[var(--bg-elevated)] p-3.5 rounded-2xl border border-[var(--border-color)] flex gap-3 text-xs text-gray-300">
                   <span className="w-6 h-6 rounded-full bg-[#d4af37]/20 text-[#d4af37] font-black flex items-center justify-center shrink-0 text-[11px]">
                     {idx + 1}

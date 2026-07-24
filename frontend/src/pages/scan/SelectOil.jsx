@@ -4,6 +4,8 @@ import { Search, Check, ChevronLeft, FlaskConical } from 'lucide-react';
 import { OIL_REFERENCE_DATA } from '../../lib/oilReferenceData';
 import { calculateAdulteration } from '../../lib/adulterationEngine';
 
+import { sendAiResultToEsp32 } from '../../services/syncService';
+
 export default function SelectOil() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
@@ -27,6 +29,17 @@ export default function SelectOil() {
     sessionStorage.setItem('selected_oil', JSON.stringify(selected));
     sessionStorage.setItem('analysis_result', JSON.stringify(result));
     localStorage.setItem('selected_oil_type', selected.oilName);
+
+    // Instant Two-Way Sync: Transmit target oil + calculated purity to ESP32 OLED
+    sendAiResultToEsp32({
+      oilName: selected.oilName,
+      purityScore: result.purityPercentage,
+      adulterationPercentage: result.adulterationPercentage,
+      confidenceScore: result.confidenceScore,
+      status: result.tier === 'pure' ? 'SAFE' : result.tier === 'moderate' ? 'SUSPICIOUS' : 'ADULTERATED',
+      detectedAdulterant: result.primaryIndicator || 'None',
+      scanId: `SPT-${Math.floor(100000 + Math.random() * 900000)}`
+    });
 
     navigate('/scan/readings/analysis');
   }, [selected, navigate]);
