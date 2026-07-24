@@ -65,11 +65,18 @@ export async function fetchLatestCloudReading() {
     if (rtdbRes.ok) {
       const rtdbData = await rtdbRes.json();
       if (rtdbData && typeof rtdbData === 'object') {
-        const entries = Object.values(rtdbData).filter(item => item && (item.spectral_data || item.temperature !== undefined));
+        // Map entries including Firebase push key (_key)
+        const entries = Object.keys(rtdbData)
+          .map(key => ({ _key: key, ...rtdbData[key] }))
+          .filter(item => item && (item.spectral_data || item.temperature !== undefined));
         
         if (entries.length > 0) {
-          // Sort absolute newest first by numerical timestamp
+          // Firebase push keys (_key) are naturally chronological.
+          // Sort newest first by Firebase key OR normalized timestamp.
           entries.sort((a, b) => {
+            if (a._key && b._key) {
+              return b._key.localeCompare(a._key);
+            }
             const tA = typeof a.timestamp === 'number' ? a.timestamp : (new Date(a.created_at || a.timestamp || 0).getTime());
             const tB = typeof b.timestamp === 'number' ? b.timestamp : (new Date(b.created_at || b.timestamp || 0).getTime());
             return tB - tA;
