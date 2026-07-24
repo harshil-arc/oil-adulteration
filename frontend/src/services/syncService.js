@@ -113,6 +113,18 @@ export async function sendAiResultToEsp32(result) {
 }
 
 /**
+ * Reset ESP32 OLED Display back to Standby when user exits the inspection page
+ */
+export async function clearEsp32OledResult() {
+  try {
+    await fetch(FIREBASE_DEVICE_RESULT_URL, { method: 'DELETE' });
+    console.log('[SyncService] Cleared OLED result node on Firebase RTDB.');
+  } catch (e) {
+    console.warn('[SyncService] Failed to clear OLED result node:', e);
+  }
+}
+
+/**
  * Hackathon Demo Mode: Trigger simulated test prediction on ESP32 OLED
  */
 export async function sendDemoAiResultToEsp32() {

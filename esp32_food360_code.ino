@@ -1,15 +1,17 @@
 /*
  * ============================================================================
- *  SPECTRATRUST — ESP32 Real-Time Sensor Telemetry & OLED Display Firmware
+ *  SPECTRATRUST — ESP32 Dual-Sync (HTTPS Cloud + Local WebServer) Firmware
  *  Sensors: AS7343 13-Channel Spectrometer + MLX90614 IR Temperature Sensor
  *  Display: SSD1306 128x64 OLED (Clean Layout - Zero Overlap)
- *  Cloud Endpoint: Firebase Realtime Database REST API (Fast HTTP Port 80)
+ *  Cloud Endpoint: Firebase Realtime Database HTTPS REST API
+ *  Local Endpoint: http://<esp32-ip>/result (Port 80 HTTP POST)
  * ============================================================================
  */
 
 #include <WiFi.h>
-#include <WiFiClient.h>
+#include <WiFiClientSecure.h>
 #include <HTTPClient.h>
+#include <WebServer.h>
 #include <Wire.h>
 #include <SparkFun_AS7343.h>
 #include <Adafruit_MLX90614.h>
@@ -24,9 +26,14 @@
 const char* ssid     = "atl";
 const char* password = "harshil913";
 
-// Fast HTTP REST Endpoints (Port 80 - Zero TLS Handshake Latency)
-const char* FIREBASE_TELEMETRY_URL = "http://oil-adulteration-default-rtdb.firebaseio.com/readings.json";
-const char* FIREBASE_RESULT_URL    = "http://oil-adulteration-default-rtdb.firebaseio.com/device_result.json";
+// HTTPS REST Endpoints (Enforces HTTPS for Firebase RTDB)
+const char* FIREBASE_TELEMETRY_URL = "https://oil-adulteration-default-rtdb.firebaseio.com/readings.json";
+const char* FIREBASE_RESULT_URL    = "https://oil-adulteration-default-rtdb.firebaseio.com/device_result.json";
+
+// ============================================================
+//  LOCAL WEBSERVER ON PORT 80
+// ============================================================
+WebServer server(80);
 
 // ============================================================
 //  OLED DISPLAY (I2C SDA: 21, SCL: 22)
@@ -148,7 +155,7 @@ void renderScreen3Adulteration(float purity, bool hasPrediction) {
   drawCardHeader("[3/5]", "PURITY %");
   display.setTextSize(2);
   display.setCursor(0, 22);
-  if (!hasPrediction || purity <= 0.0) {
+  if (!hasPrediction) {
     display.println("-- %");
   } else {
     char buf[20];
@@ -230,28 +237,43 @@ float extractJsonNumber(String json, String key) {
 // Wipe device_result.json from Firebase cloud when result expires or on boot
 void clearCloudResult() {
   if (WiFi.status() != WL_CONNECTED) return;
-  WiFiClient client;
+  WiFiClientSecure client;
+  client.setInsecure();
   HTTPClient http;
   http.begin(client, FIREBASE_RESULT_URL);
-  http.setTimeout(1500);
+  http.setTimeout(2500);
   int code = http.sendRequest("DELETE");
   Serial.printf("[FIRMWARE] Wiped result node from Firebase. HTTP %d\n", code);
   http.end();
 }
 
-// Fetch results pushed from the Mobile/Web App to device_result.json
+// Fetch results pushed from the Mobile/Web App to device_result.json via HTTPS
 void fetchResultsFromApp() {
   if (WiFi.status() != WL_CONNECTED) return;
 
-  WiFiClient client;
+  WiFiClientSecure client;
+  client.setInsecure();
+
   HTTPClient http;
   http.begin(client, FIREBASE_RESULT_URL);
-  http.setTimeout(1500);
+  http.setTimeout(2000);
   int code = http.GET();
 
   if (code == 200) {
     String resp = http.getString();
-    if (resp.length() > 10 && resp != "null") {
+    if (resp == "null" || resp.length() <= 10) {
+      // Cloud node was cleared by App page exit
+      if (currentData.hasActivePrediction) {
+        currentData.hasActivePrediction = false;
+        currentData.oilType = "--";
+        currentData.status = "Standby";
+        currentData.purity = 0.0;
+        currentData.lastScanId = "";
+        currentOledPage = 0;
+        renderScreen1Oil(currentData.oilType.c_str());
+        Serial.println(F("[FIRMWARE] App page exit detected. OLED returned to Standby mode."));
+      }
+    } else {
       String scanId = extractJsonString(resp, "scan_id");
       String oil = extractJsonString(resp, "oil_type");
       String status = extractJsonString(resp, "safety_status");
@@ -263,19 +285,47 @@ void fetchResultsFromApp() {
         currentData.purity = purity;
         currentData.status = (status.length() > 0) ? status : "Ready";
         currentData.hasActivePrediction = true;
-        currentData.predictionTime = millis();
-        currentData.lastScanId = scanId;
 
         if (isNew) {
+          currentData.lastScanId = scanId;
           currentOledPage = 0; // Jump OLED to Screen [1/5] OIL TYPE immediately
-          lastOledTime = millis(); // Refresh card timing
-          renderScreen1Oil(currentData.oilType.c_str()); // Redraw immediately on hardware!
-          Serial.printf("[APP RESULT SYNCED] Oil: %s | Purity: %.1f%% | Status: %s | ScanID: %s\n", oil.c_str(), currentData.purity, currentData.status.c_str(), scanId.c_str());
+          lastOledTime = millis();
+          renderScreen1Oil(currentData.oilType.c_str()); // Redraw immediately!
+          Serial.printf("[HTTPS CLOUD SYNCED] Oil: %s | Purity: %.1f%% | Status: %s | ScanID: %s\n", oil.c_str(), currentData.purity, currentData.status.c_str(), scanId.c_str());
         }
       }
     }
   }
   http.end();
+}
+
+// Direct Local WebServer POST handler (http://<esp32-ip>/result)
+void handleLocalResultPost() {
+  if (server.hasArg("plain")) {
+    String json = server.arg("plain");
+    String scanId = extractJsonString(json, "scan_id");
+    String oil = extractJsonString(json, "oil_type");
+    String status = extractJsonString(json, "safety_status");
+    float purity = extractJsonNumber(json, "purity_percentage");
+
+    if (oil.length() > 0 && oil != "--") {
+      currentData.oilType = oil;
+      currentData.purity = purity;
+      currentData.status = (status.length() > 0) ? status : "Ready";
+      currentData.hasActivePrediction = true;
+      currentData.predictionTime = millis();
+      currentData.lastScanId = scanId;
+
+      currentOledPage = 0;
+      lastOledTime = millis();
+      renderScreen1Oil(currentData.oilType.c_str());
+
+      server.send(200, "application/json", "{\"status\":\"ok\"}");
+      Serial.printf("[LOCAL IP SYNCED] Oil: %s | Purity: %.1f%% | Status: %s\n", oil.c_str(), purity, status.c_str());
+      return;
+    }
+  }
+  server.send(400, "application/json", "{\"error\":\"invalid payload\"}");
 }
 
 // Non-blocking WiFi reconnect monitor
@@ -330,7 +380,6 @@ void readSensors() {
       quantizeChannel(nir));
     currentData.spectralDigits = String(buf);
 
-    // Print RAW channel values directly to Serial Monitor
     Serial.printf("[AS7343 REAL SPECTRAL] F1:%u F2:%u FZ:%u F3:%u F4:%u F5:%u FY:%u FXL:%u F6:%u F7:%u F8:%u VIS:%u NIR:%u\n",
       f1, f2, fz, f3, f4, f5, fy, fxl, f6, f7, f8, vis, nir);
   } else {
@@ -343,11 +392,13 @@ void readSensors() {
 void uploadTelemetry() {
   if (WiFi.status() != WL_CONNECTED) return;
 
-  WiFiClient client;
+  WiFiClientSecure client;
+  client.setInsecure();
+
   HTTPClient http;
   http.begin(client, FIREBASE_TELEMETRY_URL);
   http.addHeader("Content-Type", "application/json");
-  http.setTimeout(2000);
+  http.setTimeout(2500);
 
   time_t nowSec = time(nullptr);
   uint64_t nowEpoch = (uint64_t)nowSec * 1000ULL;
@@ -418,6 +469,11 @@ void setup() {
     oledShow("WiFi Connecting...", "Telemetry active", "", "");
   }
 
+  // Set up local WebServer endpoints on Port 80
+  server.on("/result", HTTP_POST, handleLocalResultPost);
+  server.begin();
+  Serial.println(F("[OK] Local WebServer ready on port 80 at /result"));
+
   // Initialize Sensors
   if (mlx.begin()) {
     mlxReady = true;
@@ -455,6 +511,9 @@ void loop() {
 
   maintainWifi();
 
+  // Listen for direct local HTTP POST requests from App
+  server.handleClient();
+
   // 1. Read Hardware Sensors & Upload Telemetry (Every 1.5 seconds)
   if (nowMs - lastUploadTime >= 1500) {
     lastUploadTime = nowMs;
@@ -462,21 +521,10 @@ void loop() {
     uploadTelemetry();
   }
 
-  // 2. Fetch App Result sync (Fast 800ms polling via fast HTTP)
-  if (nowMs - lastResultFetch >= 800) {
+  // 2. Fetch App Result sync via HTTPS Cloud REST (Every 1.8 seconds)
+  if (nowMs - lastResultFetch >= 1800) {
     lastResultFetch = nowMs;
     fetchResultsFromApp();
-  }
-
-  // 3. Auto-clear active prediction after 30 seconds AND wipe node from Firebase
-  if (currentData.hasActivePrediction && (nowMs - currentData.predictionTime >= 30000)) {
-    currentData.hasActivePrediction = false;
-    currentData.oilType = "--";
-    currentData.status = "Standby";
-    currentData.purity = 0.0;
-    currentData.lastScanId = "";
-    clearCloudResult(); // Clear Firebase cloud node so it doesn't re-trigger
-    Serial.println(F("[DISPLAY] Scan display timed out. Cleared cloud node and returned OLED to Standby mode."));
   }
 
   // 4. Non-blocking OLED Screen Carousel (Every 2.2 seconds)

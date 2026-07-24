@@ -1,6 +1,84 @@
 const express = require('express');
 const router = express.Router();
 const mealPlannerService = require('../services/mealPlannerService');
+const ingredientService = require('../services/ingredientService');
+
+/**
+ * @route   GET /api/meal-planner/master-ingredients
+ * @desc    Returns the complete Master Ingredient Database extracted from dataset Excel sheet
+ */
+router.get('/master-ingredients', (req, res) => {
+  try {
+    const master = ingredientService.getMasterIngredients();
+    const categorized = ingredientService.getCategorizedIngredients();
+    res.json({
+      success: true,
+      totalCount: master.length,
+      master,
+      categorized
+    });
+  } catch (err) {
+    console.error('[MealPlannerRoutes] Master ingredients error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * @route   GET /api/meal-planner/search-ingredients
+ * @desc    Autocomplete search for ingredients strictly against master dataset
+ */
+router.get('/search-ingredients', (req, res) => {
+  try {
+    const query = req.query.q || '';
+    const category = req.query.category || 'All';
+    const suggestions = ingredientService.searchIngredients(query, category);
+    res.json({
+      success: true,
+      count: suggestions.length,
+      suggestions
+    });
+  } catch (err) {
+    console.error('[MealPlannerRoutes] Search ingredients error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * @route   POST /api/meal-planner/validate-ingredient
+ * @desc    Validates if an ingredient name exists in the master dataset
+ */
+router.post('/validate-ingredient', (req, res) => {
+  try {
+    const { name } = req.body || {};
+    const isValid = ingredientService.validateIngredient(name);
+    res.json({
+      success: true,
+      name,
+      isValid
+    });
+  } catch (err) {
+    console.error('[MealPlannerRoutes] Validate ingredient error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
+ * @route   GET /api/meal-planner/pairings
+ * @desc    Returns smart ingredient pairing suggestions for current active pantry
+ */
+router.get('/pairings', (req, res) => {
+  try {
+    const ingredients = req.query.ingredients ? req.query.ingredients.split(',') : [];
+    const pairings = ingredientService.getSmartPairings(ingredients);
+    res.json({
+      success: true,
+      pairings
+    });
+  } catch (err) {
+    console.error('[MealPlannerRoutes] Pairings error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
 
 /**
  * @route   POST /api/meal-planner/recommend

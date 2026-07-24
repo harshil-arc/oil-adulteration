@@ -249,20 +249,30 @@ export default function Analysis() {
     setSyncStatus(syncRes);
 
     // TWO-WAY SYNCHRONIZATION: Transmit AI prediction packet back to ESP32 OLED
-    sendAiResultToEsp32({
-      oilName: selectedOil.oilName,
-      purityScore: result.purityPercentage,
-      adulterationPercentage: result.adulterationPercentage,
-      confidenceScore: result.confidenceScore,
-      status: result.tier === 'pure' ? 'SAFE' : 'ADULTERATED',
-      detectedAdulterant: result.primaryIndicator || 'None',
-      scanId: reportNo
-    });
+    const syncPacket = () => {
+      sendAiResultToEsp32({
+        oilName: selectedOil.oilName,
+        purityScore: result.purityPercentage,
+        adulterationPercentage: result.adulterationPercentage,
+        confidenceScore: result.confidenceScore,
+        status: result.tier === 'pure' ? 'SAFE' : result.tier === 'moderate' ? 'SUSPICIOUS' : 'ADULTERATED',
+        detectedAdulterant: result.primaryIndicator || 'None',
+        scanId: reportNo
+      });
+    };
+
+    syncPacket();
+    const heartbeat = setInterval(syncPacket, 4000); // Re-send every 4s to keep OLED active while viewing report
 
     // Save history to Supabase
     supabase.from('analysis_results').insert(record).then(({ error }) => {
       if (error) console.warn('[Analysis] Supabase sync notice:', error.message);
     });
+
+    return () => {
+      clearInterval(heartbeat);
+      clearEsp32OledResult(); // Immediately reset OLED to Standby when user exits page
+    };
 
     // Load local timeline
     try {

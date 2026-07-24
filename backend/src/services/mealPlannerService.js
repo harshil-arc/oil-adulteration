@@ -308,169 +308,45 @@ function recommendDishes(userPayload = {}) {
     if (mealType && mealType !== 'All') {
       const dishMealType = dish.mealType.toLowerCase();
       const targetMeal = mealType.toLowerCase();
-      if (!dishMealType.includes(targetMeal) && !targetMeal.includes(dishMealType)) {
-        // Allow fallback if mealType specifies snack / breakfast
-        if (targetMeal === 'snacks' && !dishMealType.includes('snack')) continue;
-        if (targetMeal === 'breakfast' && !dishMealType.includes('breakfast')) continue;
-        if ((targetMeal === 'lunch' || targetMeal === 'dinner') && !dishMealType.includes('lunch') && !dishMealType.includes('dinner')) continue;
-      }
+      
+      if (targetMeal === 'breakfast' && !dishMealType.includes('breakfast')) continue;
+      if (targetMeal === 'lunch' && !dishMealType.includes('lunch') && !dishMealType.includes('main')) continue;
+      if (targetMeal === 'dinner' && !dishMealType.includes('dinner') && !dishMealType.includes('main')) continue;
+      if ((targetMeal === 'snacks' || targetMeal === 'snack') && !dishMealType.includes('snack') && !dishMealType.includes('beverage')) continue;
+      if (targetMeal === 'postworkout' && dish.protein < 15) continue;
+      if (targetMeal === 'preworkout' && dish.carbs < 25) continue;
+      if (targetMeal === 'cheatmeal' && dish.calories < 350) continue;
     }
 
-    // 5. Cuisine Filter
+    // 5. Medical Conditions Strict Exclusion (STRICT MEDICAL COMPLIANCE)
+    if (medicalConditions && medicalConditions.length > 0) {
+      let isMedicalIncompatible = false;
+      if (medicalConditions.includes('Diabetes') && !dish.diabetesFriendly) isMedicalIncompatible = true;
+      if (medicalConditions.includes('Hypertension') && !dish.hypertensionFriendly) isMedicalIncompatible = true;
+      if ((medicalConditions.includes('Heart Disease') || medicalConditions.includes('High Cholesterol')) && !dish.heartHealthy) isMedicalIncompatible = true;
+      if (medicalConditions.includes('Kidney Disease') && !dish.kidneyDiseaseFriendly) isMedicalIncompatible = true;
+      if ((medicalConditions.includes('Obesity') || medicalConditions.includes('Weight Loss')) && !dish.weightManagementFriendly) isMedicalIncompatible = true;
+      if (medicalConditions.includes('PCOS') && !dish.pcosFriendly) isMedicalIncompatible = true;
+      if (medicalConditions.includes('Thyroid Disorders') && !dish.thyroidFriendly) isMedicalIncompatible = true;
+      if (medicalConditions.includes('Anemia') && !dish.anemiaFriendly) isMedicalIncompatible = true;
+      if (medicalConditions.includes('Gout') && !dish.goutFriendly) isMedicalIncompatible = true;
+
+      // Skip non-friendly dishes for medical safety!
+      if (isMedicalIncompatible) continue;
+    }
+
+    // 6. Cuisine Filter
     if (cuisine && cuisine !== 'All') {
       if (dish.cuisine.toLowerCase() !== cuisine.toLowerCase()) continue;
     }
 
-    // 6. Max Cook Time Filter
-    if (maxCookTime && dish.totalTimeMin > maxCookTime) continue;
-
-    // ── MATCHING & SCORING ALGORITHM ──────────────────────────────────────────
-
-    // A. Ingredient Match Calculation
-    const matchedIngredients = [];
-    const missingIngredients = [];
-    const missingWithSubstitutions = [];
-
-    for (const reqIng of dish.ingredients) {
-      let isFound = false;
-      for (const pItem of userPantryList) {
-        if (checkIngredientMatch(pItem, reqIng)) {
-          isFound = true;
-          break;
-        }
-      }
-
-      if (isFound) {
-        matchedIngredients.push(reqIng);
-      } else {
-        missingIngredients.push(reqIng);
-        missingWithSubstitutions.push({
-          ingredient: reqIng,
-          substitutions: getSmartSubstitutions(reqIng)
-        });
-      }
-    }
-
-    const totalDishIngredientsCount = Math.max(1, dish.ingredients.length);
-    const ingredientMatchPct = Math.round((matchedIngredients.length / totalDishIngredientsCount) * 100);
-
-    // B. Disease Compatibility Calculation
-    let satisfiedConditionsCount = 0;
-    const activeConditionsCount = Math.max(1, medicalConditions.length);
-    const suitableForTags = [];
-    const avoidIfTags = [];
-
-    if (medicalConditions.length > 0) {
-      if (medicalConditions.includes('Diabetes')) {
-        if (dish.diabetesFriendly) { satisfiedConditionsCount++; suitableForTags.push('Diabetes Friendly'); }
-        else { avoidIfTags.push('High Glycemic Index'); }
-      }
-      if (medicalConditions.includes('Hypertension')) {
-        if (dish.hypertensionFriendly) { satisfiedConditionsCount++; suitableForTags.push('Hypertension Friendly'); }
-        else { avoidIfTags.push('High Sodium'); }
-      }
-      if (medicalConditions.includes('Heart Disease') || medicalConditions.includes('High Cholesterol')) {
-        if (dish.heartHealthy) { satisfiedConditionsCount++; suitableForTags.push('Heart Healthy'); }
-        else { avoidIfTags.push('High Saturated Fat'); }
-      }
-      if (medicalConditions.includes('Kidney Disease')) {
-        if (dish.kidneyDiseaseFriendly) { satisfiedConditionsCount++; suitableForTags.push('Kidney Friendly'); }
-        else { avoidIfTags.push('High Potassium / Sodium'); }
-      }
-      if (medicalConditions.includes('Obesity') || medicalConditions.includes('Weight Loss')) {
-        if (dish.weightManagementFriendly) { satisfiedConditionsCount++; suitableForTags.push('Weight Loss Friendly'); }
-      }
-      if (medicalConditions.includes('PCOS')) {
-        if (dish.pcosFriendly) { satisfiedConditionsCount++; suitableForTags.push('PCOS Friendly'); }
-      }
-      if (medicalConditions.includes('Thyroid Disorders')) {
-        if (dish.thyroidFriendly) { satisfiedConditionsCount++; suitableForTags.push('Thyroid Friendly'); }
-      }
-      if (medicalConditions.includes('Anemia')) {
-        if (dish.anemiaFriendly) { satisfiedConditionsCount++; suitableForTags.push('Iron Rich (Anemia)'); }
-      }
-      if (medicalConditions.includes('Gout')) {
-        if (dish.goutFriendly) { satisfiedConditionsCount++; suitableForTags.push('Gout Friendly'); }
-      }
-      if (medicalConditions.includes('Senior Citizens')) {
-        if (dish.suitableSeniors) suitableForTags.push('Senior Citizen Friendly');
-      }
-      if (medicalConditions.includes('Children')) {
-        if (dish.suitableChildren) suitableForTags.push('Kids Friendly');
-      }
-
-      var diseaseCompPct = Math.round((satisfiedConditionsCount / activeConditionsCount) * 100);
-    } else {
-      var diseaseCompPct = 100;
-      if (dish.diabetesFriendly) suitableForTags.push('Diabetes Friendly');
-      if (dish.heartHealthy) suitableForTags.push('Heart Healthy');
-    }
-
-    // C. Allergy & Diet Compatibility
-    const allergyCompPct = 100;
-
-    // D. Nutritional Suitability (Based on Health Goal)
-    let nutritionalPct = 70;
-    if (healthGoal === 'Weight Loss' && dish.calories < 380 && dish.protein >= 12) nutritionalPct += 25;
-    if (healthGoal === 'Muscle Building' && dish.protein >= 20) nutritionalPct += 30;
-    if (healthGoal === 'High Fiber' && dish.fiber >= 5) nutritionalPct += 25;
-    nutritionalPct = Math.min(100, nutritionalPct);
-
-    // E. User Preference Score
-    let prefPct = 70;
-    if (dish.cuisine.toLowerCase() === (cuisine || '').toLowerCase()) prefPct += 20;
-    prefPct = Math.min(100, prefPct);
-
-    // F. Cooking Time Score
-    const timePct = dish.totalTimeMin <= 25 ? 100 : (dish.totalTimeMin <= 40 ? 80 : 60);
-
-    // G. OVERALL SCORE WEIGHTING FORMULA
-    // 40% Ingredient Match + 20% Disease Comp + 15% Allergy Comp + 10% Nutritional + 10% User Pref + 5% Cooking Time
-    const overallMatchPct = Math.round(
-      (0.40 * ingredientMatchPct) +
-      (0.20 * diseaseCompPct) +
-      (0.15 * allergyCompPct) +
-      (0.10 * nutritionalPct) +
-      (0.10 * prefPct) +
-      (0.05 * timePct)
-    );
-
-    // H. Waste Reduction Score
-    const userPantryCount = Math.max(1, userPantryList.length);
-    const wasteReductionPct = Math.min(100, Math.round((matchedIngredients.length / userPantryCount) * 100));
-
-    // I. Smart Explanations Generator
-    const explanationBadges = [];
-    if (matchedIngredients.length > 0) {
-      explanationBadges.push(`✔ Uses ${matchedIngredients.length} of your pantry items`);
-    }
-    if (dish.protein >= 15) {
-      explanationBadges.push(`✔ High Protein (${dish.protein}g)`);
-    }
-    if (dish.diabetesFriendly) {
-      explanationBadges.push(`✔ Diabetes Friendly`);
-    }
-    if (dish.hypertensionFriendly || dish.sodium < 400) {
-      explanationBadges.push(`✔ Low Sodium / BP Friendly`);
-    }
-    if (dish.totalTimeMin <= 25) {
-      explanationBadges.push(`✔ Quick Meal (Only ${dish.totalTimeMin} mins)`);
-    }
-    if (wasteReductionPct >= 50) {
-      explanationBadges.push(`✔ Waste Reduction Score: ${wasteReductionPct}%`);
-    }
+    // ── HEALTHIFYME-GRADE MULTI-WEIGHTED SCORING ENGINE ────────────────────────
+    const { scoreRecipeServer } = require('./aiRecommendationEngine');
+    const scoredResult = scoreRecipeServer(dish, userPayload);
+    if (!scoredResult) continue; // Allergen disqualified
 
     scoredDishes.push({
       ...dish,
-      ingredientMatchPct,
-      overallMatchPct,
-      diseaseCompPct,
-      wasteReductionPct,
-      matchedIngredients,
-      missingIngredients,
-      missingWithSubstitutions,
-      suitableForTags,
-      avoidIfTags,
       explanationBadges
     });
   }
@@ -480,10 +356,48 @@ function recommendDishes(userPayload = {}) {
     if (b.overallMatchPct !== a.overallMatchPct) {
       return b.overallMatchPct - a.overallMatchPct;
     }
-    return b.ingredientMatchPct - a.ingredientMatchPct;
+    if (b.ingredientMatchPct !== a.ingredientMatchPct) {
+      return b.ingredientMatchPct - a.ingredientMatchPct;
+    }
+    return b.protein - a.protein;
   });
 
-  return scoredDishes;
+  // Ensure diversity: Interleave dishes with different main ingredients/categories
+  const finalDiverseList = [];
+  const seenPrefixes = new Map();
+
+  for (const d of scoredDishes) {
+    const mainWord = d.name.split(' ')[0].toLowerCase();
+    const count = seenPrefixes.get(mainWord) || 0;
+    if (count < 3) { // Max 3 dishes starting with the same word (e.g. Chicken, Paneer, Oats)
+      finalDiverseList.push(d);
+      seenPrefixes.set(mainWord, count + 1);
+    }
+  }
+
+  // Guarantee at least 10 recommendations for narrow cuisine/meal slot filters
+  if (finalDiverseList.length < 10 && (cuisine !== 'All' || (mealType && mealType !== 'All'))) {
+    const fallbackDishes = recommendDishes({
+      ...userPayload,
+      cuisine: 'All', // Relax single cuisine constraint
+      mealType: 'All' // Relax strict meal slot constraint if needed
+    });
+
+    for (const fb of fallbackDishes) {
+      if (finalDiverseList.length >= 15) break;
+      if (!finalDiverseList.some(x => x.id === fb.id || x.name === fb.name)) {
+        finalDiverseList.push({
+          ...fb,
+          explanationBadges: [
+            ...fb.explanationBadges,
+            '💡 Healthy Regional Recommendation'
+          ]
+        });
+      }
+    }
+  }
+
+  return finalDiverseList;
 }
 
 /**

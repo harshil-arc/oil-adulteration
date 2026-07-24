@@ -41,4 +41,10 @@ export const scanPantryVision = (formData) => api.post('/api/meal-planner/pantry
 export const generateShoppingList = (payload) => api.post('/api/meal-planner/shopping-list', payload);
 export const getMealPlannerStats = () => api.get('/api/meal-planner/stats');
 
+// ── Master Ingredient Database Endpoints ──
+export const getMasterIngredients = () => api.get('/api/meal-planner/master-ingredients');
+export const searchIngredients = (params) => api.get('/api/meal-planner/search-ingredients', { params });
+export const validateIngredient = (payload) => api.post('/api/meal-planner/validate-ingredient', payload);
+export const getIngredientPairings = (params) => api.get('/api/meal-planner/pairings', { params });
+
 export default api;

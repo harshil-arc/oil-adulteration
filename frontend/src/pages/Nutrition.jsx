@@ -18,12 +18,20 @@ import {
   ALLERGIES_LIST, 
   INDIAN_RECIPES_DATABASE
 } from '../data/nutritionData';
+import { FALLBACK_MASTER_INGREDIENTS, FALLBACK_CATEGORIZED_INGREDIENTS } from '../data/fallbackMasterIngredients';
+import { createUserProfile, rankAndScoreRecipes } from '../services/aiRecommendationEngine';
 import { 
   getMealRecommendations, 
   generateMealPlan as generateApiMealPlan, 
   scanPantryVision, 
-  generateShoppingList as generateApiShoppingList 
+  generateShoppingList as generateApiShoppingList,
+  getMasterIngredients,
+  getIngredientPairings,
+  validateIngredient as validateApiIngredient
 } from '../lib/api';
+import AutocompleteIngredientSearch from '../components/pantry/AutocompleteIngredientSearch';
+import CategoryIngredientBrowser from '../components/pantry/CategoryIngredientBrowser';
+import PantryStatsHeader from '../components/pantry/PantryStatsHeader';
 import { 
   generateWeeklyWorkoutPlan, 
   getExerciseLibrary, 
@@ -74,23 +82,83 @@ export default function Nutrition() {
 
   const [tempProfile, setTempProfile] = useState(healthProfile);
 
-  // ── 2. SMART PANTRY STATE ────────────────────────────────────────────────────
-  const [pantryCategory, setPantryCategory] = useState('All');
-  const [pantrySearch, setPantrySearch] = useState('');
+  // ── 2. MASTER INGREDIENT & SMART PANTRY STORE ──────────────────────────────
+  const [masterIngredients, setMasterIngredients] = useState([]);
+  const [categorizedIngredients, setCategorizedIngredients] = useState([]);
+  const [smartPairings, setSmartPairings] = useState([]);
+  const [recentPantryItems, setRecentPantryItems] = useState(() => {
+    try {
+      const saved = localStorage.getItem('recent_pantry_items');
+      return saved ? JSON.parse(saved) : ['Tomato', 'Potato', 'Paneer', 'Onion', 'Spinach', 'Rice'];
+    } catch(e) {
+      return ['Tomato', 'Potato', 'Paneer', 'Onion', 'Spinach', 'Rice'];
+    }
+  });
+
   const [pantryItems, setPantryItems] = useState([
-    { id: 'p-1', name: 'Paneer (Cottage Cheese)', quantity: '200g', category: 'Dairy & Protein', expiry: '3 Days' },
-    { id: 'p-2', name: 'Fresh Tomatoes', quantity: '4 Pcs', category: 'Vegetables & Fruits', expiry: '5 Days' },
-    { id: 'p-3', name: 'Onions', quantity: '5 Pcs', category: 'Vegetables & Fruits', expiry: '10 Days' },
-    { id: 'p-4', name: 'Whole Wheat Atta', quantity: '2 kg', category: 'Grains & Staples', expiry: '30 Days' },
-    { id: 'p-5', name: 'Cold-Pressed Mustard Oil', quantity: '1 Liter', category: 'Spices & Oils', expiry: '60 Days' },
-    { id: 'p-6', name: 'Sprouted Green Moong', quantity: '250g', category: 'Dairy & Protein', expiry: '2 Days' },
-    { id: 'p-7', name: 'Low-Fat Curd', quantity: '400g', category: 'Dairy & Protein', expiry: '4 Days' }
+    { id: 'p-1', name: 'Paneer (Cottage Cheese)', icon: '🧀', categoryName: 'Dairy & Protein' },
+    { id: 'p-2', name: 'Fresh Tomatoes', icon: '🍅', categoryName: 'Vegetables & Produce' },
+    { id: 'p-3', name: 'Onions', icon: '🧅', categoryName: 'Vegetables & Produce' },
+    { id: 'p-4', name: 'Whole Wheat Atta', icon: '🌾', categoryName: 'Grains & Staples' },
+    { id: 'p-5', name: 'Cold-Pressed Mustard Oil', icon: '🫒', categoryName: 'Oils & Fats' },
+    { id: 'p-6', name: 'Sprouted Green Moong', icon: '🫘', categoryName: 'Pulses & Lentils' }
   ]);
 
-  const [newIngredient, setNewIngredient] = useState({ name: '', quantity: '100g', category: 'Vegetables & Fruits' });
+  const popularEssentials = useMemo(() => [
+    { name: 'Tomato', icon: '🍅', categoryName: 'Vegetables & Produce' },
+    { name: 'Potato', icon: '🥔', categoryName: 'Vegetables & Produce' },
+    { name: 'Onion', icon: '🧅', categoryName: 'Vegetables & Produce' },
+    { name: 'Garlic', icon: '🧄', categoryName: 'Vegetables & Produce' },
+    { name: 'Paneer (Cottage Cheese)', icon: '🧀', categoryName: 'Dairy & Protein' },
+    { name: 'Fresh Spinach (Palak)', icon: '🥬', categoryName: 'Leafy Greens' },
+    { name: 'Whole Wheat Atta', icon: '🌾', categoryName: 'Grains & Staples' },
+    { name: 'Basmati Rice', icon: '🍚', categoryName: 'Grains & Staples' },
+    { name: 'Chicken', icon: '🍗', categoryName: 'Meat & Poultry' },
+    { name: 'Eggs', icon: '🥚', categoryName: 'Dairy & Protein' }
+  ], []);
+
+  // Fetch master ingredient database on load with instant fallback
+  useEffect(() => {
+    const fetchMasterData = async () => {
+      try {
+        const res = await getMasterIngredients();
+        if (res.data && res.data.success && res.data.master && res.data.master.length > 0) {
+          setMasterIngredients(res.data.master);
+          setCategorizedIngredients(res.data.categorized || []);
+          return;
+        }
+      } catch (err) {
+        console.error('Failed to fetch master ingredients:', err);
+      }
+      // Instant local fallback if API is slow or offline
+      setMasterIngredients(FALLBACK_MASTER_INGREDIENTS);
+      setCategorizedIngredients(FALLBACK_CATEGORIZED_INGREDIENTS);
+    };
+    fetchMasterData();
+  }, []);
+
+  // Fetch smart ingredient pairings when active pantry changes
+  useEffect(() => {
+    const fetchPairings = async () => {
+      try {
+        const activeNames = pantryItems.map(i => typeof i === 'string' ? i : i.name);
+        const res = await getIngredientPairings({ ingredients: activeNames.join(',') });
+        if (res.data && res.data.success) {
+          setSmartPairings(res.data.pairings || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch pairings:', err);
+      }
+    };
+    if (pantryItems.length > 0) {
+      fetchPairings();
+    } else {
+      setSmartPairings([]);
+    }
+  }, [pantryItems]);
 
   // ── 3. MEAL CATEGORY SLOTS & SEARCH FILTERS ──────────────────────────────────
-  const [selectedMealCategory, setSelectedMealCategory] = useState('Breakfast'); // 'Breakfast', 'Lunch', 'Dinner', 'Snacks', 'PostWorkout', 'PreWorkout', 'CheatMeal'
+  const [selectedMealCategory, setSelectedMealCategory] = useState('Breakfast');
   const [recipeSearch, setRecipeSearch] = useState('');
   const [cuisineFilter, setCuisineFilter] = useState('All');
   const [dietFilter, setDietFilter] = useState('All');
@@ -118,7 +186,7 @@ export default function Nutrition() {
   const [selectedLeftovers, setSelectedLeftovers] = useState(['Yesterday Rice', 'Leftover Dal']);
 
   // ── 7. HYDRATION & WATER TRACKER ──────────────────────────────────────────────
-  const [waterCups, setWaterCups] = useState(10); // 2500ml
+  const [waterCups, setWaterCups] = useState(10);
 
   // ── 8. SAVED FAVORITES & MEAL HISTORY ──────────────────────────────────────────
   const [savedFavorites, setSavedFavorites] = useState(['guj-1', 'pun-2']);
@@ -127,21 +195,85 @@ export default function Nutrition() {
     { id: 'h-2', name: 'Amritsari Chole & Whole Wheat Roti', mealType: 'Lunch', calories: 440, protein: 18, status: 'Eaten', timestamp: 'Today, 01:30 PM' }
   ]);
 
-  // Fetch recommendations dynamically from backend Excel engine
+  // Handler: Add ingredient with strict validation
+  const handleAddIngredient = (item) => {
+    const name = typeof item === 'string' ? item : item.name;
+    if (!name) return;
+
+    // Strict validation against master list if name is a plain string
+    const existsInMaster = masterIngredients.length === 0 || masterIngredients.some(m => m.name.toLowerCase().trim() === name.toLowerCase().trim());
+    if (!existsInMaster) return;
+
+    const isAlreadyInPantry = pantryItems.some(i => {
+      const iName = typeof i === 'string' ? i : i.name;
+      return iName.toLowerCase().trim() === name.toLowerCase().trim();
+    });
+
+    if (isAlreadyInPantry) return;
+
+    const newItem = typeof item === 'object' && item.name ? item : {
+      id: `p-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+      name,
+      icon: '🥗',
+      categoryName: 'Vegetables & Produce'
+    };
+
+    setPantryItems(prev => [...prev, newItem]);
+
+    setRecentPantryItems(prev => {
+      const filtered = prev.filter(r => (typeof r === 'string' ? r : r.name).toLowerCase() !== name.toLowerCase());
+      const updated = [newItem, ...filtered].slice(0, 8);
+      try { localStorage.setItem('recent_pantry_items', JSON.stringify(updated)); } catch(e){}
+      return updated;
+    });
+  };
+
+  const handleRemoveIngredient = (item) => {
+    const name = typeof item === 'string' ? item : item.name;
+    setPantryItems(prev => prev.filter(i => {
+      const iName = typeof i === 'string' ? i : i.name;
+      return iName.toLowerCase().trim() !== name.toLowerCase().trim();
+    }));
+  };
+
+  const handleToggleIngredient = (item) => {
+    const name = typeof item === 'string' ? item : item.name;
+    const isAlreadyInPantry = pantryItems.some(i => {
+      const iName = typeof i === 'string' ? i : i.name;
+      return iName.toLowerCase().trim() === name.toLowerCase().trim();
+    });
+
+    if (isAlreadyInPantry) {
+      handleRemoveIngredient(item);
+    } else {
+      handleAddIngredient(item);
+    }
+  };
+
+  const handleClearAllPantry = () => {
+    setPantryItems([]);
+  };
+
+  // Instant Reactive Recommendation Fetcher (triggers whenever pantry, profile, or filters change)
   useEffect(() => {
     let isMounted = true;
     const fetchRecommendations = async () => {
       setIsLoadingRecommendations(true);
+      setAiRecommendations([]);
       try {
         const payload = {
-          pantryItems: pantryItems.map(i => i.name),
+          pantryItems: pantryItems.map(i => typeof i === 'string' ? i : i.name),
           medicalConditions: healthProfile.medicalConditions || [],
           allergies: healthProfile.allergies || [],
           dietPreference: dietFilter !== 'All' ? dietFilter : healthProfile.dietPreference,
           mealType: selectedMealCategory,
           cuisine: cuisineFilter,
           searchQuery: recipeSearch,
-          healthGoal: healthProfile.goal
+          healthGoal: healthProfile.goal,
+          age: healthProfile.age || 28,
+          gender: healthProfile.gender || 'Male',
+          height: healthProfile.height || 168,
+          weight: healthProfile.weight || 65
         };
         const res = await getMealRecommendations(payload);
         if (isMounted && res.data && res.data.success) {
@@ -293,48 +425,62 @@ export default function Nutrition() {
     setShoppingList(prev => [...prev, ...newItems]);
   };
 
-  // ── FILTERED RECIPES GENERATOR FROM BACKEND EXCEL RECOMMENDATION ENGINE ───────
-  const slotRecipes = useMemo(() => {
-    if (aiRecommendations && aiRecommendations.length > 0) {
-      return aiRecommendations.slice(0, 10);
-    }
+  const [visibleCount, setVisibleCount] = useState(24);
 
-    // Client-side fallback if backend is offline
-    let list = [...INDIAN_RECIPES_DATABASE];
+  // Reset visible count when category or search changes
+  useEffect(() => {
+    setVisibleCount(24);
+  }, [selectedMealCategory, cuisineFilter, dietFilter, recipeSearch]);
+
+  // ── HEALTHIFYME-GRADE AI RECOMMENDATION PROFILE & SCORING PIPELINE ──────────
+  const activeUserProfile = useMemo(() => {
+    return createUserProfile({
+      ...healthProfile,
+      pantryItems,
+      dietPreference: dietFilter !== 'All' ? dietFilter : healthProfile.dietPreference
+    });
+  }, [healthProfile, pantryItems, dietFilter]);
+
+  const slotRecipes = useMemo(() => {
+    let sourceList = aiRecommendations && aiRecommendations.length > 0 ? aiRecommendations : INDIAN_RECIPES_DATABASE;
+
+    let list = [...sourceList];
     if (selectedMealCategory === 'Breakfast') {
-      list = list.filter(r => r.mealType === 'Breakfast');
+      list = list.filter(r => (r.mealType || '').includes('Breakfast'));
     } else if (selectedMealCategory === 'Lunch') {
-      list = list.filter(r => r.mealType === 'Lunch');
+      list = list.filter(r => (r.mealType || '').includes('Lunch'));
     } else if (selectedMealCategory === 'Dinner') {
-      list = list.filter(r => r.mealType === 'Dinner');
+      list = list.filter(r => (r.mealType || '').includes('Dinner'));
     } else if (selectedMealCategory === 'Snacks') {
-      list = list.filter(r => r.mealType === 'Evening Snack' || r.mealType === 'Breakfast');
+      list = list.filter(r => (r.mealType || '').includes('Snack') || (r.mealType || '').includes('Breakfast'));
+    } else if (selectedMealCategory === 'PostWorkout') {
+      list = list.filter(r => (r.mealType || '').includes('PostWorkout') || ((r.protein || r.macros?.protein || 0) >= 12));
+    } else if (selectedMealCategory === 'PreWorkout') {
+      list = list.filter(r => (r.mealType || '').includes('PreWorkout') || ((r.carbs || r.macros?.carbs || 0) >= 30));
+    } else if (selectedMealCategory === 'CheatMeal') {
+      list = list.filter(r => (r.mealType || '').includes('CheatMeal') || ((r.calories || r.macros?.calories || 0) >= 350));
     }
 
     if (cuisineFilter !== 'All') list = list.filter(r => r.cuisine === cuisineFilter);
     if (dietFilter !== 'All') list = list.filter(r => r.dietaryType === dietFilter);
     if (recipeSearch.trim()) {
       const q = recipeSearch.toLowerCase();
-      list = list.filter(r => r.name.toLowerCase().includes(q) || r.cuisine.toLowerCase().includes(q));
+      list = list.filter(r => r.name.toLowerCase().includes(q) || (r.cuisine || '').toLowerCase().includes(q));
     }
 
-    return list.map(r => ({
-      ...r,
-      prepTimeMin: r.prepTime,
-      cookTimeMin: 15,
-      calories: r.macros?.calories || 300,
-      protein: r.macros?.protein || 12,
-      carbs: r.macros?.carbs || 35,
-      fat: r.macros?.fat || 10,
-      fiber: r.macros?.fiber || 4,
-      overallMatchPct: 85,
-      ingredientMatchPct: 70,
-      wasteReductionPct: 60,
-      matchedIngredients: r.ingredients?.slice(0, 3) || [],
-      missingIngredients: r.ingredients?.slice(3) || [],
-      explanationBadges: ['✔ Matches your dietary profile', '✔ Balanced Macros']
-    })).slice(0, 10);
-  }, [aiRecommendations, selectedMealCategory, cuisineFilter, dietFilter, recipeSearch]);
+    // Guarantee minimum 10+ recipes on client side
+    if (list.length < 10) {
+      for (const item of sourceList) {
+        if (list.length >= 15) break;
+        if (!list.some(x => x.id === item.id || x.name === item.name)) {
+          list.push(item);
+        }
+      }
+    }
+
+    // Rank and Score using 100-Point AI Scoring Engine
+    return rankAndScoreRecipes(list, activeUserProfile).slice(0, visibleCount);
+  }, [aiRecommendations, selectedMealCategory, cuisineFilter, dietFilter, recipeSearch, activeUserProfile, visibleCount]);
 
   return (
     <div className="flex flex-col min-h-screen theme-bg theme-text animate-fade-in pb-28">
@@ -479,31 +625,47 @@ export default function Nutrition() {
             </div>
           )}
 
-          {/* MEAL SLOT SELECTOR (5 Options Each Category) */}
+          {/* MEAL SLOT SELECTOR (Dynamic All Matching Recommendations) */}
           <div className="space-y-2">
-            <span className="text-xs font-bold text-gray-400 block uppercase tracking-wider">Select Meal Slot (5 Options Per Category)</span>
+            <div className="flex justify-between items-center text-xs">
+              <span className="font-black text-[#d4af37] uppercase tracking-wider">
+                Select Meal Category (Showing All Matching Recipes from Dataset)
+              </span>
+              <span className="text-gray-400 font-mono text-[11px]">
+                {aiRecommendations.length > 0 ? `${aiRecommendations.length} Total Matching Recipes` : ''}
+              </span>
+            </div>
+
             <div className="flex flex-wrap gap-2 text-xs font-bold">
               {[
-                { slot: 'Breakfast', label: '🌅 Breakfast (5 Options)' },
-                { slot: 'Lunch', label: '☀️ Lunch (5 Options)' },
-                { slot: 'Dinner', label: '🌙 Dinner (5 Options)' },
-                { slot: 'Snacks', label: '🍏 Healthy Snacks (5 Options)' },
-                { slot: 'PostWorkout', label: '🏋️ Post-Workout (3 Options)' },
-                { slot: 'PreWorkout', label: '⚡ Pre-Workout (3 Options)' },
-                { slot: 'CheatMeal', label: '🍕 Treat / Cheat Meal (2 Options)' }
-              ].map(item => (
-                <button
-                  key={item.slot}
-                  onClick={() => setSelectedMealCategory(item.slot)}
-                  className={`py-2.5 px-4 rounded-2xl border transition-all ${
-                    selectedMealCategory === item.slot 
-                      ? 'bg-[#d4af37] text-black font-black border-[#d4af37] shadow-glow-gold' 
-                      : 'bg-[var(--bg-elevated)] text-gray-300 border-[var(--border-color)] hover:border-gray-500'
-                  }`}
-                >
-                  {item.label}
-                </button>
-              ))}
+                { slot: 'Breakfast', label: '🌅 Breakfast' },
+                { slot: 'Lunch', label: '☀️ Lunch' },
+                { slot: 'Dinner', label: '🌙 Dinner' },
+                { slot: 'Snacks', label: '🍏 Healthy Snacks' },
+                { slot: 'PostWorkout', label: '🏋️ High Protein Post-Workout' },
+                { slot: 'PreWorkout', label: '⚡ Energy Pre-Workout' },
+                { slot: 'CheatMeal', label: '🍕 Healthy Treat / Cheat Meal' }
+              ].map(item => {
+                const isSelected = selectedMealCategory === item.slot;
+                return (
+                  <button
+                    key={item.slot}
+                    onClick={() => setSelectedMealCategory(item.slot)}
+                    className={`py-2.5 px-4 rounded-2xl border transition-all flex items-center gap-1.5 ${
+                      isSelected 
+                        ? 'bg-[#d4af37] text-black font-black border-[#d4af37] shadow-glow-gold' 
+                        : 'bg-[var(--bg-elevated)] text-gray-300 border-[var(--border-color)] hover:border-gray-500'
+                    }`}
+                  >
+                    <span>{item.label}</span>
+                    {isSelected && aiRecommendations.length > 0 && (
+                      <span className="bg-black text-[#d4af37] text-[10px] font-mono px-2 py-0.5 rounded-full font-black ml-1">
+                        {aiRecommendations.length} Recipes
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
@@ -699,6 +861,20 @@ export default function Nutrition() {
                           )}
                         </div>
                       </div>
+
+                      {/* ⚠ HEALTH WARNINGS CARD */}
+                      {recipe.healthWarnings && recipe.healthWarnings.length > 0 && (
+                        <div className="bg-rose-500/10 p-3 rounded-2xl border border-rose-500/30 text-[11px] space-y-1">
+                          <span className="font-black text-rose-400 uppercase tracking-wider text-[9px] flex items-center gap-1">
+                            <AlertCircle size={12} /> Health & Medical Warning
+                          </span>
+                          <div className="space-y-0.5 text-rose-300 text-[10px]">
+                            {recipe.healthWarnings.map((warn, idx) => (
+                              <p key={idx} className="font-bold">{warn}</p>
+                            ))}
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Card Action Button */}
@@ -716,85 +892,85 @@ export default function Nutrition() {
               })
             )}
           </div>
+
+          {/* LOAD MORE / SHOW ALL RECIPES BUTTONS */}
+          {aiRecommendations.length > visibleCount && (
+            <div className="flex flex-wrap justify-center items-center gap-3 pt-6 pb-2">
+              <button
+                onClick={() => setVisibleCount(prev => prev + 24)}
+                className="btn-secondary py-3 px-6 text-xs font-black uppercase tracking-wider text-[#d4af37] border-[#d4af37]/40 hover:bg-[#d4af37]/10 shadow-lg inline-flex items-center gap-2"
+              >
+                <Plus size={16} /> Load 24 More Recipes (Showing {visibleCount} of {aiRecommendations.length})
+              </button>
+
+              <button
+                onClick={() => setVisibleCount(aiRecommendations.length)}
+                className="btn-primary py-3 px-6 text-xs font-black uppercase tracking-wider text-black bg-[#d4af37] hover:bg-amber-400 shadow-glow-gold inline-flex items-center gap-2"
+              >
+                <Sparkles size={16} /> Show All {aiRecommendations.length} Recommendations Immediately
+              </button>
+            </div>
+          )}
         </div>
       )}
 
       {/* ── 2. SMART PANTRY SYSTEM TAB ─────────────────────────────────────────── */}
       {activeTab === 'pantry' && (
         <div className="px-5 pt-6 max-w-5xl mx-auto w-full space-y-6">
-          <div className="card p-6 rounded-3xl border border-[var(--border-color)] space-y-4">
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          
+          {/* Top Pantry Header & AI Camera Scan */}
+          <div className="card p-6 rounded-3xl border border-[var(--border-color)] space-y-5 shadow-2xl">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-[var(--border-color)] pb-4">
               <div>
-                <h3 className="text-lg font-black text-white flex items-center gap-2">
-                  <Utensils size={20} className="text-[#d4af37]" /> Smart Pantry System
+                <h3 className="text-xl font-black text-white flex items-center gap-2.5">
+                  <Utensils size={22} className="text-[#d4af37]" /> Smart Pantry System
                 </h3>
-                <p className="text-xs text-gray-400">Manage available ingredients to get zero-waste AI recipes.</p>
+                <p className="text-xs text-gray-400">
+                  Select official dataset ingredients to reactively generate 100% matched AI recipes.
+                </p>
               </div>
 
               <button 
                 onClick={handleTriggerPantryScan} 
                 disabled={pantryScanLoading}
-                className="btn-secondary py-2 px-4 text-xs font-bold flex items-center gap-1.5 text-blue-400 border-blue-500/40 hover:bg-blue-500/10 disabled:opacity-50"
+                className="btn-secondary py-2.5 px-4 text-xs font-bold flex items-center gap-2 text-blue-400 border-blue-500/40 hover:bg-blue-500/10 disabled:opacity-50 shadow-md"
               >
                 {pantryScanLoading ? <RefreshCw size={14} className="animate-spin" /> : <Camera size={14} />}
                 {pantryScanLoading ? 'Scanning Fridge Photo...' : '📷 AI Camera Pantry Scan'}
               </button>
             </div>
 
-            {/* Add Ingredient Form */}
-            <form onSubmit={handleAddPantry} className="grid grid-cols-1 sm:grid-cols-4 gap-2.5 text-xs">
-              <input
-                type="text"
-                placeholder="Ingredient Name (e.g. Paneer, Tomatoes, Eggs)..."
-                required
-                value={newIngredient.name}
-                onChange={e => setNewIngredient({ ...newIngredient, name: e.target.value })}
-                className="bg-[var(--bg-input)] border border-[var(--border-color)] text-white p-3 rounded-xl outline-none sm:col-span-2 font-bold"
-              />
-              <input
-                type="text"
-                placeholder="Quantity (e.g. 200g, 2 Pcs)..."
-                value={newIngredient.quantity}
-                onChange={e => setNewIngredient({ ...newIngredient, quantity: e.target.value })}
-                className="bg-[var(--bg-input)] border border-[var(--border-color)] text-white p-3 rounded-xl outline-none font-bold"
-              />
-              <button type="submit" className="btn-primary py-3 text-xs font-black uppercase">
-                + Add Ingredient
-              </button>
-            </form>
+            {/* Pantry Statistics & Smart Suggestions */}
+            <PantryStatsHeader
+              selectedIngredients={pantryItems}
+              popularIngredients={popularEssentials}
+              recentIngredients={recentPantryItems}
+              pairings={smartPairings}
+              onAddIngredient={handleAddIngredient}
+            />
 
-            {/* Category Filter Chips */}
-            <div className="flex flex-wrap gap-2 text-xs font-bold pt-2 border-t border-[var(--border-color)]">
-              {['All', 'Vegetables & Fruits', 'Dairy & Protein', 'Grains & Staples', 'Spices & Oils'].map(cat => (
-                <button
-                  key={cat}
-                  onClick={() => setPantryCategory(cat)}
-                  className={`px-3 py-1.5 rounded-xl border ${
-                    pantryCategory === cat ? 'bg-[#d4af37] text-black font-black border-[#d4af37]' : 'bg-[var(--bg-elevated)] text-gray-400 border-[var(--border-color)]'
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-
-            {/* Pantry List */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-              {pantryItems
-                .filter(i => pantryCategory === 'All' || i.category === pantryCategory)
-                .map(item => (
-                  <div key={item.id} className="bg-[var(--bg-elevated)] p-3.5 rounded-2xl border border-[var(--border-color)] flex justify-between items-center text-xs">
-                    <div>
-                      <h4 className="font-bold text-white">{item.name}</h4>
-                      <p className="text-[10px] text-gray-400">{item.quantity} • {item.category}</p>
-                    </div>
-                    <button onClick={() => removePantryItem(item.id)} className="text-gray-400 hover:text-red-400 p-1">
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                ))}
+            {/* Google / Gmail Style Autocomplete Search */}
+            <div className="pt-2 border-t border-[var(--border-color)]">
+              <label className="block text-xs font-black text-[#d4af37] uppercase tracking-wider mb-2">
+                🔍 Autocomplete Ingredient Search (Dataset Enforced)
+              </label>
+              <AutocompleteIngredientSearch
+                masterIngredients={masterIngredients}
+                selectedIngredients={pantryItems}
+                onAddIngredient={handleAddIngredient}
+                onRemoveIngredient={handleRemoveIngredient}
+                onClearAll={handleClearAllPantry}
+              />
             </div>
           </div>
+
+          {/* Grocery Category Browser with Checkboxes */}
+          <CategoryIngredientBrowser
+            categorizedIngredients={categorizedIngredients}
+            selectedIngredients={pantryItems}
+            onToggleIngredient={handleToggleIngredient}
+          />
+
         </div>
       )}
 
@@ -1000,7 +1176,57 @@ export default function Nutrition() {
             </div>
 
             <form onSubmit={handleSaveProfile} className="space-y-4 text-xs">
-              {/* Age Bug Fix (Normal editable input from 1 to 120) */}
+              {/* 🌟 LIVE BIOMETRIC & NUTRITION SUMMARY CARD */}
+              {(() => {
+                const liveCalc = createUserProfile(tempProfile);
+                return (
+                  <div className="bg-gradient-to-br from-[#d4af37]/15 to-amber-500/5 p-4 rounded-2xl border border-[#d4af37]/40 space-y-2">
+                    <div className="flex justify-between items-center text-xs font-black text-[#d4af37] uppercase tracking-wider">
+                      <span>Live Biometric Calculation</span>
+                      <span className="bg-[#d4af37]/20 text-white px-2.5 py-0.5 rounded-full text-[10px] flex items-center gap-1">
+                        <span>{liveCalc.targets.lifeStage.icon}</span>
+                        <span>{liveCalc.targets.lifeStage.label}</span>
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center text-xs font-bold pt-1">
+                      <div className="bg-black/30 p-2.5 rounded-xl border border-white/5">
+                        <span className="text-gray-400 text-[9px] block uppercase font-bold">BMI Index</span>
+                        <span style={{ color: liveCalc.biometrics.color }} className="text-base font-black font-mono">
+                          {liveCalc.biometrics.bmi}
+                        </span>
+                        <span className="text-[9px] text-gray-300 block font-bold">{liveCalc.biometrics.category}</span>
+                      </div>
+
+                      <div className="bg-black/30 p-2.5 rounded-xl border border-white/5">
+                        <span className="text-gray-400 text-[9px] block uppercase font-bold">Healthy Range</span>
+                        <span className="text-xs font-black text-emerald-400 font-mono block pt-1">
+                          {liveCalc.biometrics.healthyWeightRange.min}–{liveCalc.biometrics.healthyWeightRange.max} kg
+                        </span>
+                        <span className="text-[8px] text-gray-400 block">Target Range</span>
+                      </div>
+
+                      <div className="bg-black/30 p-2.5 rounded-xl border border-white/5">
+                        <span className="text-gray-400 text-[9px] block uppercase font-bold">Target Calories</span>
+                        <span className="text-xs font-black text-amber-400 font-mono block pt-1">
+                          {liveCalc.targets.targetCalories} kcal
+                        </span>
+                        <span className="text-[8px] text-gray-400 block">TDEE {liveCalc.targets.tdee}</span>
+                      </div>
+
+                      <div className="bg-black/30 p-2.5 rounded-xl border border-white/5">
+                        <span className="text-gray-400 text-[9px] block uppercase font-bold">Protein / Water</span>
+                        <span className="text-xs font-black text-blue-400 font-mono block pt-1">
+                          {liveCalc.targets.targetProtein}g / {liveCalc.targets.targetWaterLiters}L
+                        </span>
+                        <span className="text-[8px] text-gray-400 block">Daily Intake</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Input Fields */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
                 <div>
                   <label className="text-gray-400 font-bold block mb-1">Age (1–120 Yrs)</label>
