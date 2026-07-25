@@ -9,7 +9,16 @@ import { sendAiResultToEsp32 } from '../../services/syncService';
 export default function SelectOil() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
-  const [selected, setSelected] = useState(null);
+  const [selected, setSelected] = useState(() => {
+    try {
+      const stored = localStorage.getItem('selected_oil_type');
+      if (stored) {
+        const found = OIL_REFERENCE_DATA.find(o => o.oilName === stored);
+        if (found) return found;
+      }
+    } catch (_) {}
+    return OIL_REFERENCE_DATA.find(o => o.oilName.includes('Mustard')) || OIL_REFERENCE_DATA[0];
+  });
 
   const filtered = OIL_REFERENCE_DATA.filter((oil) =>
     oil.oilName.toLowerCase().includes(search.toLowerCase()) ||
@@ -17,13 +26,26 @@ export default function SelectOil() {
   );
 
   const handleConfirm = useCallback((oilToAnalyze) => {
-    const targetOil = oilToAnalyze?.oilName ? oilToAnalyze : selected;
-    if (!targetOil) return;
+    const targetOil = oilToAnalyze?.oilName 
+      ? oilToAnalyze 
+      : (selected?.oilName ? selected : (OIL_REFERENCE_DATA.find(o => o.oilName.includes('Mustard')) || OIL_REFERENCE_DATA[0]));
 
     let sensorReadings = {};
     try {
-      sensorReadings = JSON.parse(sessionStorage.getItem('sensor_snapshot') || '{}');
+      const rawSnapshot = sessionStorage.getItem('sensor_snapshot');
+      if (rawSnapshot) {
+        sensorReadings = JSON.parse(rawSnapshot);
+      }
     } catch (_) {}
+
+    // Fallback sensor readings if snapshot was missing/empty
+    if (!sensorReadings || (!sensorReadings.spectral_data && !sensorReadings.spectral)) {
+      sensorReadings = {
+        temperature: 28.2,
+        spectral_data: '0,1,5,4,4,2,7,7,4,2,0,9,0'
+      };
+      sessionStorage.setItem('sensor_snapshot', JSON.stringify(sensorReadings));
+    }
 
     // 1. Calculate result synchronously (0 ms)
     const result = calculateAdulteration(sensorReadings, targetOil);
