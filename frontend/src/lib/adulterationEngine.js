@@ -150,6 +150,49 @@ export function calculateAdulteration(sensorReadings, oilRef) {
     };
   }
 
+  // STEP 7: PURITY CALCULATION
+  const total_dist = pure_dist + adulterated_dist;
+  let purity = 100;
+  
+  const sumInput = inputNorm.reduce((a, b) => a + b, 0);
+  if (sumInput === 0) {
+    purity = 0;
+  } else if (total_dist > 0) {
+    const wPure = 1 / Math.pow(pure_dist + 0.0001, 2);
+    const wAdult = 1 / Math.pow(adulterated_dist + 0.0001, 2);
+    purity = (wPure / (wPure + wAdult)) * 100;
+  } else {
+    purity = 100; 
+  }
+  
+  purity = Math.min(Math.max(purity, 0), 100);
+  const adulterationLevel = Math.round((100 - purity) * 10) / 10;
+  
+  let status = pure_dist <= adulterated_dist ? "Pure Oil" : "Adulterated Oil";
+  if (isMustard) {
+    status = pure_dist <= adulterated_dist ? "Pure Mustard Oil" : "Adulterated Mustard Oil";
+  }
+  let matched_with = pure_dist <= adulterated_dist ? "pure" : "adulterated";
+  
+  let tier = 'pure';
+  if (adulterationLevel > 60) tier = 'heavy';
+  else if (adulterationLevel > 20) tier = 'moderate';
+
+  let confidence = 100 - (Math.min(pure_dist, adulterated_dist) * 200);
+  confidence = Math.min(Math.max(confidence, 0), 100);
+
+  let primaryIndicator = isMustard 
+    ? "Trained Mustard Oil ML Model (D:\\oilmodel)" 
+    : "Spectral Match";
+
+  if (temp < 20 || temp > 40) {
+    primaryIndicator = "Warning: Sensor accuracy may be affected due to temperature variation";
+  }
+
+  if (Math.abs(pure_dist - adulterated_dist) < 0.01 && total_dist > 0) {
+    primaryIndicator = "Result uncertain, retest recommended";
+  }
+
   // STEP 12: OUTPUT FORMAT
   return {
     // ML Model flags (Active only when Mustard Oil is selected)

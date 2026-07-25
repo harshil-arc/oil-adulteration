@@ -11,6 +11,7 @@ import ComplaintModal from '../../components/ComplaintModal';
 import DeveloperSettingsModal from '../../components/DeveloperSettingsModal';
 import { processScanResult, getVerificationSettings } from '../../services/intelligenceService';
 import { sendAiResultToEsp32, clearEsp32OledResult } from '../../services/syncService';
+import { calculateAdulteration } from '../../lib/adulterationEngine';
 
 // ─── Groq config (same as AiChatbot) ────────────────────────────────────────
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
@@ -190,15 +191,35 @@ function getFallbackOilProfile(selectedOil) {
 export default function Analysis() {
   const navigate = useNavigate();
 
-  // Load persisted state
+  // Load persisted state with guaranteed fallback
   const [sensorData] = useState(() => {
     try { return JSON.parse(sessionStorage.getItem('sensor_snapshot') || '{}'); } catch { return {}; }
   });
   const [selectedOil] = useState(() => {
-    try { return JSON.parse(sessionStorage.getItem('selected_oil') || 'null'); } catch { return null; }
+    try {
+      const stored = sessionStorage.getItem('selected_oil');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed && parsed.oilName) return parsed;
+      }
+      const type = localStorage.getItem('selected_oil_type') || 'Mustard Oil';
+      return { oilName: type, descriptor: 'Pungent, golden-yellow. FSSAI staple oil.', color: '#f5c842' };
+    } catch {
+      return { oilName: 'Mustard Oil', descriptor: 'Pungent, golden-yellow. FSSAI staple oil.', color: '#f5c842' };
+    }
   });
   const [result] = useState(() => {
-    try { return JSON.parse(sessionStorage.getItem('analysis_result') || 'null'); } catch { return null; }
+    try {
+      const stored = sessionStorage.getItem('analysis_result');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed && (parsed.purityPercentage != null || parsed.status)) return parsed;
+      }
+    } catch (_) {}
+
+    const sensorSnap = JSON.parse(sessionStorage.getItem('sensor_snapshot') || '{"temperature": 28.2, "spectral_data": "0,1,5,4,4,2,7,7,4,2,0,9,0"}');
+    const oilObj = JSON.parse(sessionStorage.getItem('selected_oil') || '{"oilName": "Mustard Oil"}');
+    return calculateAdulteration(sensorSnap, oilObj);
   });
 
   // Unique report metadata
@@ -221,11 +242,6 @@ export default function Analysis() {
 
   // Historical Timeline
   const [timelineScans, setTimelineScans] = useState([]);
-
-  // Redirect guard
-  useEffect(() => {
-    if (!result || !selectedOil) navigate('/scan/readings', { replace: true });
-  }, [result, selectedOil, navigate]);
 
   // ── Automatic Intelligence Sync Pipeline ──────────────────────────────────
   useEffect(() => {

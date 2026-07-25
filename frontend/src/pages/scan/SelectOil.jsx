@@ -30,13 +30,17 @@ export default function SelectOil() {
       ? oilToAnalyze 
       : (selected?.oilName ? selected : (OIL_REFERENCE_DATA.find(o => o.oilName.includes('Mustard')) || OIL_REFERENCE_DATA[0]));
 
+    console.log('[SelectOil] Analyze button clicked for target oil:', targetOil?.oilName);
+
     let sensorReadings = {};
     try {
       const rawSnapshot = sessionStorage.getItem('sensor_snapshot');
       if (rawSnapshot) {
         sensorReadings = JSON.parse(rawSnapshot);
       }
-    } catch (_) {}
+    } catch (e) {
+      console.warn('[SelectOil] Failed to parse sensor_snapshot from sessionStorage:', e);
+    }
 
     // Fallback sensor readings if snapshot was missing/empty
     if (!sensorReadings || (!sensorReadings.spectral_data && !sensorReadings.spectral)) {
@@ -45,15 +49,21 @@ export default function SelectOil() {
         spectral_data: '0,1,5,4,4,2,7,7,4,2,0,9,0'
       };
       sessionStorage.setItem('sensor_snapshot', JSON.stringify(sensorReadings));
+      console.log('[SelectOil] Injected active sensor reading snapshot fallback:', sensorReadings);
     }
 
     // 1. Calculate result synchronously (0 ms)
     const result = calculateAdulteration(sensorReadings, targetOil);
+    console.log('[SelectOil] Synchronous adulteration calculation result:', result);
 
     // 2. Save snapshot & result to storage immediately (0 ms)
-    sessionStorage.setItem('selected_oil', JSON.stringify(targetOil));
-    sessionStorage.setItem('analysis_result', JSON.stringify(result));
-    localStorage.setItem('selected_oil_type', targetOil.oilName);
+    try {
+      sessionStorage.setItem('selected_oil', JSON.stringify(targetOil));
+      sessionStorage.setItem('analysis_result', JSON.stringify(result));
+      localStorage.setItem('selected_oil_type', targetOil.oilName);
+    } catch (e) {
+      console.warn('[SelectOil] Storage write notice:', e.message);
+    }
 
     // 3. Fire-and-forget background tasks (non-blocking)
     const isMustard = targetOil.oilName.toLowerCase().includes('mustard');
@@ -66,6 +76,7 @@ export default function SelectOil() {
             mlRes.isMlModel = true;
             mlRes.modelPath = 'D:\\oilmodel';
             sessionStorage.setItem('analysis_result', JSON.stringify(mlRes));
+            console.log('[SelectOil] Background ML sync result updated:', mlRes);
           }
         })
         .catch((err) => console.warn('[SelectOil] Background ML sync notice:', err.message));
@@ -79,9 +90,10 @@ export default function SelectOil() {
       status: result.tier === 'pure' ? 'SAFE' : result.tier === 'moderate' ? 'SUSPICIOUS' : 'ADULTERATED',
       detectedAdulterant: result.primaryIndicator || 'None',
       scanId: `SPT-${Math.floor(100000 + Math.random() * 900000)}`
-    }).catch(() => {});
+    }).catch((err) => console.warn('[SelectOil] ESP32 OLED sync notice:', err.message));
 
-    // 4. Navigate IMMEDIATELY (0 ms delay!)
+    // 4. Navigate IMMEDIATELY to Result screen
+    console.log('[SelectOil] Navigating to result screen: /scan/readings/analysis');
     navigate('/scan/readings/analysis');
   }, [selected, navigate]);
 
@@ -134,7 +146,10 @@ export default function SelectOil() {
               return (
                 <div
                   key={oil.oilName}
-                  onClick={() => setSelected(isSelected ? null : oil)}
+                  onClick={() => {
+                    setSelected(oil);
+                    handleConfirm(oil);
+                  }}
                   className={`relative flex flex-col items-center gap-2.5 p-4 rounded-2xl border-2 transition-all active:scale-[0.97] w-full cursor-pointer
                     ${isSelected
                       ? 'border-[#d4af37] bg-[#d4af37]/10 shadow-glow-gold'
