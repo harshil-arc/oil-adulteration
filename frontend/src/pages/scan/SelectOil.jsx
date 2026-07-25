@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Check, ChevronLeft, FlaskConical, RefreshCw } from 'lucide-react';
+import { Search, Check, ChevronLeft, FlaskConical } from 'lucide-react';
 import { OIL_REFERENCE_DATA } from '../../lib/oilReferenceData';
 import { calculateAdulteration } from '../../lib/adulterationEngine';
 import { analyzeOil } from '../../lib/api';
@@ -10,78 +10,57 @@ export default function SelectOil() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(null);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const filtered = OIL_REFERENCE_DATA.filter((oil) =>
     oil.oilName.toLowerCase().includes(search.toLowerCase()) ||
     oil.descriptor.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleConfirm = useCallback(async () => {
-    if (!selected || isAnalyzing) return;
-    setIsAnalyzing(true);
+  const handleConfirm = useCallback(() => {
+    if (!selected) return;
 
+    let sensorReadings = {};
     try {
-      let sensorReadings = {};
-      try {
-        sensorReadings = JSON.parse(sessionStorage.getItem('sensor_snapshot') || '{}');
-      } catch (_) {}
+      sensorReadings = JSON.parse(sessionStorage.getItem('sensor_snapshot') || '{}');
+    } catch (_) {}
 
-      let result = null;
-      const isMustard = selected.oilName.toLowerCase().includes('mustard');
+    // 1. Calculate result synchronously (0 ms)
+    const result = calculateAdulteration(sensorReadings, selected);
 
-      if (isMustard) {
-        try {
-          const fetchPromise = analyzeOil({
-            oil_type: selected.oilName,
-            sensor_values: sensorReadings
-          });
-          const timeoutPromise = new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Backend timeout')), 1500)
-          );
+    // 2. Save snapshot & result to storage immediately (0 ms)
+    sessionStorage.setItem('selected_oil', JSON.stringify(selected));
+    sessionStorage.setItem('analysis_result', JSON.stringify(result));
+    localStorage.setItem('selected_oil_type', selected.oilName);
 
-          const res = await Promise.race([fetchPromise, timeoutPromise]);
+    // 3. Fire-and-forget background tasks (non-blocking)
+    const isMustard = selected.oilName.toLowerCase().includes('mustard');
+    if (isMustard) {
+      analyzeOil({ oil_type: selected.oilName, sensor_values: sensorReadings })
+        .then((res) => {
           if (res?.data?.success) {
-            result = res.data;
-            result.usingMlModel = true;
-            result.isMlModel = true;
-            result.modelPath = 'D:\\oilmodel';
+            const mlRes = res.data;
+            mlRes.usingMlModel = true;
+            mlRes.isMlModel = true;
+            mlRes.modelPath = 'D:\\oilmodel';
+            sessionStorage.setItem('analysis_result', JSON.stringify(mlRes));
           }
-        } catch (err) {
-          console.warn('[SelectOil] Backend ML call notice, using local ML engine:', err.message);
-        }
-      }
-
-      if (!result) {
-        result = calculateAdulteration(sensorReadings, selected);
-      }
-
-      sessionStorage.setItem('selected_oil', JSON.stringify(selected));
-      sessionStorage.setItem('analysis_result', JSON.stringify(result));
-      localStorage.setItem('selected_oil_type', selected.oilName);
-
-      // Instant Two-Way Sync: Transmit target oil + calculated purity to ESP32 OLED
-      sendAiResultToEsp32({
-        oilName: selected.oilName,
-        purityScore: result.purityPercentage,
-        adulterationPercentage: result.adulterationPercentage,
-        confidenceScore: result.confidenceScore,
-        status: result.tier === 'pure' ? 'SAFE' : result.tier === 'moderate' ? 'SUSPICIOUS' : 'ADULTERATED',
-        detectedAdulterant: result.primaryIndicator || 'None',
-        scanId: `SPT-${Math.floor(100000 + Math.random() * 900000)}`
-      });
-
-      navigate('/scan/readings/analysis');
-    } catch (e) {
-      console.error('Error during analysis:', e);
-      const fallback = calculateAdulteration({}, selected);
-      sessionStorage.setItem('selected_oil', JSON.stringify(selected));
-      sessionStorage.setItem('analysis_result', JSON.stringify(fallback));
-      navigate('/scan/readings/analysis');
-    } finally {
-      setIsAnalyzing(false);
+        })
+        .catch((err) => console.warn('[SelectOil] Background ML sync notice:', err.message));
     }
-  }, [selected, isAnalyzing, navigate]);
+
+    sendAiResultToEsp32({
+      oilName: selected.oilName,
+      purityScore: result.purityPercentage,
+      adulterationPercentage: result.adulterationPercentage,
+      confidenceScore: result.confidenceScore,
+      status: result.tier === 'pure' ? 'SAFE' : result.tier === 'moderate' ? 'SUSPICIOUS' : 'ADULTERATED',
+      detectedAdulterant: result.primaryIndicator || 'None',
+      scanId: `SPT-${Math.floor(100000 + Math.random() * 900000)}`
+    }).catch(() => {});
+
+    // 4. Navigate IMMEDIATELY (0 ms delay!)
+    navigate('/scan/readings/analysis');
+  }, [selected, navigate]);
 
   return (
     // Use flex column taking full screen, but pad bottom for bottom nav (96px)
@@ -194,24 +173,15 @@ export default function SelectOil() {
         {/* Confirm button */}
         <button
           onClick={handleConfirm}
-          disabled={!selected || isAnalyzing}
+          disabled={!selected}
           className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 cursor-pointer
-            ${selected && !isAnalyzing
+            ${selected
               ? 'bg-gradient-to-r from-[#f5c842] to-[#d4af37] text-black shadow-[0_4px_20px_rgba(212,175,55,0.4)] active:scale-[0.97]'
               : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] opacity-50 cursor-not-allowed'
             }`}
         >
-          {isAnalyzing ? (
-            <>
-              <RefreshCw size={16} className="animate-spin" />
-              Analyzing {selected?.oilName}...
-            </>
-          ) : (
-            <>
-              <FlaskConical size={16} />
-              {selected ? `Analyze ${selected.oilName}` : 'Select an Oil First'}
-            </>
-          )}
+          <FlaskConical size={16} />
+          {selected ? `Analyze ${selected.oilName}` : 'Select an Oil First'}
         </button>
       </div>
     </div>
