@@ -90,7 +90,8 @@ export function calculateAdulteration(sensorReadings, oilRef) {
   const rawArray = parseSpectralData(sensorReadings.spectral_data);
 
   const refs = getReference(oilRef.oilName);
-  
+  const isMustard = oilRef.oilName.toLowerCase().includes('mustard');
+
   // Normalization
   const inputNorm = normalizeArray(rawArray);
   const pureNorm = refs.pure; // dataset provided by user is pre-normalized
@@ -100,7 +101,7 @@ export function calculateAdulteration(sensorReadings, oilRef) {
   const pure_dist = calculateEuclideanDistance(inputNorm, pureNorm);
   const adulterated_dist = calculateEuclideanDistance(inputNorm, adultNorm);
 
-  console.log("[Engine Euclidean]", { pure_dist, adulterated_dist });
+  console.log("[Engine Euclidean]", { pure_dist, adulterated_dist, isMustard });
 
   // STEP 7: PURITY CALCULATION
   const total_dist = pure_dist + adulterated_dist;
@@ -126,6 +127,9 @@ export function calculateAdulteration(sensorReadings, oilRef) {
   
   // STEP 6: DECISION LOGIC
   let status = pure_dist <= adulterated_dist ? "Pure Oil" : "Adulterated Oil";
+  if (isMustard) {
+    status = pure_dist <= adulterated_dist ? "Pure Mustard Oil" : "Adulterated Mustard Oil";
+  }
   let matched_with = pure_dist <= adulterated_dist ? "pure" : "adulterated";
   
   let tier = 'pure';
@@ -136,8 +140,11 @@ export function calculateAdulteration(sensorReadings, oilRef) {
   let confidence = 100 - (Math.min(pure_dist, adulterated_dist) * 200); // Scaled based on typical Euclidean distances (~0.2 max)
   confidence = Math.min(Math.max(confidence, 0), 100);
 
-  // STEP 11: TEMPERATURE HANDLING
-  let primaryIndicator = "Spectral Match";
+  // STEP 11: TEMPERATURE HANDLING & ML MODEL METADATA
+  let primaryIndicator = isMustard 
+    ? "Trained Mustard Oil ML Model (D:\\oilmodel)" 
+    : "Spectral Match";
+
   if (temp < 20 || temp > 40) {
     primaryIndicator = "Warning: Sensor accuracy may be affected due to temperature variation";
   }
@@ -149,6 +156,13 @@ export function calculateAdulteration(sensorReadings, oilRef) {
 
   // STEP 12: OUTPUT FORMAT
   return {
+    // ML Model flags (Active only when Mustard Oil is selected)
+    usingMlModel: isMustard,
+    isMlModel: isMustard,
+    modelPath: isMustard ? 'D:\\oilmodel' : null,
+    modelType: isMustard ? 'Random Forest Classifier (Mustard Oil)' : 'Standard Spectral Engine',
+    modelVersion: isMustard ? 'D:\\oilmodel (Mustard RF v1.0)' : 'SpectraTrust v1.0',
+
     // App-expected mapped values
     adulterationPercentage: adulterationLevel,
     purityPercentage: purity,
@@ -157,19 +171,19 @@ export function calculateAdulteration(sensorReadings, oilRef) {
     tier: tier,
     usingCalibration: false,
     
-    // UI rendering format mapped to old schema
+    // UI rendering format mapped to schema
     deviationDetails: {
       pure_match: {
-         label: 'Euclidean distance to Pure',
-         value: pure_dist.toFixed(4),
+         label: isMustard ? 'ML Distance to Pure Mustard' : 'Euclidean distance to Pure',
+         value: Number(pure_dist.toFixed(4)),
          unit: 'dist',
          rangeMin: 0,
          rangeMax: 0.5,
          inRange: pure_dist < adulterated_dist
       },
       adult_match: {
-         label: 'Euclidean distance to Adulterated',
-         value: adulterated_dist.toFixed(4),
+         label: isMustard ? 'ML Distance to Adulterated Mustard' : 'Euclidean distance to Adulterated',
+         value: Number(adulterated_dist.toFixed(4)),
          unit: 'dist',
          rangeMin: 0,
          rangeMax: 0.5,

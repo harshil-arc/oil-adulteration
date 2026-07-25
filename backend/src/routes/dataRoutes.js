@@ -104,15 +104,35 @@ router.post('/', validateDeviceApiKey, async (req, res) => {
 });
 
 // POST /api/analyze – Analyze sensor values without saving (for quick checks)
-router.post('/analyze', (req, res) => {
+router.post('/analyze', async (req, res) => {
   try {
     const { oil_type, sensor_values } = req.body;
     if (!oil_type || !sensor_values) {
       return res.status(400).json({ error: 'Missing oil_type or sensor_values' });
     }
+
+    if (String(oil_type).toLowerCase().includes('mustard')) {
+      const { predictMustardOilML } = require('../services/mlService');
+      const mlResult = await predictMustardOilML(sensor_values);
+      return res.json({ success: true, ...mlResult });
+    }
+
     const result = analyzeOil(sensor_values, oil_type);
     res.json({ success: true, ...result });
   } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// POST /api/data/predict-ml – Run D:\oilmodel ML prediction for Mustard Oil
+router.post('/predict-ml', async (req, res) => {
+  try {
+    const { sensor_values, oil_type } = req.body;
+    const { predictMustardOilML } = require('../services/mlService');
+    const mlResult = await predictMustardOilML(sensor_values || req.body);
+    res.json({ success: true, ...mlResult });
+  } catch (err) {
+    console.error('[POST /api/data/predict-ml] Error:', err.message);
     res.status(500).json({ error: err.message });
   }
 });

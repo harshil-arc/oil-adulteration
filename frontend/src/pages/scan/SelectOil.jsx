@@ -16,7 +16,7 @@ export default function SelectOil() {
     oil.descriptor.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleConfirm = useCallback(() => {
+  const handleConfirm = useCallback(async () => {
     if (!selected) return;
 
     let sensorReadings = {};
@@ -24,7 +24,30 @@ export default function SelectOil() {
       sensorReadings = JSON.parse(sessionStorage.getItem('sensor_snapshot') || '{}');
     } catch (_) {}
 
-    const result = calculateAdulteration(sensorReadings, selected);
+    let result = null;
+    const isMustard = selected.oilName.toLowerCase().includes('mustard');
+
+    if (isMustard) {
+      try {
+        const { analyzeOil } = await import('../../lib/api');
+        const res = await analyzeOil({
+          oil_type: selected.oilName,
+          sensor_values: sensorReadings
+        });
+        if (res?.data?.success) {
+          result = res.data;
+          result.usingMlModel = true;
+          result.isMlModel = true;
+          result.modelPath = 'D:\\oilmodel';
+        }
+      } catch (err) {
+        console.warn('[SelectOil] Backend ML call notice, using local ML engine:', err.message);
+      }
+    }
+
+    if (!result) {
+      result = calculateAdulteration(sensorReadings, selected);
+    }
 
     sessionStorage.setItem('selected_oil', JSON.stringify(selected));
     sessionStorage.setItem('analysis_result', JSON.stringify(result));

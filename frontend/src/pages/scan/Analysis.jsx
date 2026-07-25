@@ -404,6 +404,11 @@ Provide 2-3 likely adulterants only.`;
             <span className="bg-[#d4af37]/10 text-[#d4af37] px-2.5 py-1 rounded-lg font-mono font-black border border-[#d4af37]/30">
               {selectedOil.oilName}
             </span>
+            {selectedOil.oilName.toLowerCase().includes('mustard') && (
+              <span className="bg-purple-500/15 text-purple-300 px-2.5 py-1 rounded-lg font-mono font-bold text-[10px] border border-purple-500/30 flex items-center gap-1">
+                <Zap size={11} className="text-purple-400" /> ML Model (D:\oilmodel)
+              </span>
+            )}
             <span className="text-gray-400 font-mono text-[11px]">UUID: {certUuid}</span>
           </div>
 
@@ -413,6 +418,24 @@ Provide 2-3 likely adulterants only.`;
             <span className="text-gray-400">Temp: <span className="text-amber-400 font-mono font-bold">{sensorData.temp || 28.4}°C</span></span>
           </div>
         </div>
+
+        {/* ── SPECIALIZED ML MODEL BADGE (FOR MUSTARD OIL) ── */}
+        {selectedOil.oilName.toLowerCase().includes('mustard') && (
+          <div className="bg-gradient-to-r from-purple-900/30 via-indigo-900/30 to-purple-900/30 border border-purple-500/30 p-4 rounded-3xl flex items-center gap-4">
+            <div className="w-12 h-12 rounded-2xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center shrink-0">
+              <Zap size={24} className="text-purple-400" />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-black uppercase tracking-wider text-purple-300">Trained Machine Learning Model</h4>
+                <span className="text-[9px] bg-purple-500/30 text-purple-200 px-2 py-0.5 rounded-full font-mono font-bold">Random Forest</span>
+              </div>
+              <p className="text-[11px] text-gray-300 mt-1 leading-snug">
+                Analysis predicted using custom ML model trained on Mustard Oil sensor telemetry (<code className="text-purple-300 font-mono bg-purple-950/60 px-1 py-0.5 rounded">D:\oilmodel</code>).
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* ── SECTION 1: PURITY GAUGE & VERDICT ── */}
         <div className="card p-6 rounded-3xl border border-[var(--border-color)] flex flex-col items-center gap-4 relative overflow-hidden">
@@ -464,7 +487,7 @@ Provide 2-3 likely adulterants only.`;
               <Beaker size={16} /> Evidence-Based AI Scan Insights
             </h3>
             <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/30">
-              Factual Calibration Engine
+              {selectedOil.oilName.toLowerCase().includes('mustard') ? 'D:\\oilmodel ML Engine' : 'Factual Calibration Engine'}
             </span>
           </div>
 
