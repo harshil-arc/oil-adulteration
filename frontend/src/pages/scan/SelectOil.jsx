@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Check, ChevronLeft, FlaskConical } from 'lucide-react';
+import { Search, Check, ChevronLeft, FlaskConical, RefreshCw } from 'lucide-react';
 import { OIL_REFERENCE_DATA } from '../../lib/oilReferenceData';
 import { calculateAdulteration } from '../../lib/adulterationEngine';
 import { analyzeOil } from '../../lib/api';
@@ -10,6 +10,7 @@ export default function SelectOil() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const filtered = OIL_REFERENCE_DATA.filter((oil) =>
     oil.oilName.toLowerCase().includes(search.toLowerCase()) ||
@@ -17,54 +18,70 @@ export default function SelectOil() {
   );
 
   const handleConfirm = useCallback(async () => {
-    if (!selected) return;
+    if (!selected || isAnalyzing) return;
+    setIsAnalyzing(true);
 
-    let sensorReadings = {};
     try {
-      sensorReadings = JSON.parse(sessionStorage.getItem('sensor_snapshot') || '{}');
-    } catch (_) {}
-
-    let result = null;
-    const isMustard = selected.oilName.toLowerCase().includes('mustard');
-
-    if (isMustard) {
+      let sensorReadings = {};
       try {
-        const res = await analyzeOil({
-          oil_type: selected.oilName,
-          sensor_values: sensorReadings
-        });
-        if (res?.data?.success) {
-          result = res.data;
-          result.usingMlModel = true;
-          result.isMlModel = true;
-          result.modelPath = 'D:\\oilmodel';
+        sensorReadings = JSON.parse(sessionStorage.getItem('sensor_snapshot') || '{}');
+      } catch (_) {}
+
+      let result = null;
+      const isMustard = selected.oilName.toLowerCase().includes('mustard');
+
+      if (isMustard) {
+        try {
+          const fetchPromise = analyzeOil({
+            oil_type: selected.oilName,
+            sensor_values: sensorReadings
+          });
+          const timeoutPromise = new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Backend timeout')), 1500)
+          );
+
+          const res = await Promise.race([fetchPromise, timeoutPromise]);
+          if (res?.data?.success) {
+            result = res.data;
+            result.usingMlModel = true;
+            result.isMlModel = true;
+            result.modelPath = 'D:\\oilmodel';
+          }
+        } catch (err) {
+          console.warn('[SelectOil] Backend ML call notice, using local ML engine:', err.message);
         }
-      } catch (err) {
-        console.warn('[SelectOil] Backend ML call notice, using local ML engine:', err.message);
       }
+
+      if (!result) {
+        result = calculateAdulteration(sensorReadings, selected);
+      }
+
+      sessionStorage.setItem('selected_oil', JSON.stringify(selected));
+      sessionStorage.setItem('analysis_result', JSON.stringify(result));
+      localStorage.setItem('selected_oil_type', selected.oilName);
+
+      // Instant Two-Way Sync: Transmit target oil + calculated purity to ESP32 OLED
+      sendAiResultToEsp32({
+        oilName: selected.oilName,
+        purityScore: result.purityPercentage,
+        adulterationPercentage: result.adulterationPercentage,
+        confidenceScore: result.confidenceScore,
+        status: result.tier === 'pure' ? 'SAFE' : result.tier === 'moderate' ? 'SUSPICIOUS' : 'ADULTERATED',
+        detectedAdulterant: result.primaryIndicator || 'None',
+        scanId: `SPT-${Math.floor(100000 + Math.random() * 900000)}`
+      });
+
+      navigate('/scan/readings/analysis');
+    } catch (e) {
+      console.error('Error during analysis:', e);
+      const fallback = calculateAdulteration({}, selected);
+      sessionStorage.setItem('selected_oil', JSON.stringify(selected));
+      sessionStorage.setItem('analysis_result', JSON.stringify(fallback));
+      navigate('/scan/readings/analysis');
+    } finally {
+      setIsAnalyzing(false);
     }
-
-    if (!result) {
-      result = calculateAdulteration(sensorReadings, selected);
-    }
-
-    sessionStorage.setItem('selected_oil', JSON.stringify(selected));
-    sessionStorage.setItem('analysis_result', JSON.stringify(result));
-    localStorage.setItem('selected_oil_type', selected.oilName);
-
-    // Instant Two-Way Sync: Transmit target oil + calculated purity to ESP32 OLED
-    sendAiResultToEsp32({
-      oilName: selected.oilName,
-      purityScore: result.purityPercentage,
-      adulterationPercentage: result.adulterationPercentage,
-      confidenceScore: result.confidenceScore,
-      status: result.tier === 'pure' ? 'SAFE' : result.tier === 'moderate' ? 'SUSPICIOUS' : 'ADULTERATED',
-      detectedAdulterant: result.primaryIndicator || 'None',
-      scanId: `SPT-${Math.floor(100000 + Math.random() * 900000)}`
-    });
-
-    navigate('/scan/readings/analysis');
-  }, [selected, navigate]);
+  }, [selected, isAnalyzing, navigate]);
 
   return (
     // Use flex column taking full screen, but pad bottom for bottom nav (96px)
@@ -116,7 +133,7 @@ export default function SelectOil() {
                 <button
                   key={oil.oilName}
                   onClick={() => setSelected(isSelected ? null : oil)}  // tap again to deselect
-                  className={`relative flex flex-col items-center gap-2.5 p-4 rounded-2xl border-2 transition-all active:scale-[0.97] w-full
+                  className={`relative flex flex-col items-center gap-2.5 p-4 rounded-2xl border-2 transition-all active:scale-[0.97] w-full cursor-pointer
                     ${isSelected
                       ? 'border-[#d4af37] bg-[#d4af37]/10 shadow-glow-gold'
                       : 'border-[var(--border-color)] bg-[var(--bg-card)] hover:border-[#d4af37]/40'
@@ -152,16 +169,12 @@ export default function SelectOil() {
       </div>
 
       {/* ── Confirm footer — always visible above bottom nav ────────────── */}
-      {/*
-        The bottom nav is ~72px tall + safe area.
-        We position this at bottom: 72px so it sits directly above the nav.
-      */}
       <div
         className="fixed left-1/2 -translate-x-1/2 w-full max-w-md z-30 px-5"
         style={{ bottom: '74px' }}
       >
         {/* Fade gradient backdrop */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-page)] via-[var(--bg-page)]/90 to-transparent -z-10 rounded-t-2xl" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-page)] via-[var(--bg-page)]/90 to-transparent -z-10 rounded-t-2xl pointer-events-none" />
 
         {/* Selection preview */}
         {selected && (
@@ -181,15 +194,24 @@ export default function SelectOil() {
         {/* Confirm button */}
         <button
           onClick={handleConfirm}
-          disabled={!selected}
-          className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2
-            ${selected
+          disabled={!selected || isAnalyzing}
+          className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 cursor-pointer
+            ${selected && !isAnalyzing
               ? 'bg-gradient-to-r from-[#f5c842] to-[#d4af37] text-black shadow-[0_4px_20px_rgba(212,175,55,0.4)] active:scale-[0.97]'
               : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] opacity-50 cursor-not-allowed'
             }`}
         >
-          <FlaskConical size={16} />
-          {selected ? `Analyze ${selected.oilName}` : 'Select an Oil First'}
+          {isAnalyzing ? (
+            <>
+              <RefreshCw size={16} className="animate-spin" />
+              Analyzing {selected?.oilName}...
+            </>
+          ) : (
+            <>
+              <FlaskConical size={16} />
+              {selected ? `Analyze ${selected.oilName}` : 'Select an Oil First'}
+            </>
+          )}
         </button>
       </div>
     </div>
