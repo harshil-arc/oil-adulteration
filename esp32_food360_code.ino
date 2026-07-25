@@ -186,17 +186,17 @@ void renderScreen5Spectral(const char* digitsStr) {
   display.clearDisplay();
   drawCardHeader("[5/5]", "SPECTRAL DATA");
   display.setTextSize(1);
+  display.setTextWrap(true);
   String s = String(digitsStr);
   if (s == "--" || s.length() < 3) {
     display.setCursor(0, 22);
     display.println("Sensor Offline / 0x39");
   } else {
-    int half = s.length() / 2;
-    int commaPos = s.indexOf(',', half);
+    int commaPos = s.indexOf(',', 22);
     if (commaPos != -1) {
-      display.setCursor(0, 15);
+      display.setCursor(0, 16);
       display.println(s.substring(0, commaPos));
-      display.setCursor(0, 30);
+      display.setCursor(0, 32);
       display.println(s.substring(commaPos + 1));
     } else {
       display.setCursor(0, 20);
@@ -441,11 +441,22 @@ void setup() {
   }
   Serial.println(F("==========================================\n"));
 
-  if (!display.begin(SSD1306_SWITCHCAPVCC, OLED_ADDRESS)) {
-    Serial.println(F("[ERROR] OLED SSD1306 not found!"));
+  if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    Serial.println(F("[WARN] OLED 0x3C not responding, trying 0x3D..."));
+    if (!display.begin(SSD1306_SWITCHCAPVCC, 0x3D)) {
+      Serial.println(F("[ERROR] OLED SSD1306 not found on 0x3C or 0x3D!"));
+    } else {
+      Serial.println(F("[OK] OLED SSD1306 initialized on 0x3D."));
+    }
   } else {
-    Serial.println(F("[OK] OLED SSD1306 initialized."));
+    Serial.println(F("[OK] OLED SSD1306 initialized on 0x3C."));
   }
+
+  // WIPE GDRAM BUFFER IMMEDIATELY TO PREVENT GARBLED NOISE / QR CODE PATTERN
+  display.clearDisplay();
+  display.display();
+  delay(50);
+
   oledShow("SpectraTrust Hub", "Initializing...", "Connecting WiFi", "");
 
   WiFi.setAutoReconnect(true);

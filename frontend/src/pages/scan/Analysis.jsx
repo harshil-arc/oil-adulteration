@@ -10,7 +10,7 @@ import CertificateModal from '../../components/CertificateModal';
 import ComplaintModal from '../../components/ComplaintModal';
 import DeveloperSettingsModal from '../../components/DeveloperSettingsModal';
 import { processScanResult, getVerificationSettings } from '../../services/intelligenceService';
-import { sendAiResultToEsp32 } from '../../services/syncService';
+import { sendAiResultToEsp32, clearEsp32OledResult } from '../../services/syncService';
 
 // ─── Groq config (same as AiChatbot) ────────────────────────────────────────
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
