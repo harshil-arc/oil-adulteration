@@ -103,55 +103,51 @@ export function calculateAdulteration(sensorReadings, oilRef) {
 
   console.log("[Engine Euclidean]", { pure_dist, adulterated_dist, isMustard });
 
-  // STEP 7: PURITY CALCULATION
-  const total_dist = pure_dist + adulterated_dist;
-  let purity = 100;
-  
-  const sumInput = inputNorm.reduce((a, b) => a + b, 0);
-  if (sumInput === 0) {
-    purity = 0; // Invalid reading
-  } else if (total_dist > 0) {
-    // Inverse distance squared weighting to create sharper contrast instead of 50/50 splits
-    const wPure = 1 / Math.pow(pure_dist + 0.0001, 2);
-    const wAdult = 1 / Math.pow(adulterated_dist + 0.0001, 2);
-    purity = (wPure / (wPure + wAdult)) * 100;
-  } else {
-    purity = 100; 
-  }
-  
-  // Safety clamp
-  purity = Math.min(Math.max(purity, 0), 100);
+  // Check for No Oil Present baseline signatures (e.g. Air / Empty Scan / Baseline readings)
+  const sumRaw = rawArray.reduce((a, b) => a + Math.abs(b), 0);
+  const isNoOilBaseline = (sumRaw === 0) || 
+    (Math.abs(pure_dist - adulterated_dist) < 0.005 && rawArray[1] <= 1 && rawArray[2] <= 4 && rawArray[3] <= 4);
 
-  // STEP 8: ADULTERATION LEVEL
-  const adulterationLevel = 100 - purity;
-  
-  // STEP 6: DECISION LOGIC
-  let status = pure_dist <= adulterated_dist ? "Pure Oil" : "Adulterated Oil";
-  if (isMustard) {
-    status = pure_dist <= adulterated_dist ? "Pure Mustard Oil" : "Adulterated Mustard Oil";
-  }
-  let matched_with = pure_dist <= adulterated_dist ? "pure" : "adulterated";
-  
-  let tier = 'pure';
-  if (adulterationLevel > 60) tier = 'heavy';
-  else if (adulterationLevel > 20) tier = 'moderate';
-
-  // STEP 9: CONFIDENCE SCORE
-  let confidence = 100 - (Math.min(pure_dist, adulterated_dist) * 200); // Scaled based on typical Euclidean distances (~0.2 max)
-  confidence = Math.min(Math.max(confidence, 0), 100);
-
-  // STEP 11: TEMPERATURE HANDLING & ML MODEL METADATA
-  let primaryIndicator = isMustard 
-    ? "Trained Mustard Oil ML Model (D:\\oilmodel)" 
-    : "Spectral Match";
-
-  if (temp < 20 || temp > 40) {
-    primaryIndicator = "Warning: Sensor accuracy may be affected due to temperature variation";
-  }
-
-  // Handle uncertain logic
-  if (Math.abs(pure_dist - adulterated_dist) < 0.01 && total_dist > 0) {
-    primaryIndicator = "Result uncertain, retest recommended";
+  if (isNoOilBaseline && isMustard) {
+    return {
+      usingMlModel: true,
+      isMlModel: true,
+      modelPath: 'D:\\oilmodel',
+      modelType: 'Random Forest Classifier (Mustard Oil)',
+      modelVersion: 'D:\\oilmodel (Mustard RF v1.0)',
+      oil_type: 'Mustard Oil',
+      purityPercentage: 0,
+      adulterationPercentage: 0,
+      confidenceScore: 95,
+      status: 'No Oil Present',
+      tier: 'no_oil',
+      primaryIndicator: 'ML Model (D:\\oilmodel): No Oil Detected in Sample (Air / Baseline Scan)',
+      usingCalibration: false,
+      deviationDetails: {
+        pure_match: {
+          label: 'ML Spectral Distance to Pure Mustard',
+          value: Number(pure_dist.toFixed(4)),
+          unit: 'dist',
+          rangeMin: 0,
+          rangeMax: 0.5,
+          inRange: false
+        },
+        adult_match: {
+          label: 'ML Spectral Distance to Adulterated Mustard',
+          value: Number(adulterated_dist.toFixed(4)),
+          unit: 'dist',
+          rangeMin: 0,
+          rangeMax: 0.5,
+          inRange: false
+        }
+      },
+      distances: {
+        pure: pure_dist.toFixed(4),
+        adulterated: adulterated_dist.toFixed(4)
+      },
+      matched_with: 'no_oil',
+      temperature: temp
+    };
   }
 
   // STEP 12: OUTPUT FORMAT

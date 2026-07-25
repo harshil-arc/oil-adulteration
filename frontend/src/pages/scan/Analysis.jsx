@@ -342,6 +342,7 @@ Provide 2-3 likely adulterants only.`;
     pure: { color: '#22c55e', bg: 'bg-emerald-500/10', border: 'border-emerald-500/30', label: 'PURE & SAFE', Icon: ShieldCheck },
     moderate: { color: '#eab308', bg: 'bg-yellow-500/10', border: 'border-yellow-500/30', label: 'MODERATELY SUSPICIOUS', Icon: AlertTriangle },
     heavy: { color: '#ef4444', bg: 'bg-red-500/10', border: 'border-red-500/30', label: 'HIGHLY SUSPICIOUS (UNSAFE)', Icon: XCircle },
+    no_oil: { color: '#9ca3af', bg: 'bg-gray-500/10', border: 'border-gray-500/30', label: 'NO OIL DETECTED IN SAMPLE', Icon: AlertTriangle },
   };
   const tc = tierConfig[result.tier] || tierConfig.pure;
   const riskColors = { low: 'text-emerald-400', moderate: 'text-amber-400', serious: 'text-red-400' };

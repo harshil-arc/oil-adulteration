@@ -104,40 +104,82 @@ async function predictMustardOilML(sensorReadings) {
   let status = "Pure Mustard Oil";
   let tier = "pure";
 
-  if (!pyResult.oil_present && pyResult.probability_oil_present < 0.1) {
+  // Check if model explicitly detected No Oil Present (class_id: 0 or oil_present: false)
+  if (!pyResult.oil_present || pyResult.class_id === 0 || pyResult.label === 'No Oil Present') {
     purityPercentage = 0;
-    status = "No Mustard Oil Detected";
-    tier = "heavy";
+    status = "No Oil Present";
+    tier = "no_oil";
     confidenceScore = Math.round((pyResult.confidence || 0.95) * 100);
+
+    return {
+      usingMlModel: true,
+      isMlModel: true,
+      modelPath: MODEL_DIR,
+      modelType: 'Random Forest Classifier (Mustard Oil)',
+      modelVersion: 'D:\\oilmodel (Mustard RF v1.0)',
+      oil_type: 'Mustard Oil',
+      purityPercentage: 0,
+      adulterationPercentage: 0,
+      confidenceScore,
+      status: "No Oil Present",
+      tier: "no_oil",
+      primaryIndicator: `ML Model (D:\\oilmodel): No Oil Present (Air / Baseline Scan)`,
+      rawMlOutput: pyResult,
+      deviationDetails: {
+        pure_match: {
+          label: 'ML Spectral Distance to Pure Mustard',
+          value: Number(pureDist.toFixed(4)),
+          unit: 'dist',
+          rangeMin: 0,
+          rangeMax: 0.5,
+          inRange: false
+        },
+        adult_match: {
+          label: 'ML Spectral Distance to Adulterated Mustard',
+          value: Number(adultDist.toFixed(4)),
+          unit: 'dist',
+          rangeMin: 0,
+          rangeMax: 0.5,
+          inRange: false
+        }
+      },
+      distances: {
+        pure: pureDist.toFixed(4),
+        adulterated: adultDist.toFixed(4)
+      },
+      matched_with: 'no_oil',
+      temperature: temp,
+      scanId: `ML-MUSTARD-${Math.floor(100000 + Math.random() * 900000)}`
+    };
+  }
+
+  // Model detected oil present (class_id: 1)
+  const prob = pyResult.probability_oil_present || 0.95;
+  
+  // Scale purity based on distance to pure spectral profile
+  const totalDist = pureDist + adultDist;
+  let distPurity = 100;
+  if (totalDist > 0) {
+    const wPure = 1 / Math.pow(pureDist + 0.0001, 2);
+    const wAdult = 1 / Math.pow(adultDist + 0.0001, 2);
+    distPurity = (wPure / (wPure + wAdult)) * 100;
+  }
+
+  // Blend Random Forest model probability with Euclidean distance signal
+  purityPercentage = Math.round(((prob * 0.4) + ((distPurity / 100) * 0.6)) * 1000) / 10;
+  purityPercentage = Math.min(Math.max(purityPercentage, 0), 100);
+
+  confidenceScore = Math.round(Math.min(99, Math.max(85, (prob * 100))));
+
+  if (purityPercentage >= 85) {
+    status = "Pure Mustard Oil";
+    tier = "pure";
+  } else if (purityPercentage >= 50) {
+    status = "Moderately Adulterated Mustard Oil";
+    tier = "moderate";
   } else {
-    // Model detected oil present
-    const prob = pyResult.probability_oil_present || 0.95;
-    
-    // Scale purity based on distance to pure spectral profile
-    const totalDist = pureDist + adultDist;
-    let distPurity = 100;
-    if (totalDist > 0) {
-      const wPure = 1 / Math.pow(pureDist + 0.0001, 2);
-      const wAdult = 1 / Math.pow(adultDist + 0.0001, 2);
-      distPurity = (wPure / (wPure + wAdult)) * 100;
-    }
-
-    // Blend Random Forest model probability with Euclidean distance signal
-    purityPercentage = Math.round(((prob * 0.4) + ((distPurity / 100) * 0.6)) * 1000) / 10;
-    purityPercentage = Math.min(Math.max(purityPercentage, 0), 100);
-
-    confidenceScore = Math.round(Math.min(99, Math.max(85, (prob * 100))));
-
-    if (purityPercentage >= 85) {
-      status = "Pure Mustard Oil";
-      tier = "pure";
-    } else if (purityPercentage >= 50) {
-      status = "Moderately Adulterated Mustard Oil";
-      tier = "moderate";
-    } else {
-      status = "Highly Adulterated Mustard Oil";
-      tier = "heavy";
-    }
+    status = "Highly Adulterated Mustard Oil";
+    tier = "heavy";
   }
 
   const adulterationPercentage = Math.round((100 - purityPercentage) * 10) / 10;
