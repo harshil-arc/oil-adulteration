@@ -269,16 +269,18 @@ export default function Analysis() {
       if (error) console.warn('[Analysis] Supabase sync notice:', error.message);
     });
 
-    return () => {
-      clearInterval(heartbeat);
-      clearEsp32OledResult(); // Immediately reset OLED to Standby when user exits page
-    };
-
     // Load local timeline
     try {
       const scans = JSON.parse(localStorage.getItem('spectratrust_recent_scans') || '[]');
       setTimelineScans(scans);
     } catch (_) {}
+
+    return () => {
+      clearInterval(heartbeat);
+      if (typeof clearEsp32OledResult === 'function') {
+        clearEsp32OledResult(); // Immediately reset OLED to Standby when user exits page
+      }
+    };
   }, []);
 
   // ── Adulterant Groq call with Scientific Fallback ────────────────────────

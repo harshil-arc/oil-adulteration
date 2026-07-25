@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search, Check, ChevronLeft, FlaskConical } from 'lucide-react';
 import { OIL_REFERENCE_DATA } from '../../lib/oilReferenceData';
 import { calculateAdulteration } from '../../lib/adulterationEngine';
-
+import { analyzeOil } from '../../lib/api';
 import { sendAiResultToEsp32 } from '../../services/syncService';
 
 export default function SelectOil() {
@@ -29,7 +29,6 @@ export default function SelectOil() {
 
     if (isMustard) {
       try {
-        const { analyzeOil } = await import('../../lib/api');
         const res = await analyzeOil({
           oil_type: selected.oilName,
           sensor_values: sensorReadings
