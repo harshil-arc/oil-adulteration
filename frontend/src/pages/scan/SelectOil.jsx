@@ -98,8 +98,8 @@ export default function SelectOil() {
       </div>
 
       {/* ── Scrollable oil grid ─────────────────────────────────────────── */}
-      {/* pb-48 ensures content doesn't go behind the confirm button footer */}
-      <div className="flex-1 overflow-y-auto px-5 pb-48">
+      {/* pb-56 ensures content doesn't go behind the confirm button footer */}
+      <div className="flex-1 overflow-y-auto px-5 pb-56">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-[var(--text-muted)]">
             <span className="text-4xl mb-3">🔍</span>
@@ -110,12 +110,9 @@ export default function SelectOil() {
             {filtered.map((oil) => {
               const isSelected = selected?.oilName === oil.oilName;
               return (
-                <button
+                <div
                   key={oil.oilName}
-                  onClick={() => {
-                    setSelected(oil);
-                    handleConfirm(oil);
-                  }}
+                  onClick={() => setSelected(isSelected ? null : oil)}
                   className={`relative flex flex-col items-center gap-2.5 p-4 rounded-2xl border-2 transition-all active:scale-[0.97] w-full cursor-pointer
                     ${isSelected
                       ? 'border-[#d4af37] bg-[#d4af37]/10 shadow-glow-gold'
@@ -144,24 +141,38 @@ export default function SelectOil() {
                       {oil.descriptor}
                     </p>
                   </div>
-                </button>
+
+                  {/* Prominent Action Button right inside selected card */}
+                  {isSelected && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleConfirm(oil);
+                      }}
+                      className="w-full mt-1 py-2 bg-gradient-to-r from-[#f5c842] to-[#d4af37] text-black font-black rounded-xl text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-transform cursor-pointer"
+                    >
+                      <FlaskConical size={12} />
+                      Analyze Now
+                    </button>
+                  )}
+                </div>
               );
             })}
           </div>
         )}
       </div>
 
-      {/* ── Confirm footer — always visible above bottom nav ────────────── */}
+      {/* ── Confirm footer — positioned clearly at bottom: 120px above bottom nav ────────────── */}
       <div
         className="fixed left-1/2 -translate-x-1/2 w-full max-w-md z-[100] px-5 pointer-events-auto"
-        style={{ bottom: '84px' }}
+        style={{ bottom: '120px' }}
       >
         {/* Fade gradient backdrop */}
         <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-page)] via-[var(--bg-page)]/90 to-transparent -z-10 rounded-t-2xl pointer-events-none" />
 
         {/* Selection preview */}
         {selected && (
-          <div className="flex items-center gap-2.5 mb-3 bg-[var(--bg-elevated)] border border-[#d4af37]/30 rounded-2xl px-4 py-2.5">
+          <div className="flex items-center gap-2.5 mb-2.5 bg-[var(--bg-elevated)] border border-[#d4af37]/40 rounded-2xl px-4 py-2 shadow-lg">
             <div
               className="w-5 h-5 rounded-full border border-[#d4af37]/40 flex-shrink-0"
               style={{ backgroundColor: selected.color }}
@@ -178,7 +189,7 @@ export default function SelectOil() {
         <button
           onClick={() => handleConfirm()}
           disabled={!selected}
-          className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 cursor-pointer relative z-10
+          className={`w-full py-3.5 rounded-2xl font-black text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 cursor-pointer relative z-10
             ${selected
               ? 'bg-gradient-to-r from-[#f5c842] to-[#d4af37] text-black shadow-[0_4px_20px_rgba(212,175,55,0.4)] active:scale-[0.97]'
               : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] opacity-50 cursor-not-allowed'
