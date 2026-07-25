@@ -16,8 +16,9 @@ export default function SelectOil() {
     oil.descriptor.toLowerCase().includes(search.toLowerCase())
   );
 
-  const handleConfirm = useCallback(() => {
-    if (!selected) return;
+  const handleConfirm = useCallback((oilToAnalyze) => {
+    const targetOil = oilToAnalyze?.oilName ? oilToAnalyze : selected;
+    if (!targetOil) return;
 
     let sensorReadings = {};
     try {
@@ -25,17 +26,17 @@ export default function SelectOil() {
     } catch (_) {}
 
     // 1. Calculate result synchronously (0 ms)
-    const result = calculateAdulteration(sensorReadings, selected);
+    const result = calculateAdulteration(sensorReadings, targetOil);
 
     // 2. Save snapshot & result to storage immediately (0 ms)
-    sessionStorage.setItem('selected_oil', JSON.stringify(selected));
+    sessionStorage.setItem('selected_oil', JSON.stringify(targetOil));
     sessionStorage.setItem('analysis_result', JSON.stringify(result));
-    localStorage.setItem('selected_oil_type', selected.oilName);
+    localStorage.setItem('selected_oil_type', targetOil.oilName);
 
     // 3. Fire-and-forget background tasks (non-blocking)
-    const isMustard = selected.oilName.toLowerCase().includes('mustard');
+    const isMustard = targetOil.oilName.toLowerCase().includes('mustard');
     if (isMustard) {
-      analyzeOil({ oil_type: selected.oilName, sensor_values: sensorReadings })
+      analyzeOil({ oil_type: targetOil.oilName, sensor_values: sensorReadings })
         .then((res) => {
           if (res?.data?.success) {
             const mlRes = res.data;
@@ -49,7 +50,7 @@ export default function SelectOil() {
     }
 
     sendAiResultToEsp32({
-      oilName: selected.oilName,
+      oilName: targetOil.oilName,
       purityScore: result.purityPercentage,
       adulterationPercentage: result.adulterationPercentage,
       confidenceScore: result.confidenceScore,
@@ -70,14 +71,14 @@ export default function SelectOil() {
       <div className="flex items-center gap-3 p-5 border-b border-[var(--border-color)] bg-[var(--bg-page)] z-10">
         <button
           onClick={() => navigate('/scan/readings')}
-          className="p-2 rounded-full bg-[var(--bg-elevated)] theme-text flex-shrink-0"
+          className="p-2 rounded-full bg-[var(--bg-elevated)] theme-text flex-shrink-0 cursor-pointer"
         >
           <ChevronLeft size={20} />
         </button>
         <div>
           <h1 className="theme-text font-black text-base leading-tight">What oil are you testing?</h1>
           <p className="text-[10px] text-[var(--text-muted)] font-medium mt-0.5">
-            Select oil type → compare with pure oil reference data
+            Tap any oil to test immediately with pure oil reference data
           </p>
         </div>
       </div>
@@ -111,7 +112,10 @@ export default function SelectOil() {
               return (
                 <button
                   key={oil.oilName}
-                  onClick={() => setSelected(isSelected ? null : oil)}  // tap again to deselect
+                  onClick={() => {
+                    setSelected(oil);
+                    handleConfirm(oil);
+                  }}
                   className={`relative flex flex-col items-center gap-2.5 p-4 rounded-2xl border-2 transition-all active:scale-[0.97] w-full cursor-pointer
                     ${isSelected
                       ? 'border-[#d4af37] bg-[#d4af37]/10 shadow-glow-gold'
@@ -149,8 +153,8 @@ export default function SelectOil() {
 
       {/* ── Confirm footer — always visible above bottom nav ────────────── */}
       <div
-        className="fixed left-1/2 -translate-x-1/2 w-full max-w-md z-30 px-5"
-        style={{ bottom: '74px' }}
+        className="fixed left-1/2 -translate-x-1/2 w-full max-w-md z-[100] px-5 pointer-events-auto"
+        style={{ bottom: '84px' }}
       >
         {/* Fade gradient backdrop */}
         <div className="absolute inset-0 bg-gradient-to-t from-[var(--bg-page)] via-[var(--bg-page)]/90 to-transparent -z-10 rounded-t-2xl pointer-events-none" />
@@ -172,9 +176,9 @@ export default function SelectOil() {
 
         {/* Confirm button */}
         <button
-          onClick={handleConfirm}
+          onClick={() => handleConfirm()}
           disabled={!selected}
-          className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 cursor-pointer
+          className={`w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all flex items-center justify-center gap-2 cursor-pointer relative z-10
             ${selected
               ? 'bg-gradient-to-r from-[#f5c842] to-[#d4af37] text-black shadow-[0_4px_20px_rgba(212,175,55,0.4)] active:scale-[0.97]'
               : 'bg-[var(--bg-elevated)] text-[var(--text-muted)] opacity-50 cursor-not-allowed'
