@@ -7,8 +7,8 @@ import {
 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import CertificateModal from '../../components/CertificateModal';
-import ComplaintModal from '../../components/ComplaintModal';
 import DeveloperSettingsModal from '../../components/DeveloperSettingsModal';
+import AdulterationWarningCard from '../../components/AdulterationWarningCard';
 import { processScanResult, getVerificationSettings } from '../../services/intelligenceService';
 import { sendAiResultToEsp32, clearEsp32OledResult } from '../../services/syncService';
 import { calculateAdulteration } from '../../lib/adulterationEngine';
@@ -486,18 +486,21 @@ Provide 2-3 likely adulterants only.`;
             </div>
           </div>
 
-          {/* SUBMIT ADULTERATION REPORT BUTTON (For Suspicious Samples) */}
+          {/* REPORT THROUGH OFFICIAL GOVERNMENT PORTAL BUTTON */}
           {result.adulterationPercentage > 15 && (
             <div className="w-full pt-3 border-t border-[var(--border-color)]">
               <button
-                onClick={() => setComplaintModalOpen(true)}
-                className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-red-500 text-black font-black text-xs uppercase tracking-wider rounded-2xl shadow-glow-amber hover:scale-[1.01] transition-transform flex items-center justify-center gap-2"
+                onClick={() => navigate('/report', { state: { scanData: { oilType: selectedOil.oilName, purity: result.purityPercentage, adulteration: result.adulterationPercentage, confidence: result.confidenceScore } } })}
+                className="w-full py-3.5 bg-gradient-to-r from-red-500 to-amber-500 text-black font-black text-xs uppercase tracking-wider rounded-2xl shadow-glow-red hover:scale-[1.01] transition-transform flex items-center justify-center gap-2"
               >
-                <FileText size={16} /> Report This Sample to Community Intelligence Network →
+                <FileText size={16} /> Report Through Official Government Portal →
               </button>
             </div>
           )}
         </div>
+
+        {/* ── OPT-IN COMMUNITY ADULTERATION WARNING CARD (Threshold = 20%) ── */}
+        <AdulterationWarningCard scanData={{ selectedOil, result, sensorData }} threshold={20} />
 
         {/* ── SECTION 2: FACTUAL EVIDENCE-BASED AI SCAN INSIGHTS ── */}
         <div className="card p-5 rounded-3xl border border-[var(--border-color)] space-y-3">
@@ -634,12 +637,6 @@ Provide 2-3 likely adulterants only.`;
         isOpen={certModalOpen}
         onClose={() => setCertModalOpen(false)}
         scanData={{ selectedOil, result, sensorData, certId: certUuid, reportNo, deviceId }}
-      />
-
-      <ComplaintModal
-        isOpen={complaintModalOpen}
-        onClose={() => setComplaintModalOpen(false)}
-        scanData={{ selectedOil, result, sensorData }}
       />
 
       <DeveloperSettingsModal

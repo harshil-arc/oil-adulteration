@@ -12,7 +12,6 @@ import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, 
 import { supabase } from '../lib/supabase';
 import { useApp } from '../context/AppContext';
 import NationalIntelligenceCenter from '../components/NationalIntelligenceCenter';
-import ComplaintModal from '../components/ComplaintModal';
 
 // Simple Count-Up Component for numbers
 function CountUp({ end, duration = 800, suffix = "" }) {
@@ -245,10 +244,32 @@ export default function Home() {
           </button>
         </div>
 
-        {/* ── 3. QUICK ACTION GRID (2 Columns x 3 Rows) ─────────────────────── */}
+        {/* ── 3. QUICK ACTION GRID ─────────────────────── */}
         <div>
           <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2.5 pl-1">Quick Actions</h3>
           <div className="grid grid-cols-2 gap-3">
+            
+            {/* FEATURED: DISASTER & EMERGENCY RELIEF PLATFORM BUTTON */}
+            <button
+              onClick={() => navigate('/relief-network')}
+              className="p-4 rounded-2xl bg-gradient-to-br from-[var(--bg-card)] via-[var(--bg-card)] to-red-950/30 border border-red-500/40 hover:border-red-400 text-left transition-all group flex flex-col justify-between h-24 col-span-2 shadow-glow-red relative overflow-hidden"
+            >
+              <div className="flex items-center justify-between">
+                <div className="w-9 h-9 rounded-xl bg-red-500/20 text-red-400 flex items-center justify-center group-hover:scale-110 transition-transform border border-red-500/30 shadow-glow-red">
+                  <AlertTriangle size={18} />
+                </div>
+                <span className="text-[9px] font-black uppercase tracking-widest bg-red-500/20 text-red-300 px-2.5 py-0.5 rounded-full border border-red-500/40 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" /> Live Relief Platform
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-black text-red-400 uppercase tracking-wider">Disaster & Emergency</p>
+                  <p className="text-[9px] text-gray-300">Connect with Verified NGOs, Camps & Relief Supply Nodes</p>
+                </div>
+                <ChevronRight size={16} className="text-red-400 group-hover:translate-x-1 transition-transform" />
+              </div>
+            </button>
             
             <button
               onClick={() => navigate('/scan')}
@@ -264,7 +285,7 @@ export default function Home() {
             </button>
 
             <button
-              onClick={() => setShowComplaintModal(true)}
+              onClick={() => navigate('/report')}
               className="p-4 rounded-2xl bg-[var(--bg-card)] border border-red-500/30 hover:border-red-400 text-left transition-all group flex flex-col justify-between h-24"
             >
               <div className="w-9 h-9 rounded-xl bg-red-500/15 text-red-400 flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -272,7 +293,7 @@ export default function Home() {
               </div>
               <div>
                 <p className="text-xs font-black theme-text uppercase tracking-wider">Report Adulteration</p>
-                <p className="text-[9px] text-gray-400">Submit FSSAI Notice</p>
+                <p className="text-[9px] text-gray-400">Official Govt Gateway</p>
               </div>
             </button>
 
@@ -613,14 +634,6 @@ export default function Home() {
             </button>
           </div>
         </div>
-      )}
-
-      {/* ── REPORT ADULTERATION MODAL ────────────────────────────────────────── */}
-      {showComplaintModal && (
-        <ComplaintModal
-          isOpen={showComplaintModal}
-          onClose={() => setShowComplaintModal(false)}
-        />
       )}
 
     </div>

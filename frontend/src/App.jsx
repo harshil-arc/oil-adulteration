@@ -55,6 +55,8 @@ export default function App() {
                       <Route path="/ngo-dashboard" element={<Navigate to="/community" replace />} />
                       <Route path="/community" element={<Community />} />
                       <Route path="/relief" element={<FoodReliefNetwork />} />
+                      <Route path="/relief-network" element={<FoodReliefNetwork />} />
+                      <Route path="/disaster" element={<FoodReliefNetwork />} />
                       <Route path="/scan" element={<QRLanding />} />
                       <Route path="/scan/bluetooth" element={<BluetoothScan />} />
                       <Route path="/scan/local" element={<LocalRouter />} />

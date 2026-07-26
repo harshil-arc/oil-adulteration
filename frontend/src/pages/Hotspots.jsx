@@ -9,6 +9,10 @@ import {
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useApp } from '../context/AppContext';
+import { 
+  subscribeCommunityReports, 
+  clusterReportsToHotspots 
+} from '../services/communityReportService';
 import 'leaflet/dist/leaflet.css';
 
 // Fix default leaflet icons
@@ -59,6 +63,50 @@ const getCustomMarkerIcon = (status, lastPurity) => {
     `,
     iconSize: [18, 18],
     iconAnchor: [9, 18]
+  });
+};
+
+// 4-Tier Community Hotspot Markers (1 = Yellow, 2-4 = Orange, 5+ = Red Pulse, Authority = Blue Shield)
+const getCommunityHotspotMarkerIcon = (reportCount, verificationLevel) => {
+  let hex = '#eab308'; // Default 1 report = Yellow
+  let isPulsing = false;
+  let isAuthority = verificationLevel === 'authority';
+
+  if (isAuthority) {
+    hex = '#3b82f6'; // Blue
+  } else if (reportCount >= 5) {
+    hex = '#ef4444'; // Red
+    isPulsing = true;
+  } else if (reportCount >= 2) {
+    hex = '#f97316'; // Orange
+  } else {
+    hex = '#eab308'; // Yellow
+  }
+
+  const iconHtml = isAuthority ? `
+    <div style="position: relative;">
+      <div style="background: linear-gradient(135deg, #3b82f6, #1d4ed8); width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; left: -13px; top: -13px; position: relative; border-radius: 50% 50% 0; transform: rotate(45deg); border: 2.5px solid #fff; box-shadow: 0 0 16px rgba(59, 130, 246, 0.9); z-index: 3;">
+        <span style="transform: rotate(-45deg); color: white; font-size: 11px;">🛡️</span>
+      </div>
+    </div>
+  ` : isPulsing ? `
+    <div style="position: relative;">
+      <div style="background-color: ${hex}; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; left: -11px; top: -11px; position: relative; border-radius: 50% 50% 0; transform: rotate(45deg); border: 2px solid #fff; box-shadow: 0 0 14px ${hex}; z-index: 2;">
+        <span style="transform: rotate(-45deg); color: white; font-weight: 900; font-size: 10px;">${reportCount}</span>
+      </div>
+      <div class="pulse-ring" style="position: absolute; top: -22px; left: -22px; width: 44px; height: 44px; border-radius: 50%; background-color: rgba(239, 68, 68, 0.35); pointer-events: none; z-index: 1;"></div>
+    </div>
+  ` : `
+    <div style="background-color: ${hex}; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; left: -10px; top: -10px; position: relative; border-radius: 50% 50% 0; transform: rotate(45deg); border: 2px solid #fff; box-shadow: 0 0 10px ${hex}90;">
+      <span style="transform: rotate(-45deg); color: #000; font-weight: 900; font-size: 10px;">${reportCount}</span>
+    </div>
+  `;
+
+  return new L.DivIcon({
+    className: 'community-hotspot-marker',
+    html: iconHtml,
+    iconSize: [24, 24],
+    iconAnchor: [12, 24]
   });
 };
 
@@ -143,6 +191,21 @@ export default function Hotspots() {
 
   // Bottom sheets
   const [selectedShop, setSelectedShop] = useState(null);
+
+  // Community Adulteration Reporting System (75m Clustering)
+  const [communityReports, setCommunityReports] = useState([]);
+  const [selectedCluster, setSelectedCluster] = useState(null);
+
+  useEffect(() => {
+    const unsub = subscribeCommunityReports((reportsList) => {
+      setCommunityReports(reportsList);
+    });
+    return () => unsub();
+  }, []);
+
+  const clusteredHotspots = useMemo(() => {
+    return clusterReportsToHotspots(communityReports, 0.075);
+  }, [communityReports]);
 
   // Inject pulsing animation CSS
   useEffect(() => {
@@ -815,9 +878,27 @@ const DEMO_HOTSPOT_SHOPS = [
                 icon={getCustomMarkerIcon(shop.status, shop.last_purity)}
                 eventHandlers={{
                   click: () => {
+                    setSelectedCluster(null);
                     setSelectedShop(shop);
                     setMapCenter([parseFloat(shop.latitude), parseFloat(shop.longitude)]);
                     setMapZoom(14);
+                  }
+                }}
+              />
+            ))}
+
+            {/* --- 75-Meter Clustered Community Hotspot Markers --- */}
+            {showMarkers && clusteredHotspots.map(cluster => (
+              <Marker
+                key={cluster.id}
+                position={[cluster.latitude, cluster.longitude]}
+                icon={getCommunityHotspotMarkerIcon(cluster.reportCount, cluster.verificationLevel)}
+                eventHandlers={{
+                  click: () => {
+                    setSelectedShop(null);
+                    setSelectedCluster(cluster);
+                    setMapCenter([cluster.latitude, cluster.longitude]);
+                    setMapZoom(15);
                   }
                 }}
               />
@@ -859,6 +940,80 @@ const DEMO_HOTSPOT_SHOPS = [
             </div>
           )}
         </div>
+
+        {/* --- COMMUNITY HOTSPOT CLUSTER DETAIL DRAWER --- */}
+        {selectedCluster && (
+          <div className="card p-5 border-2 border-amber-500 bg-[var(--bg-card)] shadow-2xl relative animate-slide-up z-50 rounded-[2rem] flex flex-col gap-4">
+            <button 
+              onClick={() => setSelectedCluster(null)}
+              className="absolute top-4 right-4 w-7 h-7 bg-[var(--bg-elevated)] rounded-full flex items-center justify-center text-[var(--text-muted)] hover:theme-text transition-colors"
+            >
+              <X size={14} />
+            </button>
+
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-2xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 font-bold shrink-0">
+                <MapPin size={20} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h3 className="font-bold text-sm theme-text leading-tight">{selectedCluster.shopName || `${selectedCluster.mostCommonOil} Hotspot`}</h3>
+                  <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full border ${
+                    selectedCluster.verificationLevel === 'authority' 
+                      ? 'bg-blue-500/15 text-blue-400 border-blue-500/30' 
+                      : 'bg-amber-500/15 text-amber-400 border-amber-500/30'
+                  }`}>
+                    {selectedCluster.verificationLevel === 'authority' ? '🛡️ Authority Verified' : '👥 Community Verified'}
+                  </span>
+                </div>
+                <p className="text-[10px] text-[var(--text-muted)] font-mono mt-1">
+                  {selectedCluster.address}
+                </p>
+              </div>
+            </div>
+
+            {/* METRICS GRID */}
+            <div className="grid grid-cols-4 gap-2 text-center bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded-2xl p-3 text-[9px] font-bold">
+              <div>
+                <p className="text-[7px] text-[var(--text-muted)] uppercase tracking-wider mb-0.5">Avg Adulteration</p>
+                <p className="text-xs font-black font-mono text-red-400">{selectedCluster.avgAdulteration.toFixed(1)}%</p>
+              </div>
+              <div className="border-l border-[var(--border-color)]">
+                <p className="text-[7px] text-[var(--text-muted)] uppercase tracking-wider mb-0.5">Reports</p>
+                <p className="text-xs font-black font-mono text-amber-400">{selectedCluster.reportCount}</p>
+              </div>
+              <div className="border-l border-[var(--border-color)]">
+                <p className="text-[7px] text-[var(--text-muted)] uppercase tracking-wider mb-0.5">Most Reported</p>
+                <p className="text-[10px] font-black theme-text uppercase truncate">{selectedCluster.mostCommonOil}</p>
+              </div>
+              <div className="border-l border-[var(--border-color)]">
+                <p className="text-[7px] text-[var(--text-muted)] uppercase tracking-wider mb-0.5">Risk Score</p>
+                <span className={`text-[8px] font-black uppercase px-1 py-0.5 rounded border ${
+                  selectedCluster.riskScore > 80 ? 'bg-red-500/20 text-red-400 border-red-500/40' :
+                  selectedCluster.riskScore > 60 ? 'bg-orange-500/20 text-orange-400 border-orange-500/40' :
+                  selectedCluster.riskScore > 30 ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40' :
+                  'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
+                }`}>
+                  {selectedCluster.riskScore}/100 ({selectedCluster.riskLevel})
+                </span>
+              </div>
+            </div>
+
+            {/* LATEST REPORT TIMESTAMP */}
+            <div className="flex items-center justify-between text-[10px] text-gray-400 bg-black/30 p-2.5 rounded-xl border border-gray-800">
+              <span>Latest Report: <strong className="text-gray-200">{new Date(selectedCluster.latestReportDate).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</strong></span>
+              <span>Radius: <strong className="text-amber-400">~75 Meters</strong></span>
+            </div>
+
+            {/* GOOGLE MAPS NAVIGATION BUTTON */}
+            <button 
+              onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${selectedCluster.latitude},${selectedCluster.longitude}`, '_blank')}
+              className="w-full py-3.5 bg-gradient-to-r from-amber-500 to-amber-600 text-black font-black text-xs uppercase tracking-wider rounded-2xl shadow-glow-amber flex items-center justify-center gap-2 hover:scale-[1.01] transition-transform"
+            >
+              <Navigation size={14} className="rotate-45" /> Navigate with Google Maps
+            </button>
+          </div>
+        )}
 
         {/* --- MARKER BOTTOM SHEET DETAIL DRAWER --- */}
         {selectedShop && (
