@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Dumbbell, Sparkles } from 'lucide-react';
+import { ArrowLeft, Dumbbell, Sparkles, Apple } from 'lucide-react';
 import FitnessDashboard from '../components/fitness/FitnessDashboard';
 
 export default function FitnessPage() {
@@ -28,6 +28,13 @@ export default function FitnessPage() {
                 <p className="text-[10px] text-gray-400 font-bold uppercase">Dynamic Adaptive Workout System</p>
               </div>
             </div>
+            <button
+              onClick={() => navigate('/nutrition')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-500/20 border border-blue-500/40 text-blue-300 text-xs font-bold hover:bg-blue-500/30 transition-all"
+            >
+              <Apple size={14} />
+              <span>AI Meal Planner ➔</span>
+            </button>
           </div>
         </div>
       </div>

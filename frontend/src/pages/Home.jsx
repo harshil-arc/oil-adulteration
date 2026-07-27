@@ -341,7 +341,20 @@ export default function Home() {
               </div>
               <div>
                 <p className="text-xs font-black theme-text uppercase tracking-wider">AI Meal Planner</p>
-                <p className="text-[9px] text-gray-400">Nutrition Coach</p>
+                <p className="text-[9px] text-gray-400">Recipes & Nutrition</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => navigate('/fitness')}
+              className="p-4 rounded-2xl bg-[var(--bg-card)] border border-amber-500/30 hover:border-amber-400 text-left transition-all group flex flex-col justify-between h-24"
+            >
+              <div className="w-9 h-9 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Dumbbell size={18} />
+              </div>
+              <div>
+                <p className="text-xs font-black theme-text uppercase tracking-wider">AI Fitness Coach</p>
+                <p className="text-[9px] text-gray-400">Workouts & Burn Engine</p>
               </div>
             </button>
 

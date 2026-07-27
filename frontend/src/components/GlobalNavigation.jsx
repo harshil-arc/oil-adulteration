@@ -1,7 +1,7 @@
 import { 
   X, Home, ScanLine, Clock, MapIcon, Users,
   BookOpen, FileText, User, Settings, Info,
-  LogOut, LayoutDashboard, Zap, Apple, Heart
+  LogOut, LayoutDashboard, Zap, Apple, Heart, Dumbbell
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
@@ -19,7 +19,8 @@ export default function GlobalNavigation() {
     { id: 'hotspots', label: 'Safety Hotspots', desc: 'Interactive Adulteration Map', icon: MapIcon, path: '/hotspots', roles: ['citizen', 'inspector', 'senior_officer', 'admin'] },
     { id: 'community', label: 'Safety Intelligence', desc: 'Complaints, Recalls & Labs', icon: Users, path: '/community', roles: ['citizen', 'vendor', 'inspector', 'laboratory', 'ngo', 'senior_officer', 'admin'] },
     { id: 'relief', label: 'Food Relief Network', desc: 'Surplus Food & NGO Logistics', icon: Heart, path: '/relief', roles: ['citizen', 'ngo', 'volunteer', 'admin'] },
-    { id: 'nutrition', label: 'AI Nutrition', desc: 'Smart Meal Planner & Pantry', icon: Apple, path: '/nutrition', roles: ['citizen', 'admin'] },
+    { id: 'nutrition', label: 'AI Meal Planner', desc: 'Smart Meal Planner & Recipes', icon: Apple, path: '/nutrition', roles: ['citizen', 'admin'] },
+    { id: 'fitness', label: 'AI Fitness Coach', desc: 'Adaptive Workouts & Burn Engine', icon: Dumbbell, path: '/fitness', roles: ['citizen', 'admin'] },
     { id: 'learning', label: 'Learning Center', desc: 'Documentation & Guides', icon: BookOpen, path: '/learning', roles: ['citizen', 'vendor', 'inspector', 'admin'] },
     { id: 'reports', label: 'System Reports', desc: 'Regulatory Logs & Analytics', icon: FileText, path: '/reports', roles: ['inspector', 'senior_officer', 'admin'] },
     { id: 'profile', label: 'Profile Settings', desc: 'Identity & Accreditation', icon: User, path: '/profile', roles: ['citizen', 'vendor', 'inspector', 'laboratory', 'ngo', 'senior_officer', 'admin'] },

@@ -26,7 +26,8 @@ import {
   calculateDailyNutritionTargets
 } from '../services/aiRecommendationEngine';
 import RecipeDetailModal from '../components/RecipeDetailModal';
-import FitnessDashboard from '../components/fitness/FitnessDashboard';
+import CookingWorkspaceModal from '../components/CookingWorkspaceModal';
+import AiCookingAssistantDrawer from '../components/AiCookingAssistantDrawer';
 
 export default function Nutrition() {
   const navigate = useNavigate();
@@ -36,7 +37,7 @@ export default function Nutrition() {
   const queryParams = new URLSearchParams(location.search);
   const initialTab = queryParams.get('tab') || 'planner';
 
-  // Active Tab View: 'planner', 'pantry', 'weekly', 'intelligence', 'shopping', 'workout'
+  // Active Tab View: 'planner', 'pantry', 'weekly', 'intelligence', 'shopping'
   const [activeTab, setActiveTab] = useState(initialTab);
   
   // ── 1. USER PROFILE & DYNAMIC PARAMETER STATE ────────────────────────────────
@@ -83,13 +84,10 @@ export default function Nutrition() {
   const [cuisineFilter, setCuisineFilter] = useState('All');
   const [dietFilter, setDietFilter] = useState('All');
 
-  // Modal States
+  // Modal & Drawer States
   const [selectedRecipeDetail, setSelectedRecipeDetail] = useState(null);
-  const [cookingModalRecipe, setCookingModalRecipe] = useState(null);
-  const [cookingStepIndex, setCookingStepIndex] = useState(0);
-  const [cookingTimerSeconds, setCookingTimerSeconds] = useState(0);
-  const [isTimerRunning, setIsTimerRunning] = useState(false);
-  const [isSpeechSpeaking, setIsSpeechSpeaking] = useState(false);
+  const [cookingWorkspaceRecipe, setCookingWorkspaceRecipe] = useState(null);
+  const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(false);
 
   // Shopping List State
   const [shoppingListItems, setShoppingListItems] = useState([
@@ -257,39 +255,30 @@ export default function Nutrition() {
     }
   };
 
-  const handleReject = (recipeId) => {
-    if (!recentlyRejected.includes(recipeId)) {
-      setRecentlyRejected([recipeId, ...recentlyRejected.slice(0, 9)]);
-    }
-  };
+  const handleAddIngredientsToShoppingList = (ingredientNames = []) => {
+    const newItems = ingredientNames.map(ing => ({
+      id: `s-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+      name: ing,
+      category: ing.toLowerCase().includes('oil') ? 'Oils & Fats' : (ing.toLowerCase().includes('tofu') || ing.toLowerCase().includes('paneer') ? 'Dairy & Protein' : 'Vegetables & Produce'),
+      estCost: Math.floor(30 + Math.random() * 50),
+      inPantry: false
+    }));
 
-  // Cooking Mode Timer Effect
-  useEffect(() => {
-    let timer = null;
-    if (isTimerRunning && cookingTimerSeconds > 0) {
-      timer = setInterval(() => {
-        setCookingTimerSeconds(prev => prev - 1);
-      }, 1000);
-    } else if (cookingTimerSeconds === 0) {
-      setIsTimerRunning(false);
-    }
-    return () => clearInterval(timer);
-  }, [isTimerRunning, cookingTimerSeconds]);
-
-  // Speech Reader for Step Guidance
-  const speakStepText = (text) => {
-    if ('speechSynthesis' in window) {
-      window.speechSynthesis.cancel();
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 0.95;
-      utterance.onstart = () => setIsSpeechSpeaking(true);
-      utterance.onend = () => setIsSpeechSpeaking(false);
-      window.speechSynthesis.speak(utterance);
-    }
+    setShoppingListItems(prev => [...prev, ...newItems]);
+    alert(`🛒 Added ${ingredientNames.length} ingredients to your Smart Shopping List!`);
   };
 
   return (
-    <div className="min-h-screen bg-[#0d1117] text-gray-100 font-sans pb-24">
+    <div className="min-h-screen bg-[#0d1117] text-gray-100 font-sans pb-24 relative">
+      {/* Floating AI Cooking Assistant Launcher Button */}
+      <button 
+        onClick={() => setIsAiDrawerOpen(true)}
+        className="fixed bottom-6 right-6 z-40 bg-gradient-to-r from-amber-500 to-yellow-600 text-black p-3.5 rounded-full shadow-2xl hover:scale-110 transition-transform duration-300 flex items-center gap-2 border border-amber-300/40"
+      >
+        <Bot size={22} />
+        <span className="text-xs font-black pr-1 hidden sm:inline">AI Cooking Assistant</span>
+      </button>
+
       {/* Top Header Bar */}
       <header className="sticky top-0 z-40 bg-[#161b22]/90 backdrop-blur-md border-b border-gray-800 px-4 py-3">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
@@ -440,7 +429,6 @@ export default function Nutrition() {
         <div className="max-w-6xl mx-auto flex items-center justify-between overflow-x-auto no-scrollbar py-2 gap-2 text-xs">
           {[
             { id: 'planner', label: 'Intelligent Planner', icon: Sparkles },
-            { id: 'workout', label: 'AI Fitness Coach', icon: Dumbbell },
             { id: 'pantry', label: `Smart Pantry (${pantryItems.length})`, icon: Utensils },
             { id: 'weekly', label: '7-Day Meal Plan', icon: Calendar },
             { id: 'intelligence', label: 'Nutrition Intelligence', icon: BarChart2 },
@@ -660,12 +648,8 @@ export default function Nutrition() {
                         </button>
 
                         <button 
-                          onClick={() => {
-                            setCookingModalRecipe(recipe);
-                            setCookingStepIndex(0);
-                            setCookingTimerSeconds((recipe.prepTime || 15) * 60);
-                          }}
-                          className="flex-1 py-2 px-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold flex items-center justify-center gap-1.5 shadow-lg shadow-amber-500/20 transition-all"
+                          onClick={() => setCookingWorkspaceRecipe(recipe)}
+                          className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 hover:opacity-90 text-black text-xs font-bold flex items-center justify-center gap-1.5 shadow-lg shadow-amber-500/20 transition-all"
                         >
                           <Play size={14} /> Start Cooking
                         </button>
@@ -891,11 +875,6 @@ export default function Nutrition() {
             </div>
           </div>
         )}
-
-        {/* ── TAB 6: AI FITNESS COACH ────────────────────────────────────────── */}
-        {activeTab === 'workout' && (
-          <FitnessDashboard />
-        )}
       </div>
 
       {/* Recipe Detail Modal */}
@@ -904,91 +883,30 @@ export default function Nutrition() {
           isOpen={true}
           onClose={() => setSelectedRecipeDetail(null)}
           recipe={selectedRecipeDetail}
+          onAddToShoppingList={handleAddIngredientsToShoppingList}
         />
       )}
 
-      {/* Fullscreen Interactive Step-by-Step Cooking Mode Modal */}
-      {cookingModalRecipe && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-md z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-[#161b22] border border-amber-500/40 rounded-3xl max-w-2xl w-full my-auto overflow-hidden shadow-2xl p-6 space-y-4 text-gray-100">
-            <div className="flex items-center justify-between border-b border-gray-800 pb-3">
-              <div className="flex items-center gap-2">
-                <Play size={20} className="text-amber-400" />
-                <h2 className="text-lg font-bold text-amber-300">{cookingModalRecipe.name}</h2>
-              </div>
-              <button onClick={() => setCookingModalRecipe(null)} className="text-gray-400 hover:text-white">
-                <X size={20} />
-              </button>
-            </div>
-
-            {/* Step Counter */}
-            <div className="flex items-center justify-between text-xs text-gray-400">
-              <span>Step {cookingStepIndex + 1} of {(cookingModalRecipe.instructions || []).length}</span>
-              <span className="text-amber-400 font-bold">⏱️ Timer: {Math.floor(cookingTimerSeconds / 60)}m {cookingTimerSeconds % 60}s</span>
-            </div>
-
-            {/* Step Content Card */}
-            <div className="p-5 rounded-2xl bg-gray-900 border border-gray-800 text-sm leading-relaxed space-y-3">
-              <p className="font-medium text-gray-200">
-                {(cookingModalRecipe.instructions || [])[cookingStepIndex] || 'Follow standard cooking procedure for this dish.'}
-              </p>
-
-              <div className="flex items-center gap-2 pt-2">
-                <button 
-                  onClick={() => speakStepText((cookingModalRecipe.instructions || [])[cookingStepIndex])}
-                  className="px-3 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-amber-300 text-xs font-semibold flex items-center gap-1.5"
-                >
-                  <Volume2 size={14} /> Read Aloud
-                </button>
-
-                <button 
-                  onClick={() => setIsTimerRunning(!isTimerRunning)}
-                  className="px-3 py-1.5 rounded-xl bg-amber-500/20 text-amber-300 border border-amber-500/30 text-xs font-semibold"
-                >
-                  {isTimerRunning ? 'Pause Timer' : 'Start Step Timer'}
-                </button>
-              </div>
-            </div>
-
-            {/* SpectraTrust Food Safety Note */}
-            <div className="p-3 rounded-xl bg-emerald-950/40 border border-emerald-500/40 text-xs text-emerald-300 flex items-center gap-2">
-              <ShieldCheck size={16} />
-              <span>Use SpectraTrust verified Cold-Pressed Mustard Oil for high heat cooking and optimal health.</span>
-            </div>
-
-            {/* Step Navigation Buttons */}
-            <div className="flex items-center justify-between pt-2">
-              <button 
-                disabled={cookingStepIndex === 0}
-                onClick={() => setCookingStepIndex(prev => Math.max(0, prev - 1))}
-                className="px-4 py-2 rounded-xl bg-gray-800 text-gray-300 disabled:opacity-40 text-xs font-semibold"
-              >
-                Previous Step
-              </button>
-
-              {cookingStepIndex < (cookingModalRecipe.instructions || []).length - 1 ? (
-                <button 
-                  onClick={() => setCookingStepIndex(prev => prev + 1)}
-                  className="px-4 py-2 rounded-xl bg-amber-500 text-black text-xs font-bold hover:bg-amber-400"
-                >
-                  Next Step ➔
-                </button>
-              ) : (
-                <button 
-                  onClick={() => {
-                    handleCooked(cookingModalRecipe.id);
-                    setCookingModalRecipe(null);
-                    alert('🎉 Dish marked as cooked! Your recommendation weights have updated.');
-                  }}
-                  className="px-4 py-2 rounded-xl bg-emerald-500 text-white text-xs font-bold hover:bg-emerald-400"
-                >
-                  Finish & Mark Cooked! 🎉
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
+      {/* Fullscreen Interactive Cooking Assistant Workspace Modal */}
+      {cookingWorkspaceRecipe && (
+        <CookingWorkspaceModal
+          isOpen={true}
+          onClose={() => setCookingWorkspaceRecipe(null)}
+          recipe={cookingWorkspaceRecipe}
+          pantryItems={pantryItems}
+          onMarkCooked={handleCooked}
+          onAddToShoppingList={handleAddIngredientsToShoppingList}
+          onOpenAiAssistant={() => setIsAiDrawerOpen(true)}
+        />
       )}
+
+      {/* Floating AI Cooking Assistant Drawer */}
+      <AiCookingAssistantDrawer
+        isOpen={isAiDrawerOpen}
+        onClose={() => setIsAiDrawerOpen(false)}
+        activeRecipe={cookingWorkspaceRecipe || selectedRecipeDetail}
+        onApplyParameterChange={(params) => setHealthProfile(prev => ({ ...prev, ...params }))}
+      />
     </div>
   );
 }

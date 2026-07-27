@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { X, Sparkles, ChevronRight, ChevronLeft, Check, Dumbbell, ShieldAlert, Activity, User, Target, Compass } from 'lucide-react';
+import { X, Sparkles, ChevronRight, ChevronLeft, Check, Dumbbell, ShieldAlert, Activity, User, Target, Compass, Heart, Moon } from 'lucide-react';
 import { OPTIONS, saveFitnessProfile } from '../../services/aiFitnessEngine';
 
 export default function FitnessOnboardingModal({ isOpen, onClose, currentProfile, onComplete }) {
@@ -9,22 +9,23 @@ export default function FitnessOnboardingModal({ isOpen, onClose, currentProfile
     gender: 'Male',
     height: 175,
     weight: 70,
-    targetWeight: 66,
+    targetWeight: 65,
     bodyFat: 18,
-    goal: 'Build Muscle',
-    activityLevel: 'Moderately Active',
+    goal: 'Gain Muscle',
     experience: 'Intermediate',
     location: 'Home',
     equipment: ['Dumbbells', 'None (Bodyweight)'],
     workoutDays: 4,
     duration: 30,
     limitations: ['None'],
-    medicalConditions: ['None'],
+    occupation: 'Desk Job / Office',
+    activityLevel: 'Moderately Active',
+    sleepHours: 7,
+    stressLevel: 'Moderate',
     preferredStyle: 'Hypertrophy & Bodybuilding',
     restDays: ['Sunday', 'Wednesday']
   });
 
-  // Auto calculate BMI
   const calculatedBMI = useMemo(() => {
     const hM = formData.height / 100;
     if (hM <= 0) return 22.0;
@@ -66,7 +67,7 @@ export default function FitnessOnboardingModal({ isOpen, onClose, currentProfile
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in overflow-y-auto">
-      <div className="relative w-full max-w-2xl bg-[var(--bg-card)] border border-[#d4af37]/40 rounded-3xl shadow-2xl overflow-hidden my-6 flex flex-col max-h-[90vh]">
+      <div className="relative w-full max-w-2xl bg-[var(--bg-card)] border border-[#d4af37]/40 rounded-3xl shadow-2xl overflow-hidden my-6 flex flex-col max-h-[92vh]">
         
         {/* Header */}
         <div className="p-5 border-b border-[var(--border-color)] bg-[var(--bg-elevated)] flex justify-between items-center">
@@ -75,8 +76,8 @@ export default function FitnessOnboardingModal({ isOpen, onClose, currentProfile
               <Sparkles size={18} />
             </div>
             <div>
-              <h3 className="text-base font-black text-white">AI Fitness Personalization Wizard</h3>
-              <p className="text-[10px] text-gray-400 font-bold uppercase">Step {step} of 4 • Dynamic AI Calibration</p>
+              <h3 className="text-base font-black text-white">AI Personalization Wizard</h3>
+              <p className="text-[10px] text-gray-400 font-bold uppercase">Step {step} of 5 • Dynamic Archetype Calibration</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 rounded-full bg-gray-800 text-gray-400 hover:text-white transition-all">
@@ -86,7 +87,7 @@ export default function FitnessOnboardingModal({ isOpen, onClose, currentProfile
 
         {/* Progress Line */}
         <div className="w-full h-1 bg-gray-800">
-          <div className="h-full bg-gradient-to-r from-[#f5c842] to-[#d4af37] transition-all duration-300" style={{ width: `${(step / 4) * 100}%` }} />
+          <div className="h-full bg-gradient-to-r from-[#f5c842] to-[#d4af37] transition-all duration-300" style={{ width: `${(step / 5) * 100}%` }} />
         </div>
 
         {/* Body Content */}
@@ -97,9 +98,9 @@ export default function FitnessOnboardingModal({ isOpen, onClose, currentProfile
             <div className="space-y-5 animate-fade-in">
               <div>
                 <h4 className="text-lg font-black text-white flex items-center gap-2">
-                  <User className="text-[#d4af37]" size={18} /> Personal Biometrics & Targets
+                  <User className="text-[#d4af37]" size={18} /> Biometrics & Target Weight
                 </h4>
-                <p className="text-gray-400 text-[11px]">We use these to calculate exact daily energy expenditure and safe movement intensity.</p>
+                <p className="text-gray-400 text-[11px]">Calculates your basal metabolic rate and body composition targets.</p>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -109,7 +110,7 @@ export default function FitnessOnboardingModal({ isOpen, onClose, currentProfile
                     type="number"
                     value={formData.age}
                     onChange={e => setFormData({ ...formData, age: Number(e.target.value) })}
-                    className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded-xl py-2.5 px-3 text-white font-bold font-mono outline-none focus:border-[#d4af37]"
+                    className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded-xl py-2.5 px-3 text-white font-bold outline-none focus:border-[#d4af37]"
                   />
                 </div>
 
@@ -132,7 +133,7 @@ export default function FitnessOnboardingModal({ isOpen, onClose, currentProfile
                     type="number"
                     value={formData.height}
                     onChange={e => setFormData({ ...formData, height: Number(e.target.value) })}
-                    className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded-xl py-2.5 px-3 text-white font-bold font-mono outline-none focus:border-[#d4af37]"
+                    className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded-xl py-2.5 px-3 text-white font-bold outline-none focus:border-[#d4af37]"
                   />
                 </div>
 
@@ -142,7 +143,7 @@ export default function FitnessOnboardingModal({ isOpen, onClose, currentProfile
                     type="number"
                     value={formData.weight}
                     onChange={e => setFormData({ ...formData, weight: Number(e.target.value) })}
-                    className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded-xl py-2.5 px-3 text-white font-bold font-mono outline-none focus:border-[#d4af37]"
+                    className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded-xl py-2.5 px-3 text-white font-bold outline-none focus:border-[#d4af37]"
                   />
                 </div>
 
@@ -152,7 +153,7 @@ export default function FitnessOnboardingModal({ isOpen, onClose, currentProfile
                     type="number"
                     value={formData.targetWeight}
                     onChange={e => setFormData({ ...formData, targetWeight: Number(e.target.value) })}
-                    className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded-xl py-2.5 px-3 text-white font-bold font-mono outline-none focus:border-[#d4af37]"
+                    className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded-xl py-2.5 px-3 text-white font-bold outline-none focus:border-[#d4af37]"
                   />
                 </div>
 
@@ -162,7 +163,7 @@ export default function FitnessOnboardingModal({ isOpen, onClose, currentProfile
                     type="number"
                     value={formData.bodyFat}
                     onChange={e => setFormData({ ...formData, bodyFat: Number(e.target.value) })}
-                    className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded-xl py-2.5 px-3 text-white font-bold font-mono outline-none focus:border-[#d4af37]"
+                    className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded-xl py-2.5 px-3 text-white font-bold outline-none focus:border-[#d4af37]"
                   />
                 </div>
               </div>
@@ -170,24 +171,24 @@ export default function FitnessOnboardingModal({ isOpen, onClose, currentProfile
               {/* BMI Auto Banner */}
               <div className="p-4 rounded-2xl bg-gradient-to-r from-[#d4af37]/10 via-[var(--bg-elevated)] to-[#d4af37]/5 border border-[#d4af37]/30 flex items-center justify-between">
                 <div>
-                  <span className="text-[10px] font-black uppercase text-[#d4af37] tracking-wider block">Auto-Calculated BMI Index</span>
+                  <span className="text-[10px] font-black uppercase text-[#d4af37] tracking-wider block">Auto BMI Calculation</span>
                   <span className="text-xl font-black text-white font-mono">{calculatedBMI} kg/m²</span>
                 </div>
                 <span className="bg-[#d4af37] text-black font-black text-[10px] px-3 py-1 rounded-xl">
-                  {calculatedBMI < 18.5 ? 'Underweight' : calculatedBMI < 25 ? 'Normal Healthy Weight' : calculatedBMI < 30 ? 'Overweight' : 'Obese'}
+                  {calculatedBMI < 18.5 ? 'Underweight' : calculatedBMI < 25 ? 'Normal Healthy' : calculatedBMI < 30 ? 'Overweight' : 'Obese'}
                 </span>
               </div>
             </div>
           )}
 
-          {/* STEP 2: GOAL & EXPERIENCE */}
+          {/* STEP 2: GOALS & EXPERIENCE */}
           {step === 2 && (
             <div className="space-y-5 animate-fade-in">
               <div>
                 <h4 className="text-lg font-black text-white flex items-center gap-2">
                   <Target className="text-[#d4af37]" size={18} /> Primary Fitness Goal & Experience
                 </h4>
-                <p className="text-gray-400 text-[11px]">Select what you wish to achieve with your AI Fitness Coach.</p>
+                <p className="text-gray-400 text-[11px]">Select your core goal to calibrate rep ranges and metabolic conditioning.</p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -231,14 +232,71 @@ export default function FitnessOnboardingModal({ isOpen, onClose, currentProfile
             </div>
           )}
 
-          {/* STEP 3: ENVIRONMENT & EQUIPMENT */}
+          {/* STEP 3: LIFESTYLE & RECOVERY */}
           {step === 3 && (
+            <div className="space-y-5 animate-fade-in">
+              <div>
+                <h4 className="text-lg font-black text-white flex items-center gap-2">
+                  <Moon className="text-[#d4af37]" size={18} /> Lifestyle, Sleep & Occupation
+                </h4>
+                <p className="text-gray-400 text-[11px]">The AI adjusts recovery scores and postural exercises based on daily desk work.</p>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] text-gray-400 font-bold uppercase">Occupation</label>
+                  <select
+                    value={formData.occupation}
+                    onChange={e => setFormData({ ...formData, occupation: e.target.value })}
+                    className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded-xl py-2.5 px-3 text-white font-bold outline-none focus:border-[#d4af37]"
+                  >
+                    {OPTIONS.LIFESTYLE.OCCUPATION.map(o => (
+                      <option key={o} value={o}>{o}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] text-gray-400 font-bold uppercase">Sleep (Hours / Night)</label>
+                  <select
+                    value={formData.sleepHours}
+                    onChange={e => setFormData({ ...formData, sleepHours: Number(e.target.value) })}
+                    className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded-xl py-2.5 px-3 text-white font-bold outline-none focus:border-[#d4af37]"
+                  >
+                    {OPTIONS.LIFESTYLE.SLEEP.map(s => (
+                      <option key={s} value={s}>{s} Hours</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] text-gray-400 font-bold uppercase">Daily Activity Level</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {OPTIONS.LIFESTYLE.ACTIVITY.map(act => (
+                    <button
+                      key={act}
+                      onClick={() => setFormData({ ...formData, activityLevel: act })}
+                      className={`py-2 px-3 rounded-xl border text-center font-bold text-[11px] ${
+                        formData.activityLevel === act ? 'bg-[#d4af37] text-black border-[#d4af37]' : 'bg-[var(--bg-elevated)] text-gray-300 border-[var(--border-color)]'
+                      }`}
+                    >
+                      {act}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 4: ENVIRONMENT & EQUIPMENT */}
+          {step === 4 && (
             <div className="space-y-5 animate-fade-in">
               <div>
                 <h4 className="text-lg font-black text-white flex items-center gap-2">
                   <Dumbbell className="text-[#d4af37]" size={18} /> Location & Available Equipment
                 </h4>
-                <p className="text-gray-400 text-[11px]">The AI engine filters exercises to match your exact setup.</p>
+                <p className="text-gray-400 text-[11px]">Filters exercise database to match your exact setup.</p>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -276,7 +334,7 @@ export default function FitnessOnboardingModal({ isOpen, onClose, currentProfile
               </div>
 
               <div className="space-y-2">
-                <label className="text-[10px] text-gray-400 font-bold uppercase block">Available Equipment (Select all that apply)</label>
+                <label className="text-[10px] text-gray-400 font-bold uppercase block">Equipment Available (Multi-Select)</label>
                 <div className="flex flex-wrap gap-2">
                   {OPTIONS.EQUIPMENT.map(eq => {
                     const isSelected = formData.equipment.includes(eq);
@@ -300,14 +358,14 @@ export default function FitnessOnboardingModal({ isOpen, onClose, currentProfile
             </div>
           )}
 
-          {/* STEP 4: HEALTH, INJURIES & SCHEDULE */}
-          {step === 4 && (
+          {/* STEP 5: MEDICAL CONDITIONS & PHYSICAL LIMITATIONS */}
+          {step === 5 && (
             <div className="space-y-5 animate-fade-in">
               <div>
                 <h4 className="text-lg font-black text-white flex items-center gap-2">
-                  <ShieldAlert className="text-[#d4af37]" size={18} /> Physical Limitations & Rest Days
+                  <ShieldAlert className="text-[#d4af37]" size={18} /> Physical Limitations & Medical Safety
                 </h4>
-                <p className="text-gray-400 text-[11px]">The AI will strictly avoid movements that stress painful or injured joints.</p>
+                <p className="text-gray-400 text-[11px]">The AI will strictly exclude exercises that strain painful or injured joints.</p>
               </div>
 
               <div className="space-y-2">
@@ -350,7 +408,7 @@ export default function FitnessOnboardingModal({ isOpen, onClose, currentProfile
                 </div>
 
                 <div className="space-y-1">
-                  <label className="text-[10px] text-gray-400 font-bold uppercase">Preferred Style</label>
+                  <label className="text-[10px] text-gray-400 font-bold uppercase">Preferred Training Style</label>
                   <select
                     value={formData.preferredStyle}
                     onChange={e => setFormData({ ...formData, preferredStyle: e.target.value })}
@@ -378,7 +436,7 @@ export default function FitnessOnboardingModal({ isOpen, onClose, currentProfile
             </button>
           ) : <div />}
 
-          {step < 4 ? (
+          {step < 5 ? (
             <button
               onClick={() => setStep(prev => prev + 1)}
               className="btn-primary py-2.5 px-5 font-black text-xs shadow-glow-gold flex items-center gap-1"
@@ -390,7 +448,7 @@ export default function FitnessOnboardingModal({ isOpen, onClose, currentProfile
               onClick={handleSave}
               className="btn-primary py-2.5 px-6 font-black text-xs shadow-glow-gold flex items-center gap-2"
             >
-              <Sparkles size={16} /> Save & Generate AI Workouts
+              <Sparkles size={16} /> Save & Calibrate Archetype
             </button>
           )}
         </div>

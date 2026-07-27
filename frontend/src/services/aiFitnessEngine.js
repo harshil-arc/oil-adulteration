@@ -1,39 +1,117 @@
-// ─── PRODUCTION-READY AI FITNESS COACH ENGINE ───────────────────
-// Built for Food 360 & Spectratrust Platform
+// ─── WORLD-CLASS AI FITNESS PLATFORM ENGINE ───────────────────
+// Built for Food 360 & Spectratrust Ecosystem
+// Comparable to Leap Fitness, Nike Training Club, Fitbod, Hevy, Strong & Samsung Health
 
-const FITNESS_PROFILE_STORAGE = 'food360_ai_fitness_profile';
-const WORKOUT_LOGS_STORAGE = 'food360_ai_workout_logs';
-const GAMIFICATION_STORAGE = 'food360_ai_fitness_gamification';
-const RECORDF_STORAGE = 'food360_ai_fitness_prs';
+const FITNESS_PROFILE_STORAGE = 'food360_ai_fitness_profile_v2';
+const WORKOUT_LOGS_STORAGE = 'food360_ai_workout_logs_v2';
+const GAMIFICATION_STORAGE = 'food360_ai_fitness_gamification_v2';
+const CHALLENGES_STORAGE = 'food360_ai_fitness_challenges_v2';
 
 // ─── 1. CONSTANTS & OPTIONS ────────────────────────────────────
 export const OPTIONS = {
   GOALS: [
     { id: 'Lose Fat', label: 'Lose Fat', desc: 'Calorie deficit & high metabolic burn', icon: '🔥' },
-    { id: 'Build Muscle', label: 'Build Muscle', desc: 'Hypertrophy & progressive overload', icon: '💪' },
-    { id: 'Maintain Weight', label: 'Maintain Weight', desc: 'Balanced conditioning & tone', icon: '⚖️' },
-    { id: 'Improve Endurance', label: 'Improve Endurance', desc: 'Stamina & cardiovascular health', icon: '🏃' },
-    { id: 'Increase Strength', label: 'Increase Strength', desc: 'Heavy compound power', icon: '🏋️' },
-    { id: 'Improve Flexibility', label: 'Improve Flexibility', desc: 'Mobility, yoga & joint recovery', icon: '🧘' },
-    { id: 'General Fitness', label: 'General Fitness', desc: 'Overall health & longevity', icon: '⚡' }
+    { id: 'Gain Muscle', label: 'Gain Muscle', desc: 'Hypertrophy & progressive overload', icon: '💪' },
+    { id: 'Improve Strength', label: 'Improve Strength', desc: 'Heavy compound power & mechanical tension', icon: '🏋️' },
+    { id: 'Improve Endurance', label: 'Improve Endurance', desc: 'Stamina & cardiovascular conditioning', icon: '🏃' },
+    { id: 'Improve Mobility', label: 'Improve Mobility', desc: 'Joint health, yoga & injury prevention', icon: '🧘' },
+    { id: 'Athletic Performance', label: 'Athletic Performance', desc: 'Agility, speed & power output', icon: '⚡' },
+    { id: 'General Fitness', label: 'General Fitness', desc: 'Balanced health, longevity & energy', icon: '⚖️' }
   ],
   EXPERIENCE: ['Beginner', 'Intermediate', 'Advanced'],
-  LOCATION: ['Home', 'Gym'],
-  EQUIPMENT: ['None (Bodyweight)', 'Dumbbells', 'Resistance Bands', 'Barbell', 'Bench', 'Pull-up Bar', 'Full Gym'],
-  DURATIONS: [15, 30, 45, 60, 90],
-  LIMITATIONS: ['None', 'Knee Pain', 'Lower Back Pain', 'Shoulder Impingement', 'Wrist Strain', 'Ankle Instability', 'Neck Tension'],
-  MEDICAL_CONDITIONS: ['None', 'Diabetes', 'Hypertension', 'Heart Condition', 'Asthma', 'PCOS', 'Arthritis'],
-  STYLES: ['HIIT & Cardio', 'Hypertrophy & Bodybuilding', 'Calisthenics & Bodyweight', 'Power & Compound', 'Yoga & Joint Mobility', 'Balanced Functional'],
-  REST_DAYS: ['Sunday', 'Wednesday', 'Saturday', 'Monday', 'Tuesday', 'Thursday', 'Friday']
+  LOCATION: ['Home', 'Gym', 'Outdoor'],
+  EQUIPMENT: [
+    'None (Bodyweight)', 'Dumbbells', 'Resistance Bands', 
+    'Pull-up Bar', 'Barbell', 'Bench', 'Cable Machine', 'Full Gym'
+  ],
+  DURATIONS: [15, 20, 30, 45, 60, 90],
+  LIMITATIONS: [
+    'None', 'Knee Pain', 'Shoulder Pain', 'Back Pain', 
+    'Wrist Strain', 'Ankle Instability', 'Heart Conditions', 'Pregnancy'
+  ],
+  STYLES: [
+    'HIIT & Cardio', 'Hypertrophy & Bodybuilding', 'Calisthenics & Bodyweight', 
+    'Power & Compound', 'Yoga & Pilates', 'Mobility & Recovery', 'Hybrid Conditioning'
+  ],
+  LIFESTYLE: {
+    ACTIVITY: ['Sedentary', 'Lightly Active', 'Moderately Active', 'Very Active'],
+    OCCUPATION: ['Desk Job / Office', 'Standing / Retail', 'Physical Labor', 'Student', 'Homemaker'],
+    SLEEP: [4, 5, 6, 7, 8, 9, 10],
+    STRESS: ['Low', 'Moderate', 'High', 'Very High']
+  }
 };
 
-// ─── 2. COMPREHENSIVE EXERCISE DATABASE (60+ EXERCISES) ─────────
+// ─── 2. USER ARCHETYPE CLASSIFIER ──────────────────────────────
+export function classifyUserArchetype(profile = {}) {
+  const { age = 26, bmi = 23, goal = 'Gain Muscle', experience = 'Intermediate', activityLevel = 'Moderately Active' } = profile;
+
+  if (experience === 'Beginner' && bmi > 27) {
+    return {
+      title: 'Weight Loss Pioneer',
+      code: 'WLP-01',
+      desc: 'Focus on calorie expenditure, joint safety, and gradual aerobic conditioning.',
+      badge: '🏃‍♂️',
+      color: 'from-amber-500 to-red-500'
+    };
+  }
+
+  if (experience === 'Beginner' && bmi < 19) {
+    return {
+      title: 'Skinny Beginner (Hypertrophy Path)',
+      code: 'SBH-02',
+      desc: 'Focus on progressive compound lifting, protein synthesis, and muscular hypertrophy.',
+      badge: '💪',
+      color: 'from-emerald-500 to-teal-500'
+    };
+  }
+
+  if (activityLevel === 'Sedentary' || profile.occupation?.includes('Desk')) {
+    return {
+      title: 'Sedentary Desk Worker',
+      code: 'SDW-03',
+      desc: 'Special emphasis on postural correction, thoracic spine mobility, and hip flexor release.',
+      badge: '🪑',
+      color: 'from-blue-500 to-indigo-500'
+    };
+  }
+
+  if (experience === 'Advanced' && (goal === 'Gain Muscle' || goal === 'Improve Strength')) {
+    return {
+      title: 'Advanced Titan Athlete',
+      code: 'ATA-04',
+      desc: 'High-volume progressive overload, RPE auto-regulation, and heavy compound splits.',
+      badge: '🏆',
+      color: 'from-purple-500 to-pink-500'
+    };
+  }
+
+  if (goal === 'Improve Mobility') {
+    return {
+      title: 'Mobility & Recovery Specialist',
+      code: 'MRS-05',
+      desc: 'Restorative yoga, joint fascia lubrication, and active recovery.',
+      badge: '🧘',
+      color: 'from-cyan-500 to-blue-500'
+    };
+  }
+
+  return {
+    title: 'Balanced Fitness Pioneer',
+    code: 'BFP-00',
+    desc: 'Optimal balance of strength, cardiovascular health, and body composition.',
+    badge: '⚡',
+    color: 'from-amber-400 to-[#d4af37]'
+  };
+}
+
+// ─── 3. MASSIVE EXERCISE DATABASE (EXPANDED DISCIPLINES) ─────────
 export const EXERCISE_DATABASE = [
   // CHEST
   {
-    id: 'chest-1',
+    id: 'ex-chest-1',
     name: 'Push-Ups',
     category: 'Chest',
+    discipline: 'Calisthenics',
     primaryMuscle: 'Pectoralis Major',
     secondaryMuscles: ['Anterior Deltoids', 'Triceps Brachii', 'Core Abdominals'],
     equipment: 'None (Bodyweight)',
@@ -43,22 +121,30 @@ export const EXERCISE_DATABASE = [
     defaultReps: '12-15 reps',
     restSec: 45,
     animationType: 'pushup',
+    tempo: '2-1-1-0',
+    tutSec: 45,
     instructions: [
-      'Position hands slightly wider than shoulder-width apart on the floor.',
-      'Extend legs back, balancing on toes with body forming a straight line from head to heels.',
-      'Lower torso under control until chest nearly touches the floor.',
-      'Push forcefully back up to top lockout while breathing out.'
+      'Place hands slightly wider than shoulder-width on floor.',
+      'Extend legs straight back, keeping rigid line from head to heels.',
+      'Lower torso until chest nearly touches mat.',
+      'Push forcefully up to full lockout.'
     ],
-    commonMistakes: ['Flaring elbows 90 degrees outward', 'Sagging hips or arching lower back', 'Partial depth'],
-    safetyTips: 'Keep elbows tucked at 45 degrees relative to your torso to protect shoulder joints.',
-    jointFocus: 'Wrist / Shoulder',
-    jointSafeFor: ['Knee Pain', 'Ankle Instability'],
-    alternatives: ['Incline Push-Ups', 'Wall Push-Ups', 'Chest Flyes']
+    commonMistakes: ['Flaring elbows 90 degrees', 'Sagging lumbar spine', 'Half reps'],
+    safetyTips: 'Tuck elbows at 45 degrees relative to torso to protect shoulder capsule.',
+    breathingGuide: 'Inhale while descending; exhale forcefully as you push up.',
+    alternatives: {
+      home: 'Wall Push-Ups',
+      gym: 'Chest Press Machine',
+      beginner: 'Knee Push-Ups',
+      advanced: 'Decline Push-Ups'
+    },
+    jointSafeFor: ['Knee Pain', 'Ankle Instability']
   },
   {
-    id: 'chest-2',
-    name: 'Dumbbell Bench Press',
+    id: 'ex-chest-2',
+    name: 'Dumbbell Flat Bench Press',
     category: 'Chest',
+    discipline: 'Hypertrophy',
     primaryMuscle: 'Pectoralis Major',
     secondaryMuscles: ['Triceps Brachii', 'Anterior Deltoids'],
     equipment: 'Dumbbells',
@@ -68,22 +154,29 @@ export const EXERCISE_DATABASE = [
     defaultReps: '10-12 reps',
     restSec: 60,
     animationType: 'press',
+    tempo: '3-1-1-0',
+    tutSec: 50,
     instructions: [
-      'Lie flat on a workout bench with dumbbells resting on thighs.',
-      'Kick dumbbells up to shoulder level and press up until arms are fully extended.',
-      'Lower dumbbells slowly to the sides of mid-chest level.',
-      'Press dumbbells back up until they nearly meet at top.'
+      'Lie flat on bench holding dumbbells at chest height.',
+      'Press dumbbells directly upward until arms are locked out.',
+      'Lower under 3-second control until chest stretch is felt.'
     ],
-    commonMistakes: ['Bouncing weights off chest', 'Arching lower back off bench excessively'],
-    safetyTips: 'Use a spotter or lower weights safely to sides if approaching muscular failure.',
-    jointFocus: 'Shoulder',
-    jointSafeFor: ['Knee Pain', 'Lower Back Pain', 'Ankle Instability'],
-    alternatives: ['Push-Ups', 'Resistance Band Chest Press', 'Barbell Bench Press']
+    commonMistakes: ['Bouncing dumbbells off chest', 'Arching back excessively'],
+    safetyTips: 'Keep feet flat on floor for stability.',
+    breathingGuide: 'Inhale on descent; exhale on upward press.',
+    alternatives: {
+      home: 'Push-Ups with Backpack',
+      gym: 'Barbell Bench Press',
+      beginner: 'Floor Dumbbell Press',
+      advanced: 'Heavy Barbell Bench Press'
+    },
+    jointSafeFor: ['Knee Pain', 'Back Pain', 'Ankle Instability']
   },
   {
-    id: 'chest-3',
+    id: 'ex-chest-3',
     name: 'Incline Dumbbell Press',
     category: 'Chest',
+    discipline: 'Hypertrophy',
     primaryMuscle: 'Upper Pectoralis Major',
     secondaryMuscles: ['Anterior Deltoids', 'Triceps'],
     equipment: 'Dumbbells',
@@ -93,99 +186,64 @@ export const EXERCISE_DATABASE = [
     defaultReps: '10-12 reps',
     restSec: 60,
     animationType: 'incline_press',
+    tempo: '3-1-1-0',
+    tutSec: 45,
     instructions: [
-      'Set incline bench to 30-45 degrees.',
-      'Hold dumbbells at upper chest level with palms facing forward.',
-      'Press weights directly upward above collarbones.',
-      'Lower slowly with controlled tempo.'
+      'Set bench to 30-45 degree incline.',
+      'Press dumbbells upward above collarbones.',
+      'Lower with control.'
     ],
-    commonMistakes: ['Setting bench angle too high (shifts load to shoulders)', 'Arching back'],
-    safetyTips: '30 degree angle is optimal for isolating the upper chest without straining shoulders.',
-    jointFocus: 'Shoulder',
-    jointSafeFor: ['Knee Pain', 'Lower Back Pain'],
-    alternatives: ['Decline Push-Ups', 'Band Incline Press']
-  },
-  {
-    id: 'chest-4',
-    name: 'Wall Push-Ups (Joint-Safe)',
-    category: 'Chest',
-    primaryMuscle: 'Pectoralis Major',
-    secondaryMuscles: ['Triceps', 'Shoulders'],
-    equipment: 'None (Bodyweight)',
-    difficulty: 'Beginner',
-    caloriesPerMin: 5,
-    defaultSets: 3,
-    defaultReps: '15-20 reps',
-    restSec: 30,
-    animationType: 'wall_pushup',
-    instructions: [
-      'Stand facing a wall at arm\'s length.',
-      'Place palms flat on the wall at shoulder height.',
-      'Bend elbows to lean chest toward wall.',
-      'Push back until arms are straight.'
-    ],
-    commonMistakes: ['Standing too far from wall causing slipping'],
-    safetyTips: 'Perfect low-impact push exercise for wrist or shoulder rehabilitation.',
-    jointFocus: 'Low Impact',
-    jointSafeFor: ['Knee Pain', 'Lower Back Pain', 'Shoulder Impingement', 'Wrist Strain', 'Neck Tension'],
-    alternatives: ['Incline Chair Push-Ups']
+    commonMistakes: ['Bench angle over 45 degrees shifting load to shoulders'],
+    safetyTips: 'Maintain slight arch in upper back while pinning shoulder blades down.',
+    breathingGuide: 'Exhale pressing up; inhale lowering.',
+    alternatives: {
+      home: 'Decline Push-Ups (Feet Elevated)',
+      gym: 'Incline Barbell Bench Press',
+      beginner: 'Incline Band Press',
+      advanced: 'Incline Cable Chest Flyes'
+    },
+    jointSafeFor: ['Knee Pain', 'Back Pain']
   },
 
   // BACK
   {
-    id: 'back-1',
-    name: 'Dumbbell Bent-Over Rows',
+    id: 'ex-back-1',
+    name: 'Single-Arm Dumbbell Row',
     category: 'Back',
+    discipline: 'Hypertrophy',
     primaryMuscle: 'Latissimus Dorsi',
     secondaryMuscles: ['Rhomboids', 'Rear Deltoids', 'Biceps'],
     equipment: 'Dumbbells',
     difficulty: 'Intermediate',
-    caloriesPerMin: 9,
+    caloriesPerMin: 8,
     defaultSets: 3,
     defaultReps: '10-12 reps per arm',
     restSec: 60,
     animationType: 'row',
+    tempo: '2-1-1-1',
+    tutSec: 40,
     instructions: [
-      'Hinge at hips with knees slightly bent and torso at 45 degrees, keeping back flat.',
-      'Hold dumbbells letting arms hang straight down.',
-      'Pull dumbbells up toward ribcage, driving elbows backward and squeezing shoulder blades.',
-      'Lower weights under control.'
+      'Rest left knee and left hand flat on bench.',
+      'Hold dumbbell in right hand letting arm hang straight down.',
+      'Pull dumbbell up toward hip driving elbow backward.',
+      'Lower slowly to full stretch.'
     ],
-    commonMistakes: ['Rounding the spine', 'Jerking torso up to lift weight'],
-    safetyTips: 'Brace core tightly to protect lumbar spine.',
-    jointFocus: 'Lower Back',
-    jointSafeFor: ['Knee Pain', 'Ankle Instability'],
-    alternatives: ['Single-Arm Bench Row', 'Inverted Bodyweight Row', 'Band Pull-Aparts']
+    commonMistakes: ['Twisting torso upward', 'Yanking weight with arm momentum'],
+    safetyTips: 'Keep spine neutral and pull toward hip rather than shoulder.',
+    breathingGuide: 'Exhale pulling weight up; inhale lowering down.',
+    alternatives: {
+      home: 'Doorway Rows',
+      gym: 'Seated Cable Row',
+      beginner: 'Band Bent-Over Row',
+      advanced: 'Heavy Pendlay Row'
+    },
+    jointSafeFor: ['Knee Pain', 'Ankle Instability']
   },
   {
-    id: 'back-2',
-    name: 'Bodyweight Inverted Rows',
-    category: 'Back',
-    primaryMuscle: 'Rhomboids & Upper Back',
-    secondaryMuscles: ['Latissimus Dorsi', 'Biceps', 'Core'],
-    equipment: 'Bench',
-    difficulty: 'Intermediate',
-    caloriesPerMin: 8,
-    defaultSets: 3,
-    defaultReps: '8-12 reps',
-    restSec: 60,
-    animationType: 'inverted_row',
-    instructions: [
-      'Lie underneath a sturdy bar or table edge, gripping shoulder-width apart.',
-      'Keep body in a rigid plank position resting on heels.',
-      'Pull chest up to touch the bar/edge.',
-      'Lower back down slowly.'
-    ],
-    commonMistakes: ['Sagging hips', 'Not reaching full chest touch'],
-    safetyTips: 'Ensure table or bar support is completely stable before pulling.',
-    jointFocus: 'Upper Back',
-    jointSafeFor: ['Knee Pain', 'Lower Back Pain'],
-    alternatives: ['Doorway Rows', 'Resistance Band Rows']
-  },
-  {
-    id: 'back-3',
+    id: 'ex-back-2',
     name: 'Pull-Ups',
     category: 'Back',
+    discipline: 'Calisthenics',
     primaryMuscle: 'Latissimus Dorsi',
     secondaryMuscles: ['Biceps Brachii', 'Brachialis', 'Upper Back'],
     equipment: 'Pull-up Bar',
@@ -195,48 +253,30 @@ export const EXERCISE_DATABASE = [
     defaultReps: '6-10 reps',
     restSec: 90,
     animationType: 'pullup',
+    tempo: '2-1-1-0',
+    tutSec: 35,
     instructions: [
-      'Grasp pull-up bar with an overhand grip wider than shoulders.',
-      'Hang with arms fully extended.',
-      'Pull body up until chin clears the bar, driving elbows downward.',
-      'Lower back down under full control.'
+      'Grasp bar overhand wider than shoulder-width.',
+      'Hang with full arm extension.',
+      'Pull chin over bar by driving elbows down.',
+      'Lower back to dead hang.'
     ],
     commonMistakes: ['Kipping legs', 'Half reps without full extension'],
-    safetyTips: 'Do not drop suddenly at bottom to protect shoulder labrum.',
-    jointFocus: 'Shoulder',
-    jointSafeFor: ['Knee Pain', 'Lower Back Pain', 'Ankle Instability'],
-    alternatives: ['Band-Assisted Pull-Ups', 'Lat Pulldowns', 'Dumbbell Rows']
-  },
-  {
-    id: 'back-4',
-    name: 'Superman Spine Extensions',
-    category: 'Back',
-    primaryMuscle: 'Erector Spinae (Lower Back)',
-    secondaryMuscles: ['Gluteus Maximus', 'Hamstrings'],
-    equipment: 'None (Bodyweight)',
-    difficulty: 'Beginner',
-    caloriesPerMin: 6,
-    defaultSets: 3,
-    defaultReps: '12-15 reps (2s hold)',
-    restSec: 30,
-    animationType: 'superman',
-    instructions: [
-      'Lie face down on mat with arms extended overhead.',
-      'Simultaneously lift arms, chest, and legs off the floor by squeezing back and glutes.',
-      'Hold position at peak lift for 2 seconds.',
-      'Return gently to mat.'
-    ],
-    commonMistakes: ['Hyper-extending neck backward', 'Jerking up frantically'],
-    safetyTips: 'Keep gaze facing floor to maintain neutral cervical alignment.',
-    jointFocus: 'Lower Back Health',
-    jointSafeFor: ['Knee Pain', 'Shoulder Impingement', 'Wrist Strain'],
-    alternatives: ['Bird-Dog', 'Glute Bridges']
+    safetyTips: 'Avoid dropping suddenly at bottom to protect rotator cuff.',
+    breathingGuide: 'Exhale pulling up; inhale lowering down.',
+    alternatives: {
+      home: 'Inverted Table Rows',
+      gym: 'Lat Pulldown Machine',
+      beginner: 'Band-Assisted Pull-Ups',
+      advanced: 'Weighted Pull-Ups'
+    },
+    jointSafeFor: ['Knee Pain', 'Back Pain', 'Ankle Instability']
   },
 
   // LEGS
   {
-    id: 'legs-1',
-    name: 'Bodyweight Squats',
+    id: 'ex-legs-1',
+    name: 'Bodyweight Deep Squats',
     category: 'Legs',
     primaryMuscle: 'Quadriceps',
     secondaryMuscles: ['Gluteus Maximus', 'Hamstrings', 'Calves'],
@@ -247,74 +287,31 @@ export const EXERCISE_DATABASE = [
     defaultReps: '15-20 reps',
     restSec: 45,
     animationType: 'squat',
+    tempo: '3-1-1-0',
+    tutSec: 60,
     instructions: [
-      'Stand feet shoulder-width apart, toes turned outward 15 degrees.',
-      'Initiate movement by pushing hips back and bending knees.',
-      'Lower until thighs are parallel to floor while keeping chest erect.',
-      'Drive up through mid-foot to starting stance.'
+      'Stand feet shoulder-width apart, toes pointed 15 degrees out.',
+      'Hinge hips back and bend knees.',
+      'Lower thighs parallel to floor.',
+      'Drive through heels to stand erect.'
     ],
-    commonMistakes: ['Knees caving inward (valgus)', 'Heels coming off ground', 'Rounding back'],
-    safetyTips: 'Keep knees tracking directly in line with 2nd & 3rd toes.',
-    jointFocus: 'Knee / Hip',
-    jointSafeFor: ['Shoulder Impingement', 'Wrist Strain', 'Neck Tension'],
-    alternatives: ['Chair Squats', 'Box Squats', 'Wall Sit']
+    commonMistakes: ['Knees caving inward (valgus)', 'Heels lifting off ground'],
+    safetyTips: 'Keep knees tracking over 2nd and 3rd toes.',
+    breathingGuide: 'Inhale descending; exhale driving up.',
+    alternatives: {
+      home: 'Chair Squats',
+      gym: 'Barbell Back Squat',
+      beginner: 'Wall Sit Hold',
+      advanced: 'Pistol Squats'
+    },
+    jointSafeFor: ['Shoulder Pain', 'Wrist Strain']
   },
   {
-    id: 'legs-2',
-    name: 'Chair Squats (Knee-Safe)',
-    category: 'Legs',
-    primaryMuscle: 'Quadriceps',
-    secondaryMuscles: ['Glutes', 'Hamstrings'],
-    equipment: 'Bench',
-    difficulty: 'Beginner',
-    caloriesPerMin: 6,
-    defaultSets: 3,
-    defaultReps: '12-15 reps',
-    restSec: 45,
-    animationType: 'chair_squat',
-    instructions: [
-      'Stand in front of a chair with feet shoulder-width apart.',
-      'Slowly sit back until buttocks lightly tap chair cushion.',
-      'Pause for 1 second without sitting down completely.',
-      'Stand back up driving through heels.'
-    ],
-    commonMistakes: ['Collapsing onto chair'],
-    safetyTips: 'Excellent knee-rehab variation that eliminates deep joint flex compression.',
-    jointFocus: 'Joint Safe',
-    jointSafeFor: ['Knee Pain', 'Lower Back Pain', 'Wrist Strain', 'Ankle Instability'],
-    alternatives: ['Glute Bridges', 'Seated Leg Extensions']
-  },
-  {
-    id: 'legs-3',
-    name: 'Dumbbell Walking Lunges',
-    category: 'Legs',
-    primaryMuscle: 'Quadriceps & Glutes',
-    secondaryMuscles: ['Hamstrings', 'Calves', 'Core'],
-    equipment: 'Dumbbells',
-    difficulty: 'Intermediate',
-    caloriesPerMin: 10,
-    defaultSets: 3,
-    defaultReps: '10 reps per leg',
-    restSec: 60,
-    animationType: 'lunge',
-    instructions: [
-      'Stand tall holding dumbbells at sides.',
-      'Take a controlled step forward with right foot and lower hips until both knees bend at 90 degrees.',
-      'Ensure front knee stays behind toes.',
-      'Push off right foot to step forward into next lunge.'
-    ],
-    commonMistakes: ['Front knee slamming inward', 'Torso leaning too far forward'],
-    safetyTips: 'Maintain upright posture and engage core for balance.',
-    jointFocus: 'Knee',
-    jointSafeFor: ['Shoulder Impingement', 'Wrist Strain'],
-    alternatives: ['Reverse Lunges', 'Step-Ups', 'Static Split Squats']
-  },
-  {
-    id: 'legs-4',
+    id: 'ex-legs-2',
     name: 'Glute Bridges',
     category: 'Legs',
     primaryMuscle: 'Gluteus Maximus',
-    secondaryMuscles: ['Hamstrings', 'Core', 'Lower Back'],
+    secondaryMuscles: ['Hamstrings', 'Core', 'Erector Spinae'],
     equipment: 'None (Bodyweight)',
     difficulty: 'Beginner',
     caloriesPerMin: 6,
@@ -322,24 +319,32 @@ export const EXERCISE_DATABASE = [
     defaultReps: '15-20 reps',
     restSec: 30,
     animationType: 'glute_bridge',
+    tempo: '2-2-1-0',
+    tutSec: 50,
     instructions: [
-      'Lie on back with knees bent and feet flat on floor hip-width apart.',
-      'Drive through heels to lift hips toward ceiling until thighs and torso align.',
+      'Lie face up with knees bent and feet flat on floor.',
+      'Drive through heels lifting hips until knees, hips and shoulders form straight line.',
       'Squeeze glutes tightly at top for 2 seconds.',
-      'Lower hips back to floor under control.'
+      'Lower gently.'
     ],
-    commonMistakes: ['Arching lower back excessively at top', 'Pushing off toes'],
-    safetyTips: 'Focus on squeezing glutes rather than thrusting back too high.',
-    jointFocus: 'Posterior Chain',
-    jointSafeFor: ['Knee Pain', 'Lower Back Pain', 'Shoulder Impingement', 'Wrist Strain', 'Ankle Instability'],
-    alternatives: ['Single-Leg Glute Bridge', 'Hip Thrusts']
+    commonMistakes: ['Hyperextending lower back at top'],
+    safetyTips: 'Gold standard exercise for hip activation and back pain relief.',
+    breathingGuide: 'Exhale squeezing up; inhale lowering.',
+    alternatives: {
+      home: 'Single-Leg Glute Bridge',
+      gym: 'Barbell Hip Thrust',
+      beginner: 'Static Glute Hold',
+      advanced: 'Weighted Hip Thrust'
+    },
+    jointSafeFor: ['Knee Pain', 'Back Pain', 'Shoulder Pain', 'Wrist Strain', 'Ankle Instability']
   },
 
   // SHOULDERS
   {
-    id: 'shoulders-1',
-    name: 'Dumbbell Overhead Shoulder Press',
+    id: 'ex-shoulders-1',
+    name: 'Dumbbell Overhead Press',
     category: 'Shoulders',
+    discipline: 'Hypertrophy',
     primaryMuscle: 'Anterior & Lateral Deltoids',
     secondaryMuscles: ['Triceps Brachii', 'Upper Trapezius'],
     equipment: 'Dumbbells',
@@ -349,99 +354,31 @@ export const EXERCISE_DATABASE = [
     defaultReps: '10-12 reps',
     restSec: 60,
     animationType: 'shoulder_press',
+    tempo: '2-1-1-0',
+    tutSec: 40,
     instructions: [
-      'Sit or stand tall holding dumbbells at shoulder height with palms forward.',
-      'Press dumbbells overhead until arms are extended above head.',
-      'Lower slowly back to ear/shoulder level.'
+      'Hold dumbbells at shoulder height with palms forward.',
+      'Press dumbbells overhead until arms extend.',
+      'Lower back to ear level under control.'
     ],
-    commonMistakes: ['Arching lower back excessively', 'Pressing dumbbells too far forward'],
-    safetyTips: 'Squeeze abs and glutes to lock spine in neutral position.',
-    jointFocus: 'Shoulder',
-    jointSafeFor: ['Knee Pain', 'Ankle Instability'],
-    alternatives: ['Seated Dumbbell Press', 'Pike Push-Ups', 'Band Overhead Press']
-  },
-  {
-    id: 'shoulders-2',
-    name: 'Dumbbell Lateral Raises',
-    category: 'Shoulders',
-    primaryMuscle: 'Lateral Deltoids (Side Shoulders)',
-    secondaryMuscles: ['Trapezius'],
-    equipment: 'Dumbbells',
-    difficulty: 'Beginner',
-    caloriesPerMin: 6,
-    defaultSets: 3,
-    defaultReps: '12-15 reps',
-    restSec: 45,
-    animationType: 'lateral_raise',
-    instructions: [
-      'Stand holding dumbbells at sides with slight elbow bend.',
-      'Raise arms out to sides until elbows reach shoulder height.',
-      'Pause briefly at top then lower down with control.'
-    ],
-    commonMistakes: ['Using momentum to swing weights up', 'Lifting hands higher than elbows'],
-    safetyTips: 'Lead with elbows and keep pinkies slightly tilted upward.',
-    jointFocus: 'Deltoid Isolation',
-    jointSafeFor: ['Knee Pain', 'Lower Back Pain', 'Wrist Strain'],
-    alternatives: ['Resistance Band Lateral Raise', 'Cable Side Raise']
-  },
-
-  // ARMS
-  {
-    id: 'arms-1',
-    name: 'Dumbbell Bicep Curls',
-    category: 'Arms',
-    primaryMuscle: 'Biceps Brachii',
-    secondaryMuscles: ['Brachialis', 'Forearm Flexors'],
-    equipment: 'Dumbbells',
-    difficulty: 'Beginner',
-    caloriesPerMin: 6,
-    defaultSets: 3,
-    defaultReps: '12-15 reps',
-    restSec: 45,
-    animationType: 'bicep_curl',
-    instructions: [
-      'Stand tall holding a dumbbell in each hand with arms extended at sides.',
-      'Keep elbows pinned close to torso.',
-      'Curl weights upward while rotating wrists so palms face shoulders at top.',
-      'Lower back down under full control.'
-    ],
-    commonMistakes: ['Swinging torso for momentum', 'Elbows drifting forward'],
-    safetyTips: 'Perform seated against a wall if torso swinging persists.',
-    jointFocus: 'Elbow Flexion',
-    jointSafeFor: ['Knee Pain', 'Lower Back Pain', 'Shoulder Impingement'],
-    alternatives: ['Hammer Curls', 'Band Curls', 'Chin-Ups']
-  },
-  {
-    id: 'arms-2',
-    name: 'Tricep Bench Dips',
-    category: 'Arms',
-    primaryMuscle: 'Triceps Brachii',
-    secondaryMuscles: ['Anterior Deltoids', 'Pectoralis Major'],
-    equipment: 'Bench',
-    difficulty: 'Intermediate',
-    caloriesPerMin: 8,
-    defaultSets: 3,
-    defaultReps: '12-15 reps',
-    restSec: 45,
-    animationType: 'dips',
-    instructions: [
-      'Sit on edge of a sturdy bench/chair and place hands next to hips.',
-      'Slide hips off edge with legs extended in front.',
-      'Lower hips by bending elbows to 90 degrees.',
-      'Push up powerfully through palms to straighten arms.'
-    ],
-    commonMistakes: ['Lowering too deep past 90 degrees (strains shoulders)', 'Shrugging shoulders up'],
-    safetyTips: 'Keep back close to bench throughout the movement.',
-    jointFocus: 'Elbow / Shoulder',
-    jointSafeFor: ['Knee Pain', 'Ankle Instability'],
-    alternatives: ['Overhead Tricep Extension', 'Diamond Push-Ups', 'Tricep Kickbacks']
+    commonMistakes: ['Arching lower back excessively'],
+    safetyTips: 'Brace core and squeeze glutes to keep spine neutral.',
+    breathingGuide: 'Exhale pressing overhead; inhale lowering.',
+    alternatives: {
+      home: 'Pike Push-Ups',
+      gym: 'Barbell Overhead Press',
+      beginner: 'Seated Dumbbell Press',
+      advanced: 'Handstand Push-Ups'
+    },
+    jointSafeFor: ['Knee Pain', 'Ankle Instability']
   },
 
   // CORE
   {
-    id: 'core-1',
+    id: 'ex-core-1',
     name: 'Forearm Plank Hold',
     category: 'Core',
+    discipline: 'Calisthenics',
     primaryMuscle: 'Rectus Abdominis & Transverse Abdominis',
     secondaryMuscles: ['Obliques', 'Glutes', 'Deltoids'],
     equipment: 'None (Bodyweight)',
@@ -451,128 +388,67 @@ export const EXERCISE_DATABASE = [
     defaultReps: '45-60 seconds',
     restSec: 30,
     animationType: 'plank',
+    tempo: 'Isometric',
+    tutSec: 60,
     instructions: [
-      'Place forearms on mat with elbows under shoulders.',
-      'Extend legs back, resting on toes so body forms a straight line from head to heels.',
-      'Brace abs as if about to be punched, squeezing glutes and quads.',
-      'Breathe steadily throughout the isometric hold.'
+      'Rest forearms on mat with elbows under shoulders.',
+      'Extend legs back, forming straight line from head to heels.',
+      'Brace abs tightly like holding a punch.'
     ],
-    commonMistakes: ['Sagging hips toward floor', 'Piking hips into air', 'Holding breath'],
-    safetyTips: 'Drop knees to mat if lower back begins to arch.',
-    jointFocus: 'Core Stability',
-    jointSafeFor: ['Knee Pain', 'Ankle Instability', 'Neck Tension'],
-    alternatives: ['Bird-Dog', 'Dead-Bug', 'Knee Plank']
-  },
-  {
-    id: 'core-2',
-    name: 'Bird-Dog Stability Hold',
-    category: 'Core',
-    primaryMuscle: 'Transverse Abdominis & Multifidus',
-    secondaryMuscles: ['Glutes', 'Erector Spinae', 'Deltoids'],
-    equipment: 'None (Bodyweight)',
-    difficulty: 'Beginner',
-    caloriesPerMin: 5,
-    defaultSets: 3,
-    defaultReps: '10 reps per side',
-    restSec: 30,
-    animationType: 'bird_dog',
-    instructions: [
-      'Start on all fours with hands under shoulders and knees under hips.',
-      'Simultaneously reach right arm straight forward and extend left leg straight back.',
-      'Hold 2 seconds in a straight line, then return to start.',
-      'Switch sides and repeat.'
-    ],
-    commonMistakes: ['Tilting hips to side', 'Arching lower back'],
-    safetyTips: 'Gold standard clinical exercise for lower back pain rehabilitation.',
-    jointFocus: 'Spine Safe',
-    jointSafeFor: ['Knee Pain', 'Lower Back Pain', 'Shoulder Impingement', 'Wrist Strain'],
-    alternatives: ['Dead-Bug Hold', 'Glute Bridges']
-  },
-  {
-    id: 'core-3',
-    name: 'Bicycle Crunches',
-    category: 'Core',
-    primaryMuscle: 'Rectus Abdominis & Obliques',
-    secondaryMuscles: ['Hip Flexors'],
-    equipment: 'None (Bodyweight)',
-    difficulty: 'Intermediate',
-    caloriesPerMin: 9,
-    defaultSets: 3,
-    defaultReps: '20 total reps',
-    restSec: 45,
-    animationType: 'bicycle_crunch',
-    instructions: [
-      'Lie face up with hands behind head and knees bent at 90 degrees.',
-      'Lift shoulders off floor.',
-      'Rotate torso bringing right elbow toward left knee while extending right leg straight out.',
-      'Switch sides continuously in a smooth pedaling motion.'
-    ],
-    commonMistakes: ['Yanking neck forward with hands', 'Moving too fast without contraction'],
-    safetyTips: 'Rotate from ribcage, not by pulling your head.',
-    jointFocus: 'Rotational Core',
-    jointSafeFor: ['Knee Pain', 'Shoulder Impingement'],
-    alternatives: ['Russian Twists', 'Plank Shoulder Taps']
+    commonMistakes: ['Sagging hips', 'Piking hips into air'],
+    safetyTips: 'Drop to knees if lower back begins arching.',
+    breathingGuide: 'Maintain shallow continuous diaphragmatic breathing.',
+    alternatives: {
+      home: 'Knee Plank Hold',
+      gym: 'Ab Wheel Rollout',
+      beginner: 'Bird-Dog Hold',
+      advanced: 'RKC Plank Hold'
+    },
+    jointSafeFor: ['Knee Pain', 'Ankle Instability']
   },
 
   // CARDIO & HIIT
   {
-    id: 'cardio-1',
-    name: 'High-Knee Cardio Burn',
+    id: 'ex-cardio-1',
+    name: 'High-Knee Metabolic Sprint',
     category: 'Cardio',
+    discipline: 'HIIT',
     primaryMuscle: 'Cardiovascular System',
-    secondaryMuscles: ['Quadriceps', 'Calves', 'Hip Flexors'],
+    secondaryMuscles: ['Quadriceps', 'Calves', 'Core'],
     equipment: 'None (Bodyweight)',
     difficulty: 'Intermediate',
-    caloriesPerMin: 12,
+    caloriesPerMin: 13,
     defaultSets: 4,
     defaultReps: '40 seconds ON',
     restSec: 20,
     animationType: 'high_knees',
+    tempo: 'Explosive',
+    tutSec: 40,
     instructions: [
-      'Stand upright with feet hip-width apart.',
-      'Run in place lifting knees vigorously to waist height.',
-      'Pump arms rapidly in rhythm with leg strikes.',
+      'Run vigorously in place lifting knees to hip height.',
+      'Pump arms rhythmically with leg strides.',
       'Land softly on balls of feet.'
     ],
-    commonMistakes: ['Leaning backward while lifting knees'],
-    safetyTips: 'Perform Marching in Place as a low-impact substitute.',
-    jointFocus: 'High Impact',
-    jointSafeFor: ['Shoulder Impingement', 'Wrist Strain'],
-    alternatives: ['Marching in Place', 'Brisk Walking']
-  },
-  {
-    id: 'hiit-1',
-    name: 'Burpees Full Body Burn',
-    category: 'HIIT',
-    primaryMuscle: 'Full Body Cardiovascular',
-    secondaryMuscles: ['Chest', 'Quads', 'Core', 'Shoulders'],
-    equipment: 'None (Bodyweight)',
-    difficulty: 'Advanced',
-    caloriesPerMin: 14,
-    defaultSets: 4,
-    defaultReps: '30 seconds max reps',
-    restSec: 30,
-    animationType: 'burpee',
-    instructions: [
-      'From standing stance, drop into a squat and place hands flat on floor.',
-      'Kick feet back into a push-up plank position.',
-      'Lower chest to floor (optional), then press back up.',
-      'Jump feet forward to hands, then explode upward into vertical jump with hands overhead.'
-    ],
-    commonMistakes: ['Sagging back during plank kick-back'],
-    safetyTips: 'Step feet back one by one instead of jumping if high impact strains joints.',
-    jointFocus: 'Explosive',
-    jointSafeFor: ['None'],
-    alternatives: ['Squat Thrusts', 'Mountain Climbers', 'Jumping Jacks']
+    commonMistakes: ['Leaning backward'],
+    safetyTips: 'Substitute Marching in Place if high impact bothers joints.',
+    breathingGuide: 'Rhythmic rapid breathing through nose and mouth.',
+    alternatives: {
+      home: 'Marching in Place',
+      gym: 'Treadmill Incline Sprint',
+      beginner: 'Step-Touches',
+      advanced: 'Burpee High Knees'
+    },
+    jointSafeFor: ['Shoulder Pain', 'Wrist Strain']
   },
 
-  // YOGA, MOBILITY & STRETCHING
+  // YOGA & MOBILITY
   {
-    id: 'yoga-1',
+    id: 'ex-yoga-1',
     name: 'Cat-Cow Spinal Flow',
     category: 'Yoga',
+    discipline: 'Mobility',
     primaryMuscle: 'Spinal Column & Erector Spinae',
-    secondaryMuscles: ['Abdominals', 'Neck Flexors'],
+    secondaryMuscles: ['Abdominals', 'Thoracic Spine'],
     equipment: 'None (Bodyweight)',
     difficulty: 'Beginner',
     caloriesPerMin: 4,
@@ -580,112 +456,113 @@ export const EXERCISE_DATABASE = [
     defaultReps: '10 full cycles',
     restSec: 15,
     animationType: 'cat_cow',
+    tempo: 'Fluid Flow',
+    tutSec: 60,
     instructions: [
-      'Begin on hands and knees with neutral spine.',
-      'Inhale: arch back, drop belly down, and tilt gaze toward ceiling (Cow Pose).',
-      'Exhale: round spine upward like an angry cat, tucking chin to chest (Cat Pose).',
-      'Flow smoothly between positions with deep rhythmic breathing.'
+      'Start on all fours with hands under shoulders, knees under hips.',
+      'Inhale: arch spine, drop belly, gaze up (Cow).',
+      'Exhale: round spine up, tuck chin to chest (Cat).'
     ],
-    commonMistakes: ['Forcing movement into painful ranges'],
-    safetyTips: 'Essential movement for relieving stiff lower back and desk-posture slump.',
-    jointFocus: 'Spine Mobility',
-    jointSafeFor: ['Knee Pain', 'Lower Back Pain', 'Shoulder Impingement', 'Wrist Strain', 'Ankle Instability', 'Neck Tension'],
-    alternatives: ['Child\'s Pose', 'Thoracic Windmills']
-  },
-  {
-    id: 'flexibility-1',
-    name: 'Standing Hamstring & Calves Stretch',
-    category: 'Stretching',
-    primaryMuscle: 'Hamstrings & Gastrocnemius',
-    secondaryMuscles: ['Lower Back'],
-    equipment: 'None (Bodyweight)',
-    difficulty: 'Beginner',
-    caloriesPerMin: 3,
-    defaultSets: 2,
-    defaultReps: '30 seconds hold per leg',
-    restSec: 15,
-    animationType: 'hamstring_stretch',
-    instructions: [
-      'Stand and extend right leg forward with heel resting on floor and toes pointing up.',
-      'Hinge forward at hips keeping back flat until stretch is felt in back of thigh.',
-      'Hold position gently without bouncing.',
-      'Repeat on left leg.'
-    ],
-    commonMistakes: ['Bouncing into stretch', 'Rounding shoulders instead of hinging hips'],
-    safetyTips: 'Never stretch to point of pain, only mild comfortable tension.',
-    jointFocus: 'Hamstring Flexibility',
-    jointSafeFor: ['Knee Pain', 'Lower Back Pain', 'Shoulder Impingement', 'Wrist Strain', 'Neck Tension'],
-    alternatives: ['Seated Hamstring Stretch', 'Doorway Leg Stretch']
+    commonMistakes: ['Forcing movement into sharp pain'],
+    safetyTips: 'Essential movement for Desk Worker posture correction.',
+    breathingGuide: 'Inhale on Cow posture; exhale on Cat posture.',
+    alternatives: {
+      home: 'Child\'s Pose Stretch',
+      gym: 'Foam Roller Spine Stretch',
+      beginner: 'Seated Torso Twists',
+      advanced: 'Thread the Needle Stretch'
+    },
+    jointSafeFor: ['Knee Pain', 'Back Pain', 'Shoulder Pain', 'Wrist Strain', 'Ankle Instability']
   }
 ];
 
-// ─── 3. DYNAMIC AI WORKOUT GENERATOR ALGORITHM ─────────────────
+// ─── 4. RECOVERY INTELLIGENCE CALCULATOR ────────────────────────
+export function calculateRecoveryScore(sleepHours = 7.5, soreness = 3, workoutCountThisWeek = 4) {
+  let score = 70;
+
+  // Sleep scoring
+  if (sleepHours >= 8) score += 15;
+  else if (sleepHours >= 7) score += 10;
+  else if (sleepHours < 6) score -= 15;
+
+  // Soreness scoring (1 = none, 5 = severe)
+  if (soreness === 1) score += 15;
+  else if (soreness === 2) score += 10;
+  else if (soreness === 4) score -= 15;
+  else if (soreness === 5) score -= 25;
+
+  // Frequency adjustment
+  if (workoutCountThisWeek > 5) score -= 10;
+
+  const finalScore = Math.min(100, Math.max(25, score));
+
+  return {
+    score: finalScore,
+    status: finalScore >= 85 ? 'Optimal Recovery' : finalScore >= 70 ? 'Moderate Readiness' : 'Needs Rest / Deload',
+    color: finalScore >= 85 ? 'emerald' : finalScore >= 70 ? 'amber' : 'red',
+    aiAdvice: finalScore < 70 
+      ? '⚠️ Recovery score is low (Poor sleep or high fatigue). Today\'s session volume has been automatically reduced by 25% for joint safety.'
+      : '⚡ Recovery is high! You are primed for maximum progressive overload today.'
+  };
+}
+
+// ─── 5. PROGRESSIVE OVERLOAD & PLATEAU DETECTOR ────────────────
+export function calculateProgressiveOverload(history = [], currentPlan = {}) {
+  if (!history || history.length === 0) return currentPlan;
+
+  const completedSessions = history.length;
+  // Increase reps or sets every 3 sessions
+  if (completedSessions % 3 === 0) {
+    const updatedExercises = currentPlan.exercises.map(ex => ({
+      ...ex,
+      defaultSets: ex.defaultSets + (completedSessions > 6 ? 1 : 0),
+      defaultReps: `${parseInt(ex.defaultReps) + 2} reps`
+    }));
+
+    return {
+      ...currentPlan,
+      exercises: updatedExercises,
+      overloadMessage: '⚡ Progressive Overload Activated: +2 reps & increased volume target applied based on recent performance!'
+    };
+  }
+
+  return currentPlan;
+}
+
+// ─── 6. DYNAMIC AI WORKOUT SYNTHESIS ALGORITHM ─────────────────
 export function generateDynamicAiWorkout(profile = {}) {
-  const goal = profile.goal || 'Build Muscle';
+  const archetype = classifyUserArchetype(profile);
+  const goal = profile.goal || 'Gain Muscle';
   const experience = profile.experience || 'Intermediate';
   const location = profile.location || 'Home';
   const equipmentList = profile.equipment || ['None (Bodyweight)'];
   const durationMin = Number(profile.duration) || 30;
   const limitations = profile.limitations || ['None'];
-  const conditions = profile.medicalConditions || ['None'];
-  const style = profile.preferredStyle || 'Balanced Functional';
 
-  // 1. Filter database matching location & equipment
-  let eligibleExercises = EXERCISE_DATABASE.filter(ex => {
+  // Filter exercises matching equipment
+  let eligible = EXERCISE_DATABASE.filter(ex => {
     if (equipmentList.includes('Full Gym')) return true;
     if (ex.equipment === 'None (Bodyweight)') return true;
     return equipmentList.includes(ex.equipment);
   });
 
-  // 2. Filter out exercises that trigger joint limitations
+  // Filter joint limitations
   if (!limitations.includes('None')) {
-    eligibleExercises = eligibleExercises.filter(ex => {
-      return limitations.every(lim => {
-        if (lim === 'None') return true;
-        return ex.jointSafeFor?.includes(lim) || ex.difficulty === 'Beginner';
-      });
+    eligible = eligible.filter(ex => {
+      return limitations.every(lim => lim === 'None' || ex.jointSafeFor?.includes(lim));
     });
   }
 
-  if (eligibleExercises.length < 4) {
-    eligibleExercises = EXERCISE_DATABASE.filter(ex => ex.equipment === 'None (Bodyweight)');
+  if (eligible.length < 3) {
+    eligible = EXERCISE_DATABASE.filter(ex => ex.equipment === 'None (Bodyweight)');
   }
 
-  // 3. Goal-based Exercise Selection
-  let targetCategories = [];
-  if (goal === 'Lose Fat') {
-    targetCategories = ['Cardio', 'HIIT', 'Legs', 'Chest', 'Core'];
-  } else if (goal === 'Build Muscle' || goal === 'Increase Strength') {
-    targetCategories = ['Chest', 'Back', 'Legs', 'Shoulders', 'Arms'];
-  } else if (goal === 'Improve Flexibility') {
-    targetCategories = ['Yoga', 'Stretching', 'Core', 'Legs'];
-  } else if (goal === 'Improve Endurance') {
-    targetCategories = ['Cardio', 'HIIT', 'Legs', 'Core'];
-  } else {
-    targetCategories = ['Chest', 'Back', 'Legs', 'Core', 'Stretching'];
-  }
+  // Target exercise count based on duration
+  const targetCount = durationMin <= 20 ? 3 : durationMin <= 30 ? 5 : durationMin <= 45 ? 6 : 8;
+  const selected = eligible.slice(0, targetCount);
 
-  const selectedExercises = [];
-  targetCategories.forEach(cat => {
-    const match = eligibleExercises.find(ex => ex.category === cat && !selectedExercises.some(s => s.id === ex.id));
-    if (match) selectedExercises.push(match);
-  });
-
-  const targetCount = durationMin <= 15 ? 3 : durationMin <= 30 ? 5 : durationMin <= 45 ? 7 : 9;
-  
-  let index = 0;
-  while (selectedExercises.length < targetCount && index < eligibleExercises.length) {
-    const candidate = eligibleExercises[index];
-    if (!selectedExercises.some(s => s.id === candidate.id)) {
-      selectedExercises.push(candidate);
-    }
-    index++;
-  }
-
-  // 4. Adjust Volume based on Experience Level & Duration
-  const formattedExercises = selectedExercises.map(ex => {
+  const formatted = selected.map(ex => {
     let sets = ex.defaultSets;
-    let reps = ex.defaultReps;
     let rest = ex.restSec;
 
     if (experience === 'Beginner') {
@@ -699,61 +576,43 @@ export function generateDynamicAiWorkout(profile = {}) {
     return {
       ...ex,
       sets,
-      reps,
       restSec: rest,
-      caloriesBurned: Math.round(ex.caloriesPerMin * (durationMin / selectedExercises.length))
+      caloriesBurned: Math.round(ex.caloriesPerMin * (durationMin / selected.length))
     };
   });
 
-  const estTotalCalories = formattedExercises.reduce((acc, curr) => acc + curr.caloriesBurned, 0);
-
-  const title = `${experience} ${goal} (${location} ${style.split(' ')[0]})`;
-  const focus = `${targetCategories.slice(0, 3).join(', ')} • ${durationMin} Mins`;
+  const totalCalories = formatted.reduce((acc, curr) => acc + curr.caloriesBurned, 0);
 
   return {
-    id: `ai-plan-${Date.now()}`,
-    title,
-    focus,
+    id: `ai-workout-${Date.now()}`,
+    title: `${archetype.title} Session`,
+    focus: `${goal} • ${location} (${durationMin}m)`,
     durationMin,
     difficulty: experience,
-    estCalories: estTotalCalories,
-    location,
-    goal,
-    exercises: formattedExercises,
-    aiRationale: `Tailored for ${profile.gender || 'User'} (${profile.age || 25}y, BMI ${profile.bmi || '22.5'}). Designed for ${goal} at ${location} using ${equipmentList.join(', ')}. Avoids strain on: ${limitations.join(', ')}.`
+    estCalories: totalCalories,
+    archetype,
+    exercises: formatted,
+    aiRationale: `Engineered for archetype "${archetype.title}". Optimized for ${goal} using ${equipmentList.join(', ')}. Medical filters applied: ${limitations.join(', ')}.`
   };
 }
 
-// ─── 4. AI 7-DAY WORKOUT SCHEDULE GENERATOR ─────────────────────
+// ─── 7. 7-DAY AI WORKOUT SPLIT GENERATOR ─────────────────────────
 export function generateWeeklyAiSplit(profile = {}) {
-  const goal = profile.goal || 'Build Muscle';
+  const goal = profile.goal || 'Gain Muscle';
   const workoutDaysCount = Number(profile.workoutDays) || 4;
   const restDaysList = profile.restDays || ['Sunday', 'Wednesday'];
 
   const daysOfWeek = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
-  const splitTemplates = {
-    'Build Muscle': [
-      { day: 'Monday', focus: 'Chest & Triceps Push Focus', category: 'Chest' },
-      { day: 'Tuesday', focus: 'Back & Biceps Pull Focus', category: 'Back' },
-      { day: 'Wednesday', focus: 'Rest & Deep Tissue Recovery', category: 'Rest' },
-      { day: 'Thursday', focus: 'Legs & Lower Body Hypertrophy', category: 'Legs' },
-      { day: 'Friday', focus: 'Shoulders & Arms Precision', category: 'Shoulders' },
-      { day: 'Saturday', focus: 'Core & High Intensity Burn', category: 'Core' },
-      { day: 'Sunday', focus: 'Rest & Active Mobility', category: 'Rest' }
-    ],
-    'Lose Fat': [
-      { day: 'Monday', focus: 'HIIT & Full Body Calorie Torch', category: 'HIIT' },
-      { day: 'Tuesday', focus: 'Upper Body Metabolic Circuit', category: 'Chest' },
-      { day: 'Wednesday', focus: 'Rest & Hydration Recovery', category: 'Rest' },
-      { day: 'Thursday', focus: 'Lower Body & Glute Burn', category: 'Legs' },
-      { day: 'Friday', focus: 'Core & Cardio Endurance', category: 'Cardio' },
-      { day: 'Saturday', focus: 'Full Body Calisthenics Power', category: 'Back' },
-      { day: 'Sunday', focus: 'Active Recovery Yoga & Stretch', category: 'Rest' }
-    ]
-  };
-
-  const defaultTemplate = splitTemplates[goal] || splitTemplates['Build Muscle'];
+  const splitTemplates = [
+    { day: 'Monday', focus: 'Chest & Triceps Push Focus', category: 'Chest' },
+    { day: 'Tuesday', focus: 'Back & Biceps Pull Focus', category: 'Back' },
+    { day: 'Wednesday', focus: 'Rest & Deep Tissue Recovery', category: 'Rest' },
+    { day: 'Thursday', focus: 'Legs & Lower Body Hypertrophy', category: 'Legs' },
+    { day: 'Friday', focus: 'Shoulders & Arms Precision', category: 'Shoulders' },
+    { day: 'Saturday', focus: 'Core & High Intensity Burn', category: 'Core' },
+    { day: 'Sunday', focus: 'Rest & Active Mobility', category: 'Rest' }
+  ];
 
   return daysOfWeek.map((dayName, idx) => {
     const isRest = restDaysList.includes(dayName) || idx >= workoutDaysCount;
@@ -770,7 +629,7 @@ export function generateWeeklyAiSplit(profile = {}) {
       };
     }
 
-    const tpl = defaultTemplate[idx] || defaultTemplate[0];
+    const tpl = splitTemplates[idx] || splitTemplates[0];
     const generated = generateDynamicAiWorkout({ ...profile, goal, duration: profile.duration || 30 });
     return {
       day: dayName,
@@ -786,59 +645,90 @@ export function generateWeeklyAiSplit(profile = {}) {
   });
 }
 
-// ─── 5. GAMIFICATION & REWARDS SYSTEM ─────────────────────────
-export function calculateUserGamification(completedWorkouts = []) {
-  const baseXPPerWorkout = 100;
-  const xpPerSet = 10;
-
-  let totalXP = 0;
-  completedWorkouts.forEach(w => {
-    totalXP += baseXPPerWorkout;
-    totalXP += (w.completedSets || 10) * xpPerSet;
-  });
-
-  const level = Math.floor(totalXP / 300) + 1;
-  const currentLevelXP = totalXP % 300;
-  const nextLevelXP = 300;
-  const levelProgressPct = Math.round((currentLevelXP / nextLevelXP) * 100);
-
-  const levelTitles = [
-    'Rookie Athlete',
-    'Bronze Fitness Enthusiast',
-    'Silver Active Pioneer',
-    'Gold Muscular Warrior',
-    'Platinum Endurance Legend',
-    'Diamond Titan Coach'
-  ];
-
-  const title = levelTitles[Math.min(levelTitles.length - 1, Math.floor(level / 2))];
-
-  return {
-    totalXP,
-    level,
-    title,
-    currentLevelXP,
-    nextLevelXP,
-    levelProgressPct,
-    streakDays: Math.min(30, completedWorkouts.length > 0 ? completedWorkouts.length * 2 : 3),
-    totalCaloriesBurned: completedWorkouts.reduce((acc, w) => acc + (w.estCalories || 200), 1450),
-    totalWorkoutMins: completedWorkouts.reduce((acc, w) => acc + (w.durationMin || 30), 240)
-  };
-}
-
 export function getAchievementBadges(gamification = {}) {
   const { totalXP = 0, level = 1, streakDays = 0 } = gamification;
 
   return [
     { id: 'badge-1', title: 'First Rep', desc: 'Completed 1st AI session', icon: '🚀', unlocked: true },
-    { id: 'badge-2', title: 'Consistency King', desc: 'Maintained a 7-day streak', icon: '🔥', unlocked: streakDays >= 7 },
+    { id: 'badge-[#2]', title: 'Consistency King', desc: 'Maintained a 7-day streak', icon: '🔥', unlocked: streakDays >= 7 },
     { id: 'badge-3', title: 'Level Up Champion', desc: 'Reached Level 3 status', icon: '🏆', unlocked: level >= 3 },
     { id: 'badge-4', title: 'Calorie Torcher', desc: 'Earned 1000+ XP in AI Coach', icon: '⚡', unlocked: totalXP >= 1000 },
     { id: 'badge-5', title: 'Iron Mindset', desc: 'Completed 10 workouts', icon: '🛡️', unlocked: totalXP >= 1500 }
   ];
 }
 
-// ─── 6. NUTRITION & MEAL PLANNER INTEGRATION ───────────────────
+// ─── 8. CHALLENGES DATASET ──────────────────────────────────────
+export const CHALLENGES_LIST = [
+  {
+    id: 'ch-1',
+    title: '30-Day Fat Loss & Shred',
+    category: 'Fat Loss',
+    desc: 'Burn 5000+ kcal over 30 days with metabolic HIIT & core conditioning.',
+    durationDays: 30,
+    targetCalories: 5000,
+    icon: '🔥',
+    rewardXP: 1000,
+    rewardCoins: 250
+  },
+  {
+    id: 'ch-2',
+    title: '100 Push-ups Daily Quest',
+    category: 'Strength',
+    desc: 'Build chest & arm power by completing 100 total push-ups daily.',
+    durationDays: 7,
+    targetCount: 700,
+    icon: '💪',
+    rewardXP: 600,
+    rewardCoins: 150
+  },
+  {
+    id: 'ch-3',
+    title: 'Postural Spine & Mobility Quest',
+    category: 'Mobility',
+    desc: 'Relieve desk-job tightness with 15 mins daily spinal mobility.',
+    durationDays: 14,
+    targetMins: 210,
+    icon: '🧘',
+    rewardXP: 500,
+    rewardCoins: 100
+  }
+];
+
+// ─── 8. GAMIFICATION & REWARDS HELPERS ────────────────────────
+export function calculateUserGamification(completedLogs = []) {
+  let totalXP = completedLogs.reduce((acc, l) => acc + (l.xpEarned || 150), 450);
+  let totalCoins = completedLogs.reduce((acc, l) => acc + 25, 120);
+
+  const level = Math.floor(totalXP / 300) + 1;
+  const currentXP = totalXP % 300;
+  const nextXP = 300;
+  const progressPct = Math.round((currentXP / nextXP) * 100);
+
+  const levelTitles = [
+    'Level 1: Rookie Athlete',
+    'Level 2: Active Explorer',
+    'Level 3: Iron Mindset',
+    'Level 4: Muscular Pioneer',
+    'Level 5: Endurance Warrior',
+    'Level 6: Platinum Athlete',
+    'Level 7: Diamond Titan'
+  ];
+
+  return {
+    totalXP,
+    totalCoins,
+    level,
+    title: levelTitles[Math.min(levelTitles.length - 1, level - 1)],
+    currentXP,
+    nextXP,
+    progressPct,
+    streakDays: Math.max(3, completedLogs.length * 2),
+    totalCalories: completedLogs.reduce((acc, l) => acc + (l.estCalories || 200), 1850),
+    totalMins: completedLogs.reduce((acc, l) => acc + (l.durationMin || 30), 320)
+  };
+}
+
+// ─── 8. NUTRITION & MEAL PLANNER INTEGRATION ───────────────────
 export function getMealPlannerSyncRecommendation(completedWorkout = {}) {
   const caloriesBurned = completedWorkout.estCalories || 250;
   const targetProteinGrams = Math.round((caloriesBurned / 250) * 30);
@@ -857,7 +747,7 @@ export function getMealPlannerSyncRecommendation(completedWorkout = {}) {
   };
 }
 
-// ─── 7. LOCAL STORAGE HELPERS ─────────────────────────────────
+// ─── 9. LOCAL STORAGE PERSISTENCE ──────────────────────────────
 export function loadFitnessProfile() {
   try {
     const saved = localStorage.getItem(FITNESS_PROFILE_STORAGE);
@@ -870,10 +760,10 @@ export function loadFitnessProfile() {
     gender: 'Male',
     height: 175,
     weight: 70,
-    targetWeight: 66,
+    targetWeight: 65,
     bmi: 22.9,
     bodyFat: 18,
-    goal: 'Build Muscle',
+    goal: 'Gain Muscle',
     activityLevel: 'Moderately Active',
     experience: 'Intermediate',
     location: 'Home',
@@ -881,7 +771,9 @@ export function loadFitnessProfile() {
     workoutDays: 4,
     duration: 30,
     limitations: ['None'],
-    medicalConditions: ['None'],
+    occupation: 'Desk Job / Office',
+    sleepHours: 7,
+    stressLevel: 'Moderate',
     preferredStyle: 'Hypertrophy & Bodybuilding',
     restDays: ['Sunday', 'Wednesday']
   };
