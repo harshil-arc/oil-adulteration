@@ -1,5 +1,5 @@
 /**
- * Server-Side AI Recommendation Engine Mirror
+ * Server-Side AI Recommendation Engine Mirror for SpectraTrust Meal Planner
  */
 
 function calculateBMI(weightKg, heightCm) {
@@ -70,172 +70,104 @@ function calculateDailyNutritionTargets(userInput = {}) {
   };
 }
 
-function generateDiseaseRules(medicalConditions = []) {
-  const rules = {
-    maxSugar: 20, maxSodium: 500, maxSatFat: 10, maxCholesterol: 100, maxGI: 75, minFiber: 2, minProtein: 0,
-    avoidKeywords: [], preferKeywords: [], activeRuleLabels: []
-  };
-
-  medicalConditions.forEach(cond => {
-    if (cond === 'Diabetes') {
-      rules.maxSugar = 6; rules.maxGI = 55; rules.minFiber = 5;
-      rules.activeRuleLabels.push('🩸 Low GI & Sugar Control (Diabetes)');
-    } else if (cond === 'Hypertension') {
-      rules.maxSodium = 280;
-      rules.activeRuleLabels.push('🫀 Low Sodium & DASH Compliant (Hypertension)');
-    } else if (cond === 'High Cholesterol') {
-      rules.maxSatFat = 2.5; rules.maxCholesterol = 20;
-      rules.activeRuleLabels.push('❤️ Heart Safe & Low Sat Fat (High Cholesterol)');
-    }
-  });
-
-  return rules;
-}
-
 function scoreRecipeServer(recipe, userPayload = {}) {
   const {
     pantryItems = [],
     medicalConditions = [],
     allergies = [],
-    dietPreference,
-    healthGoal,
+    dietPreference = 'All',
+    healthGoal = 'Maintenance',
     age = 28,
     gender = 'Male',
     height = 168,
-    weight = 65
+    weight = 65,
+    cuisine = 'All',
+    maxCookTime = 60,
+    season = 'Summer',
+    recentlyCooked = [],
+    recentlyRejected = [],
+    frequentlyViewed = []
   } = userPayload;
 
-  const biometrics = calculateBMI(weight, height);
-  const targets = calculateDailyNutritionTargets({ age, gender, height, weight, goal: healthGoal, medicalConditions });
-  const diseaseRules = generateDiseaseRules(medicalConditions);
+  const recipeText = `${recipe.name} ${recipe.ingredients?.join(' ')} ${recipe.containsGluten} ${recipe.containsDairy}`.toLowerCase();
 
-  // 1. Allergy Check (Strict Disqualification)
-  if (allergies.length > 0) {
-    const text = `${recipe.name} ${recipe.ingredients?.join(' ')} ${recipe.containsGluten} ${recipe.containsDairy}`.toLowerCase();
+  // 1. Allergy Disqualification
+  if (allergies && allergies.length > 0) {
     const hasAllergen = allergies.some(a => {
       const alg = a.toLowerCase();
-      if (alg === 'milk' && (text.includes('milk') || text.includes('paneer') || text.includes('curd') || recipe.containsDairy === 'Yes')) return true;
-      if (alg === 'gluten' && (text.includes('wheat') || text.includes('atta') || recipe.containsGluten === 'Yes')) return true;
-      if (alg === 'egg' && text.includes('egg')) return true;
-      if (alg === 'soy' && (text.includes('soy') || text.includes('tofu'))) return true;
+      if (alg === 'milk' && (recipeText.includes('milk') || recipeText.includes('paneer') || recipeText.includes('curd'))) return true;
+      if (alg === 'gluten' && (recipeText.includes('wheat') || recipeText.includes('atta'))) return true;
+      if (alg === 'egg' && recipeText.includes('egg')) return true;
+      if (alg === 'soy' && (recipeText.includes('soy') || recipeText.includes('tofu'))) return true;
       return false;
     });
-    if (hasAllergen) return null;
+    if (hasAllergen) return null; // Disqualified
   }
 
-  // 2. Ingredient Match Score (Max 30 pts)
-  const recipeIngs = (recipe.ingredients || []).map(i => typeof i === 'string' ? i.toLowerCase().trim() : (i.name || '').toLowerCase().trim());
-  const pantryNames = pantryItems.map(p => typeof p === 'string' ? p.toLowerCase().trim() : (p.name || '').toLowerCase().trim());
-  let matchedCount = 0;
-  if (pantryNames.length > 0 && recipeIngs.length > 0) {
-    recipeIngs.forEach(ring => {
-      if (pantryNames.some(p => ring.includes(p) || p.includes(ring))) matchedCount++;
-    });
-  }
-  const ingredientMatchPct = recipeIngs.length > 0 ? Math.min(100, Math.round((matchedCount / recipeIngs.length) * 100)) : 70;
-  const ingredientScore = Math.round((ingredientMatchPct / 100) * 30);
-
-  // 3. Disease Compatibility Score (Max 25 pts)
-  let diseasePoints = 25;
-  const sugar = recipe.sugar || recipe.macros?.sugar || 5;
-  const sodium = recipe.sodium || recipe.micros?.sodium || 300;
-  const fat = recipe.fat || recipe.macros?.fat || 10;
-  const fiber = recipe.fiber || recipe.macros?.fiber || 4;
-  const gi = recipe.gi || 50;
-
-  if (medicalConditions.length > 0) {
-    if (medicalConditions.includes('Diabetes')) {
-      if (sugar <= diseaseRules.maxSugar) diseasePoints += 2;
-      else diseasePoints -= 12;
-      if (gi <= diseaseRules.maxGI) diseasePoints += 2;
-      else diseasePoints -= 8;
-      if (fiber < diseaseRules.minFiber) diseasePoints -= 5;
-    }
-    if (medicalConditions.includes('Hypertension')) {
-      if (sodium <= diseaseRules.maxSodium) diseasePoints += 2;
-      else diseasePoints -= 14;
-    }
-    if (medicalConditions.includes('High Cholesterol')) {
-      if (fat <= 12) diseasePoints += 2;
-      else diseasePoints -= 12;
-    }
-  }
-  diseasePoints = Math.max(0, Math.min(25, Math.round(diseasePoints)));
-
-  // 4. Goal Compatibility Score (Max 15 pts)
-  let goalPoints = 12;
-  const cals = recipe.calories || recipe.macros?.calories || 300;
-  const prot = recipe.protein || recipe.macros?.protein || 10;
-
-  if (healthGoal === 'Weight Loss' || healthGoal === 'Fat Loss') {
-    if (cals <= 320) goalPoints += 3;
-    else if (cals > 420) goalPoints -= 6;
-    if (fiber >= 5) goalPoints += 2;
-  } else if (healthGoal === 'Muscle Building' || healthGoal === 'Weight Gain') {
-    if (prot >= 18) goalPoints += 3;
-    else if (prot < 10) goalPoints -= 6;
-  } else {
-    if (cals >= 200 && cals <= 400) goalPoints += 3;
-  }
-  goalPoints = Math.max(0, Math.min(15, Math.round(goalPoints)));
-
-  // 5. Diet Preference Score (Max 10 pts)
-  let dietPoints = 10;
-  if (dietPreference && dietPreference !== 'All') {
-    if (recipe.dietaryType === dietPreference) dietPoints = 10;
-    else if (dietPreference === 'Vegan' && recipe.dietaryType !== 'Vegan') dietPoints = 0;
-    else if (dietPreference === 'Vegetarian' && recipe.dietaryType === 'Non-Vegetarian') dietPoints = 0;
-    else dietPoints = 5;
-  }
-
-  // 6. Allergy Score (5 pts)
-  const allergyPoints = 5;
-
-  // 7. Biometrics & Life Stage Score (10 pts)
-  let bioPoints = 8;
-  if (biometrics.category === 'Overweight' || biometrics.category === 'Obese') {
-    if (cals <= 320 && fiber >= 4) bioPoints += 2;
-  } else if (biometrics.category === 'Underweight') {
-    if (cals >= 300 && prot >= 12) bioPoints += 2;
-  }
-  if (targets.lifeStage.stage === 'Child' && (recipe.suitableForTags || []).includes('Child Friendly')) bioPoints += 2;
-  if (targets.lifeStage.stage === 'Senior' && fiber >= 4) bioPoints += 2;
-  bioPoints = Math.max(0, Math.min(10, Math.round(bioPoints)));
-
-  // Total Overall Score (0-100)
-  const overallScore = Math.min(99, Math.max(40, Math.round(
-    ingredientScore + diseasePoints + goalPoints + dietPoints + allergyPoints + bioPoints
-  )));
-
-  // Explanations & Warnings
+  let totalScore = 0;
   const rationaleBadges = [];
-  const healthWarnings = [];
 
-  if (matchedCount > 0) rationaleBadges.push(`✓ Uses ${matchedCount} pantry ingredients`);
+  // Pantry Match (Up to +50)
+  const recipeIngs = (recipe.ingredients || []).map(i => typeof i === 'string' ? i.toLowerCase().trim() : (i.name || '').toLowerCase().trim());
+  const pantryNames = (pantryItems || []).map(p => typeof p === 'string' ? p.toLowerCase().trim() : (p.name || '').toLowerCase().trim());
+
+  let matchedCount = 0;
+  const missingIngredients = [];
+
+  recipeIngs.forEach(ring => {
+    if (pantryNames.some(p => ring.includes(p) || p.includes(ring))) matchedCount++;
+    else missingIngredients.push(ring);
+  });
+
+  const ingredientMatchPct = recipeIngs.length > 0 ? Math.round((matchedCount / recipeIngs.length) * 100) : 70;
+  const ingredientScore = Math.round((ingredientMatchPct / 100) * 50);
+  totalScore += ingredientScore;
+
+  if (ingredientMatchPct >= 80) rationaleBadges.push(`🎯 ${ingredientMatchPct}% Pantry Match`);
+
+  // Health Score (+40)
+  let healthPoints = 30;
   if (medicalConditions.includes('Diabetes')) {
-    if (sugar <= 6) rationaleBadges.push('✓ Low Sugar (<6g)');
-    else healthWarnings.push(`⚠ High Sugar (${sugar}g) - Caution for Diabetes`);
+    if ((recipe.sugar || 5) <= 6) healthPoints += 10;
+    else healthPoints -= 10;
   }
   if (medicalConditions.includes('Hypertension')) {
-    if (sodium <= 280) rationaleBadges.push('✓ Low Sodium (<280mg)');
-    else healthWarnings.push(`⚠ High Sodium (${sodium}mg) - Caution for High BP`);
+    if ((recipe.sodium || 300) <= 280) healthPoints += 10;
+    else healthPoints -= 10;
   }
-  if (rationaleBadges.length === 0) rationaleBadges.push('✓ Nutrient Dense & Balanced Macros');
+  healthPoints = Math.max(0, Math.min(40, healthPoints));
+  totalScore += healthPoints;
+
+  // Goal Score (+35)
+  let goalPoints = 25;
+  const cals = recipe.calories || 300;
+  const prot = recipe.protein || 10;
+  if (healthGoal === 'Weight Loss' && cals <= 320) goalPoints += 10;
+  if (healthGoal === 'Muscle Building' && prot >= 18) goalPoints += 10;
+  totalScore += goalPoints;
+
+  // Cuisine & Cooking Time (+15, +10)
+  if (cuisine !== 'All' && recipe.cuisine?.toLowerCase() === cuisine.toLowerCase()) totalScore += 15;
+  if ((recipe.cookTimeMin || 25) <= maxCookTime) totalScore += 10;
+
+  // Food Safety Bonus (+15)
+  totalScore += 15;
+  rationaleBadges.push('🛡️ SpectraTrust Safe Oil');
+
+  // Penalties
+  if (recentlyCooked.includes(recipe.id) || recentlyCooked.includes(recipe.name)) totalScore -= 30;
+  if (recentlyRejected.includes(recipe.id) || recentlyRejected.includes(recipe.name)) totalScore -= 40;
+  if (frequentlyViewed.includes(recipe.id) || frequentlyViewed.includes(recipe.name)) totalScore -= 10;
+
+  const overallMatchPct = Math.min(99, Math.max(35, Math.round((totalScore / 210) * 100)));
 
   return {
     ...recipe,
-    overallMatchPct: overallScore,
-    scoreComponents: {
-      ingredientScore,
-      diseasePoints,
-      goalPoints,
-      dietPoints,
-      allergyPoints,
-      bioPoints
-    },
+    overallMatchPct,
+    ingredientMatchPct,
     matchedIngredientsCount: matchedCount,
-    explanationBadges: rationaleBadges,
-    healthWarnings: healthWarnings
+    missingIngredients,
+    explanationBadges: rationaleBadges
   };
 }
 
@@ -243,6 +175,5 @@ module.exports = {
   calculateBMI,
   determineLifeStage,
   calculateDailyNutritionTargets,
-  generateDiseaseRules,
   scoreRecipeServer
 };

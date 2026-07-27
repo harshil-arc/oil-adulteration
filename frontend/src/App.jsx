@@ -19,6 +19,7 @@ import Community from './pages/Community';
 import FoodReliefNetwork from './pages/FoodReliefNetwork';
 import Profile from './pages/Profile';
 import Nutrition from './pages/Nutrition';
+import FitnessPage from './pages/FitnessPage';
 import TestingCentres from './pages/TestingCentres';
 import ReportPage from './pages/Report';
 import { AppProvider } from './context/AppContext';
@@ -74,6 +75,7 @@ export default function App() {
                       <Route path="/hotspots" element={<Hotspots />} />
                       <Route path="/profile" element={<Profile />} />
                       <Route path="/nutrition" element={<Nutrition />} />
+                      <Route path="/fitness" element={<FitnessPage />} />
                       <Route path="/privacy" element={<PrivacySecurity />} />
                       <Route path="/privacy-security" element={<PrivacySecurity />} />
                       <Route path="/about" element={<AboutDashboard />} />
