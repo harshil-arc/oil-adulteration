@@ -25,6 +25,12 @@ const char* resultPath   = "/device_result.json";
 const char* FIRESTORE_URL = "https://firestore.googleapis.com/v1/projects/oil-adulteration/databases/(default)/documents/readings?key=AIzaSyAhu9pa7EIlmZD-u68xxDeMXz483G98bS0";
 
 // ============================================================
+//  LED INDICATOR HARDWARE PINS
+// ============================================================
+#define RED_LED_PIN    4   // GPIO4 (D4) - Glows RED when oil is ADULTERATED
+#define GREEN_LED_PIN  5   // GPIO5 (D5) - Glows GREEN when oil is PURE
+
+// ============================================================
 //  OLED
 // ============================================================
 #define SCREEN_WIDTH  128
@@ -212,6 +218,30 @@ void oledShow(const char* r0, const char* r1, const char* r2, const char* r3) {
   display.display();
 }
 
+// Update Hardware LED indicators (Red / Green) based on oil purity & safety status
+void updateLedIndicators(const char* status, float purity, bool hasResult) {
+  if (!hasResult) {
+    digitalWrite(RED_LED_PIN, LOW);
+    digitalWrite(GREEN_LED_PIN, LOW);
+    return;
+  }
+
+  String lowerStatus = String(status);
+  lowerStatus.toLowerCase();
+
+  bool isAdulterated = (lowerStatus.indexOf("adulterat") != -1 || lowerStatus.indexOf("fail") != -1 || lowerStatus.indexOf("unsafe") != -1 || purity < 90.0);
+
+  if (isAdulterated) {
+    digitalWrite(RED_LED_PIN, HIGH);
+    digitalWrite(GREEN_LED_PIN, LOW);
+    Serial.printf("[HARDWARE LED] RED LED ON (Pin %d) | GREEN LED OFF (Pin %d) -> OIL ADULTERATED\n", RED_LED_PIN, GREEN_LED_PIN);
+  } else {
+    digitalWrite(RED_LED_PIN, LOW);
+    digitalWrite(GREEN_LED_PIN, HIGH);
+    Serial.printf("[HARDWARE LED] GREEN LED ON (Pin %d) | RED LED OFF (Pin %d) -> OIL PURE\n", GREEN_LED_PIN, RED_LED_PIN);
+  }
+}
+
 // ============================================================
 //  FETCH LATEST AI RESULT PACKET FROM CLOUD (TWO-WAY SYNC)
 // ============================================================
@@ -240,7 +270,15 @@ void fetchAiResultPacket() {
         if (doc["possible_adulterant"]) strlcpy(aiResult.possibleAdulterant, doc["possible_adulterant"], sizeof(aiResult.possibleAdulterant));
         if (doc["scan_id"]) strlcpy(aiResult.scanId, doc["scan_id"], sizeof(aiResult.scanId));
         aiResult.lastUpdatedMs = millis();
-        Serial.println(F("[Two-Way Sync] AI Result Packet Received & OLED Updated!"));
+        
+        updateLedIndicators(aiResult.status, aiResult.purity, aiResult.hasResult);
+
+        Serial.println(F("[Two-Way Sync] AI Result Packet Received & OLED/LEDs Updated!"));
+      }
+    } else if (payload == "null") {
+      if (aiResult.hasResult) {
+        aiResult.hasResult = false;
+        updateLedIndicators(aiResult.status, aiResult.purity, false);
       }
     }
   }
@@ -252,6 +290,13 @@ void fetchAiResultPacket() {
 // ============================================================
 void setup() {
   Serial.begin(115200);
+
+  // Initialize LED Pins
+  pinMode(RED_LED_PIN, OUTPUT);
+  pinMode(GREEN_LED_PIN, OUTPUT);
+  digitalWrite(RED_LED_PIN, LOW);
+  digitalWrite(GREEN_LED_PIN, LOW);
+
   Wire.begin(21, 22);
 
   // OLED

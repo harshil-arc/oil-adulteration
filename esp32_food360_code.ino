@@ -36,6 +36,13 @@ const char* FIREBASE_RESULT_URL    = "https://oil-adulteration-default-rtdb.fire
 WebServer server(80);
 
 // ============================================================
+//  LED INDICATOR HARDWARE PINS
+// ============================================================
+#define RED_LED_PIN    4   // GPIO4 (D4) - Glows RED when oil is ADULTERATED
+#define GREEN_LED_PIN  5   // GPIO5 (D5) - Glows GREEN when oil is PURE
+
+
+// ============================================================
 //  OLED DISPLAY (I2C SDA: 21, SCL: 22)
 // ============================================================
 #define SCREEN_WIDTH  128
@@ -247,6 +254,34 @@ void clearCloudResult() {
   http.end();
 }
 
+// Update Hardware LED indicators (Red / Green) based on oil purity & safety status
+void updateLedIndicators(const String& status, float purity, bool hasPrediction) {
+  if (!hasPrediction || status == "Standby" || status == "--") {
+    // No active prediction or Standby mode: Turn OFF both LEDs
+    digitalWrite(RED_LED_PIN, LOW);
+    digitalWrite(GREEN_LED_PIN, LOW);
+    return;
+  }
+
+  String lowerStatus = status;
+  lowerStatus.toLowerCase();
+
+  // Check if oil is adulterated (status contains "adulterat", "fail", "unsafe", or purity < 90%)
+  bool isAdulterated = (lowerStatus.indexOf("adulterat") != -1 || lowerStatus.indexOf("fail") != -1 || lowerStatus.indexOf("unsafe") != -1 || purity < 90.0);
+
+  if (isAdulterated) {
+    // OIL ADULTERATED: Glow RED LED ON, turn GREEN LED OFF
+    digitalWrite(RED_LED_PIN, HIGH);
+    digitalWrite(GREEN_LED_PIN, LOW);
+    Serial.printf("[HARDWARE LED] RED LED ON (Pin %d) | GREEN LED OFF (Pin %d) -> OIL ADULTERATED (Purity: %.1f%%, Status: %s)\n", RED_LED_PIN, GREEN_LED_PIN, purity, status.c_str());
+  } else {
+    // OIL PURE: Glow GREEN LED ON, turn RED LED OFF
+    digitalWrite(RED_LED_PIN, LOW);
+    digitalWrite(GREEN_LED_PIN, HIGH);
+    Serial.printf("[HARDWARE LED] GREEN LED ON (Pin %d) | RED LED OFF (Pin %d) -> OIL PURE (Purity: %.1f%%, Status: %s)\n", GREEN_LED_PIN, RED_LED_PIN, purity, status.c_str());
+  }
+}
+
 // Fetch results pushed from the Mobile/Web App to device_result.json via HTTPS
 void fetchResultsFromApp() {
   if (WiFi.status() != WL_CONNECTED) return;
@@ -271,7 +306,8 @@ void fetchResultsFromApp() {
         currentData.lastScanId = "";
         currentOledPage = 0;
         renderScreen1Oil(currentData.oilType.c_str());
-        Serial.println(F("[FIRMWARE] App page exit detected. OLED returned to Standby mode."));
+        updateLedIndicators(currentData.status, currentData.purity, currentData.hasActivePrediction);
+        Serial.println(F("[FIRMWARE] App page exit detected. OLED returned to Standby mode & LEDs cleared."));
       }
     } else {
       String scanId = extractJsonString(resp, "scan_id");
@@ -285,6 +321,9 @@ void fetchResultsFromApp() {
         currentData.purity = purity;
         currentData.status = (status.length() > 0) ? status : "Ready";
         currentData.hasActivePrediction = true;
+
+        // Update LEDs based on current prediction status
+        updateLedIndicators(currentData.status, currentData.purity, currentData.hasActivePrediction);
 
         if (isNew) {
           currentData.lastScanId = scanId;
@@ -315,6 +354,8 @@ void handleLocalResultPost() {
       currentData.hasActivePrediction = true;
       currentData.predictionTime = millis();
       currentData.lastScanId = scanId;
+
+      updateLedIndicators(currentData.status, currentData.purity, currentData.hasActivePrediction);
 
       currentOledPage = 0;
       lastOledTime = millis();
@@ -422,6 +463,14 @@ void setup() {
   Serial.println(F("\n=========================================="));
   Serial.println(F("   SPECTRATRUST ESP32 TELEMETRY HUB       "));
   Serial.println(F("=========================================="));
+
+  // Initialize LED Pins (Red = Adulterated, Green = Pure)
+  pinMode(RED_LED_PIN, OUTPUT);
+  pinMode(GREEN_LED_PIN, OUTPUT);
+  digitalWrite(RED_LED_PIN, LOW);
+  digitalWrite(GREEN_LED_PIN, LOW);
+  Serial.printf("[HARDWARE INIT] Red LED Pin: %d | Green LED Pin: %d initialized.\n", RED_LED_PIN, GREEN_LED_PIN);
+
 
   Wire.begin(21, 22);
   Wire.setClock(100000);
