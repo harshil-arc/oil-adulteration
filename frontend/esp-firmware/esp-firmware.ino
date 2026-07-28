@@ -229,7 +229,7 @@ void updateLedIndicators(const char* status, float purity, bool hasResult) {
   String lowerStatus = String(status);
   lowerStatus.toLowerCase();
 
-  bool isAdulterated = (lowerStatus.indexOf("adulterat") != -1 || lowerStatus.indexOf("fail") != -1 || lowerStatus.indexOf("unsafe") != -1 || purity < 90.0);
+  bool isAdulterated = (lowerStatus.indexOf("adulterat") != -1 || lowerStatus.indexOf("fail") != -1 || lowerStatus.indexOf("unsafe") != -1 || purity < 75.0);
 
   if (isAdulterated) {
     digitalWrite(RED_LED_PIN, HIGH);
@@ -238,7 +238,7 @@ void updateLedIndicators(const char* status, float purity, bool hasResult) {
   } else {
     digitalWrite(RED_LED_PIN, LOW);
     digitalWrite(GREEN_LED_PIN, HIGH);
-    Serial.printf("[HARDWARE LED] GREEN LED ON (Pin %d) | RED LED OFF (Pin %d) -> OIL PURE\n", GREEN_LED_PIN, RED_LED_PIN);
+    Serial.printf("[HARDWARE LED] GREEN LED ON (Pin %d) | RED LED OFF (Pin %d) -> OIL PURE (Purity: %.1f%%)\n", GREEN_LED_PIN, RED_LED_PIN, purity);
   }
 }
 

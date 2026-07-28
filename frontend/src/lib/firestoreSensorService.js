@@ -112,7 +112,40 @@ export async function fetchLatestCloudReading() {
     console.warn('[CloudSensorService] RTDB fetch error:', rtdbErr);
   }
 
-  // ── 2. SECONDARY: Try Google Cloud Firestore REST API ────────────────────
+  // ── 2. SECONDARY: Try Supabase REST API ────────────────────────────────
+  try {
+    const supaRes = await fetch("https://vntaprmahmjeyuzhwqsc.supabase.co/rest/v1/readings?select=*&order=id.desc&limit=1", {
+      headers: {
+        'apikey': "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZudGFwcm1haG1qZXl1emh3cXNjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0NjY3NDMsImV4cCI6MjA5MTA0Mjc0M30.K3NE7-bRaYRRRhV9Up2Y7f4mVoRvM3B0_dNMitJT_S8",
+        'Authorization': "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZudGFwcm1haG1qZXl1emh3cXNjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0NjY3NDMsImV4cCI6MjA5MTA0Mjc0M30.K3NE7-bRaYRRRhV9Up2Y7f4mVoRvM3B0_dNMitJT_S8",
+        'Accept': 'application/json'
+      }
+    });
+
+    if (supaRes.ok) {
+      const supaData = await supaRes.json();
+      if (Array.isArray(supaData) && supaData.length > 0) {
+        const item = supaData[0];
+        let specStr = '—';
+        if (typeof item.spectral_data === 'string') specStr = item.spectral_data;
+        else if (Array.isArray(item.spectral_data)) specStr = item.spectral_data.join(',');
+        
+        console.log('[CloudSensorService] Retrieved reading from Supabase REST:', item);
+        return {
+          temperature: parseFloat(item.temperature) || 28.5,
+          spectral_data: specStr,
+          created_at: item.created_at || new Date().toISOString(),
+          timestamp: Date.now(),
+          oil_type: item.oil_type || 'Cloud Sample',
+          adulteration_index: item.adulteration_index || 0
+        };
+      }
+    }
+  } catch (supaErr) {
+    console.warn('[CloudSensorService] Supabase GET Error:', supaErr);
+  }
+
+  // ── 3. TERTIARY: Try Google Cloud Firestore REST API ────────────────────
   try {
     const res = await fetch(FIRESTORE_READINGS_URL, {
       headers: { 'Accept': 'application/json' }

@@ -266,20 +266,39 @@ void updateLedIndicators(const String& status, float purity, bool hasPrediction)
   String lowerStatus = status;
   lowerStatus.toLowerCase();
 
-  // Check if oil is adulterated (status contains "adulterat", "fail", "unsafe", or purity < 90%)
-  bool isAdulterated = (lowerStatus.indexOf("adulterat") != -1 || lowerStatus.indexOf("fail") != -1 || lowerStatus.indexOf("unsafe") != -1 || purity < 90.0);
+  // Check if oil is adulterated (status contains "adulterat", "fail", "unsafe", or purity < 75%)
+  bool isAdulterated = (lowerStatus.indexOf("adulterat") != -1 || lowerStatus.indexOf("fail") != -1 || lowerStatus.indexOf("unsafe") != -1 || purity < 75.0);
 
   if (isAdulterated) {
-    // OIL ADULTERATED: Glow RED LED ON, turn GREEN LED OFF
+    // OIL ADULTERATED (< 75% Purity): Glow RED LED ON, turn GREEN LED OFF
     digitalWrite(RED_LED_PIN, HIGH);
     digitalWrite(GREEN_LED_PIN, LOW);
     Serial.printf("[HARDWARE LED] RED LED ON (Pin %d) | GREEN LED OFF (Pin %d) -> OIL ADULTERATED (Purity: %.1f%%, Status: %s)\n", RED_LED_PIN, GREEN_LED_PIN, purity, status.c_str());
   } else {
-    // OIL PURE: Glow GREEN LED ON, turn RED LED OFF
+    // OIL PURE (>= 75% Purity): Glow GREEN LED ON, turn RED LED OFF
     digitalWrite(RED_LED_PIN, LOW);
     digitalWrite(GREEN_LED_PIN, HIGH);
     Serial.printf("[HARDWARE LED] GREEN LED ON (Pin %d) | RED LED OFF (Pin %d) -> OIL PURE (Purity: %.1f%%, Status: %s)\n", GREEN_LED_PIN, RED_LED_PIN, purity, status.c_str());
   }
+}
+
+// Direct Local WebServer Handshake endpoint (http://<esp32-ip>/connect)
+void handleConnect() {
+  server.send(200, "application/json", "{\"status\":\"ok\",\"deviceId\":\"Food360-ESP32\",\"firmware\":\"SpectraTrust DualSync v1.0\"}");
+  Serial.println(F("[LOCAL IP] Handshake connection received from App."));
+}
+
+// Direct Local WebServer Live Sensor Readings GET handler (http://<esp32-ip>/sensor and /data)
+void handleSensorDataGet() {
+  char buf[450];
+  snprintf(buf, sizeof(buf),
+    "{\"status\":\"ok\",\"deviceId\":\"Food360-ESP32\",\"temperature\":%.2f,\"tds\":450,\"density\":0.908,\"refractive_index\":1.470,\"optical\":1.470,\"spectral_data\":\"%s\",\"spectral_digits\":\"%s\",\"timestamp\":%lu}",
+    currentData.temperature,
+    currentData.spectralDigits.c_str(),
+    currentData.spectralDigits.c_str(),
+    millis());
+  server.send(200, "application/json", buf);
+  Serial.printf("[LOCAL IP] Live Sensor Readings Served -> Temp: %.1f C | Spectral: %s\n", currentData.temperature, currentData.spectralDigits.c_str());
 }
 
 // Fetch results pushed from the Mobile/Web App to device_result.json via HTTPS
@@ -429,10 +448,11 @@ void readSensors() {
   }
 }
 
-// Upload sensor telemetry packet to Firebase Realtime Database readings.json
+// Upload sensor telemetry packet to Firebase Realtime Database readings.json and Supabase
 void uploadTelemetry() {
   if (WiFi.status() != WL_CONNECTED) return;
 
+  // 1. Upload to Firebase Realtime Database
   WiFiClientSecure client;
   client.setInsecure();
 
@@ -453,8 +473,26 @@ void uploadTelemetry() {
     currentData.temperature, currentData.spectralDigits.c_str(), nowEpoch);
 
   int code = http.POST(payload);
-  Serial.printf("[TELEMETRY UPLOAD] HTTP %d | Temp: %.1f C | Spectral: %s\n", code, currentData.temperature, currentData.spectralDigits.c_str());
+  Serial.printf("[TELEMETRY FIREBASE] HTTP %d | Temp: %.1f C | Spectral: %s\n", code, currentData.temperature, currentData.spectralDigits.c_str());
   http.end();
+
+  // 2. Upload to Supabase REST API (for Supabase Cloud Mode)
+  HTTPClient httpSupa;
+  httpSupa.begin("https://vntaprmahmjeyuzhwqsc.supabase.co/rest/v1/readings");
+  httpSupa.addHeader("Content-Type", "application/json");
+  httpSupa.addHeader("Prefer", "return=minimal");
+  httpSupa.addHeader("apikey", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZudGFwcm1haG1qZXl1emh3cXNjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0NjY3NDMsImV4cCI6MjA5MTA0Mjc0M30.K3NE7-bRaYRRRhV9Up2Y7f4mVoRvM3B0_dNMitJT_S8");
+  httpSupa.addHeader("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZudGFwcm1haG1qZXl1emh3cXNjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0NjY3NDMsImV4cCI6MjA5MTA0Mjc0M30.K3NE7-bRaYRRRhV9Up2Y7f4mVoRvM3B0_dNMitJT_S8");
+  httpSupa.setTimeout(2500);
+
+  char supaPayload[380];
+  snprintf(supaPayload, sizeof(supaPayload),
+    "{\"temperature\":%.2f,\"wavelength\":525,\"spectral_data\":[%s]}",
+    currentData.temperature, currentData.spectralDigits.c_str());
+
+  int supaCode = httpSupa.POST(supaPayload);
+  Serial.printf("[TELEMETRY SUPABASE] HTTP %d\n", supaCode);
+  httpSupa.end();
 }
 
 void setup() {
@@ -530,9 +568,12 @@ void setup() {
   }
 
   // Set up local WebServer endpoints on Port 80
+  server.on("/connect", HTTP_GET, handleConnect);
+  server.on("/sensor", HTTP_GET, handleSensorDataGet);
+  server.on("/data", HTTP_GET, handleSensorDataGet);
   server.on("/result", HTTP_POST, handleLocalResultPost);
   server.begin();
-  Serial.println(F("[OK] Local WebServer ready on port 80 at /result"));
+  Serial.println(F("[OK] Local WebServer ready on port 80 at /connect, /sensor, /data, /result"));
 
   // Initialize Sensors
   if (mlx.begin()) {
