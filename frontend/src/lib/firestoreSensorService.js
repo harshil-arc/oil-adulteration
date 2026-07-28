@@ -71,19 +71,16 @@ export async function fetchLatestCloudReading() {
           .filter(item => item && (item.spectral_data || item.temperature !== undefined));
         
         if (entries.length > 0) {
-          // Firebase push keys (_key) are naturally chronological.
-          // Sort newest first by Firebase key OR normalized timestamp.
-          entries.sort((a, b) => {
-            if (a._key && b._key) {
-              return b._key.localeCompare(a._key);
-            }
-            const tA = typeof a.timestamp === 'number' ? a.timestamp : (new Date(a.created_at || a.timestamp || 0).getTime());
-            const tB = typeof b.timestamp === 'number' ? b.timestamp : (new Date(b.created_at || b.timestamp || 0).getTime());
-            return tB - tA;
+          // Firebase RTDB push keys are inserted chronologically.
+          // Attach insertion index and sort by newest pushed entry first (_index descending).
+          entries.forEach((item, idx) => {
+            item._index = idx;
           });
 
+          entries.sort((a, b) => b._index - a._index);
+
           const top = entries[0];
-          console.log('[CloudSensorService] Retreived NEWEST reading from Firebase RTDB:', top);
+          console.log('[CloudSensorService] Retrieved LATEST live reading from Firebase RTDB:', top);
 
           let parsedSpectral = '—';
           if (typeof top.spectral_data === 'string') {

@@ -463,8 +463,8 @@ void uploadTelemetry() {
 
   time_t nowSec = time(nullptr);
   uint64_t nowEpoch = (uint64_t)nowSec * 1000ULL;
-  if (nowEpoch < 1000000000000ULL) {
-    nowEpoch = 1721800000000ULL + millis();
+  if (nowEpoch < 1700000000000ULL) {
+    nowEpoch = 1785243000000ULL + millis();
   }
 
   char payload[380];
