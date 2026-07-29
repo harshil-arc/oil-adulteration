@@ -28,6 +28,7 @@ import {
 import RecipeDetailModal from '../components/RecipeDetailModal';
 import CookingWorkspaceModal from '../components/CookingWorkspaceModal';
 import AiCookingAssistantDrawer from '../components/AiCookingAssistantDrawer';
+import { suggestRecipesApi } from '../lib/api';
 
 export default function Nutrition() {
   const navigate = useNavigate();
@@ -88,6 +89,25 @@ export default function Nutrition() {
   const [selectedRecipeDetail, setSelectedRecipeDetail] = useState(null);
   const [cookingWorkspaceRecipe, setCookingWorkspaceRecipe] = useState(null);
   const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(false);
+
+  // Intent-Driven On-Demand Recipe Suggestions State
+  const [intentSuggestions, setIntentSuggestions] = useState(null);
+  const [isSuggesting, setIsSuggesting] = useState(false);
+
+  const handleSuggestMeals = async (customPrompt) => {
+    setIsSuggesting(true);
+    try {
+      const promptText = customPrompt || searchQuery || `I have ${pantryItems.slice(0, 4).join(', ')}, need something under 30 mins`;
+      const res = await suggestRecipesApi({ text: promptText, ingredients: pantryItems });
+      if (res?.data?.suggestions) {
+        setIntentSuggestions(res.data);
+      }
+    } catch (e) {
+      console.warn('[Suggest API Error] Using dynamic recommendation fallback', e);
+    } finally {
+      setIsSuggesting(false);
+    }
+  };
 
   // Shopping List State
   const [shoppingListItems, setShoppingListItems] = useState([
@@ -292,7 +312,7 @@ export default function Nutrition() {
                   SpectraTrust Meal Intelligence
                 </h1>
                 <span className="bg-amber-500/20 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-500/30">
-                  Samsung Food AI Engine
+                  AI Recommendation Engine
                 </span>
               </div>
               <p className="text-xs text-gray-400">Context-Aware Nutrition & Oil Safety Recommendation System</p>
@@ -490,13 +510,43 @@ export default function Nutrition() {
                   {isListening ? <MicOff size={16} /> : <Mic size={16} />}
                   <span className="hidden sm:inline">{isListening ? 'Listening...' : 'Voice Search'}</span>
                 </button>
+
+                <button 
+                  onClick={() => handleSuggestMeals()}
+                  disabled={isSuggesting}
+                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 font-bold text-black text-xs hover:opacity-90 flex items-center gap-1.5 shadow-lg shadow-amber-500/20 disabled:opacity-50 transition-all"
+                >
+                  <Sparkles size={14} />
+                  <span>{isSuggesting ? 'Parsing Intent...' : 'Suggest Meal'}</span>
+                </button>
               </div>
 
-              {/* Quick Filter Chips */}
+              {/* Quick Filter & Intent Chips */}
               <div className="flex items-center gap-2 flex-wrap text-xs pt-1">
                 <span className="text-gray-400 flex items-center gap-1 font-semibold">
-                  <Filter size={12} /> Filters:
+                  <Filter size={12} /> Quick Intent:
                 </span>
+
+                <button 
+                  onClick={() => handleSuggestMeals("under 15 mins")}
+                  className="bg-amber-500/10 text-amber-300 border border-amber-500/30 text-[11px] font-semibold px-2.5 py-1 rounded-full hover:bg-amber-500/20 transition-all"
+                >
+                  ⚡ &lt;15 mins
+                </button>
+
+                <button 
+                  onClick={() => handleSuggestMeals("high protein")}
+                  className="bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 text-[11px] font-semibold px-2.5 py-1 rounded-full hover:bg-emerald-500/20 transition-all"
+                >
+                  💪 High Protein
+                </button>
+
+                <button 
+                  onClick={() => handleSuggestMeals("vegetarian")}
+                  className="bg-sky-500/10 text-sky-300 border border-sky-500/30 text-[11px] font-semibold px-2.5 py-1 rounded-full hover:bg-sky-500/20 transition-all"
+                >
+                  🌿 Veg
+                </button>
                 
                 {/* Meal Type Filter */}
                 <select 
@@ -538,6 +588,75 @@ export default function Nutrition() {
               <span>Showing <strong>{scoredRecipes.length}</strong> dynamically ranked recipes based on your biometrics & active pantry ({pantryItems.length} items)</span>
               <span className="text-amber-400 font-semibold">⚡ Re-ranked in real-time</span>
             </div>
+
+            {/* Intent-Driven On-Demand Suggestions (Max 3 Options) */}
+            {intentSuggestions && intentSuggestions.suggestions && (
+              <div className="bg-[#161b22] border border-amber-500/40 rounded-2xl p-5 shadow-2xl space-y-4 animate-fade-in">
+                <div className="flex items-center justify-between border-b border-gray-800 pb-3">
+                  <div>
+                    <h2 className="text-base font-bold text-amber-300 flex items-center gap-2">
+                      <Sparkles size={18} className="text-amber-400" />
+                      Intent-Driven On-Demand Suggestions (3 Distinct Options)
+                    </h2>
+                    <p className="text-xs text-gray-400">
+                      Detected: {intentSuggestions.parsed_intent?.ingredients_detected?.join(', ') || 'Core Pantry'} • Max Prep Time: {intentSuggestions.parsed_intent?.max_prep_time} mins
+                    </p>
+                  </div>
+                  <button onClick={() => setIntentSuggestions(null)} className="text-xs text-gray-400 hover:text-white">
+                    Clear ✕
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {intentSuggestions.suggestions.map((sug, sIdx) => {
+                    const badgeColor = sIdx === 0 ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' : (sIdx === 1 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-sky-500/20 text-sky-300 border-sky-500/30');
+                    return (
+                      <div key={sug.id || sIdx} className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex flex-col justify-between space-y-3">
+                        <div className="space-y-2">
+                          <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${badgeColor}`}>
+                            {sug.option_type || (sIdx === 0 ? 'Quick & Easy' : (sIdx === 1 ? 'High Protein / Healthy' : 'Balanced / Chef Choice'))}
+                          </span>
+                          <h3 className="text-sm font-bold text-gray-100">{sug.title}</h3>
+                          <p className="text-xs text-gray-400 leading-relaxed">{sug.description}</p>
+                        </div>
+
+                        <div className="space-y-2 text-xs pt-2 border-t border-gray-800">
+                          <div className="flex justify-between text-gray-300">
+                            <span>Prep Time: <strong>{sug.prep_time_minutes} mins</strong></span>
+                            <span>Calories: <strong>{sug.calories} kcal</strong></span>
+                          </div>
+                          <div className="flex justify-between text-gray-300">
+                            <span>Protein: <strong className="text-emerald-400">{sug.protein_grams}g</strong></span>
+                            <span className="text-gray-400">Tags: {sug.dietary_tags?.slice(0, 2).join(', ')}</span>
+                          </div>
+
+                          <button 
+                            onClick={() => {
+                              const found = INDIAN_RECIPES_DATABASE.find(r => r.id === sug.id || r.name.toLowerCase().includes(sug.title.toLowerCase()));
+                              setCookingWorkspaceRecipe(found || {
+                                id: sug.id,
+                                name: sug.title,
+                                cuisine: 'Indian',
+                                mealType: 'Meal',
+                                prepTime: sug.prep_time_minutes,
+                                cookTimeMin: sug.prep_time_minutes,
+                                calories: sug.calories,
+                                protein: sug.protein_grams,
+                                ingredients: sug.ingredients.map(i => typeof i === 'string' ? i : i.name),
+                                instructions: sug.instructions
+                              });
+                            }}
+                            className="w-full py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold flex items-center justify-center gap-1.5 transition-all mt-2"
+                          >
+                            <Play size={14} /> Start Cooking Option {sIdx + 1}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Recipe Cards Feed */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">

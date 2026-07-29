@@ -462,10 +462,150 @@ function getDatasetStats() {
   };
 }
 
+/**
+ * Parses user natural language intent into structured parameters
+ */
+function parseUserIntent(promptText = '', payload = {}) {
+  let text = (promptText || payload.text || payload.query || '').toLowerCase().trim();
+  const rawIngredients = payload.ingredients || [];
+  
+  const detectedIngredients = [...new Set(rawIngredients.map(i => i.toLowerCase().trim()))];
+
+  const commonDict = ['egg', 'eggs', 'spinach', 'cheese', 'paneer', 'tomato', 'tomatoes', 'onion', 'onions', 'rice', 'chicken', 'dal', 'oats', 'garlic', 'quinoa', 'tofu', 'potato', 'potatoes', 'mustard oil', 'curd', 'milk', 'flour', 'atta', 'chana'];
+
+  commonDict.forEach(item => {
+    if (text.includes(item)) {
+      const normalized = item.replace(/s$/, '');
+      if (!detectedIngredients.includes(normalized)) {
+        detectedIngredients.push(normalized);
+      }
+    }
+  });
+
+  let maxPrepTime = payload.max_prep_time || payload.maxPrepTime || null;
+  if (!maxPrepTime) {
+    const timeMatch = text.match(/under\s+(\d+)\s*min/i) || text.match(/(\d+)\s*mins?/i) || text.match(/(\d+)\s*minutes?/i);
+    if (timeMatch) {
+      maxPrepTime = parseInt(timeMatch[1], 10);
+    } else {
+      maxPrepTime = 30; // Default to 30 mins if vague/unspecified
+    }
+  }
+
+  const dietaryRestrictions = payload.dietary_restrictions || payload.dietaryRestrictions || [];
+  if (text.includes('veg') && !text.includes('non-veg')) dietaryRestrictions.push('Vegetarian');
+  if (text.includes('vegan')) dietaryRestrictions.push('Vegan');
+  if (text.includes('jain')) dietaryRestrictions.push('Jain');
+  if (text.includes('high protein') || text.includes('protein')) dietaryRestrictions.push('High Protein');
+
+  let mealType = payload.meal_type || payload.mealType || null;
+  if (!mealType) {
+    if (text.includes('breakfast')) mealType = 'breakfast';
+    else if (text.includes('lunch')) mealType = 'lunch';
+    else if (text.includes('dinner')) mealType = 'dinner';
+    else if (text.includes('snack')) mealType = 'snack';
+  }
+
+  return {
+    ingredients: detectedIngredients,
+    max_prep_time: maxPrepTime,
+    dietary_restrictions: [...new Set(dietaryRestrictions)],
+    meal_type: mealType
+  };
+}
+
+function formatRecipePayload(dish, optionType) {
+  const formattedIngredients = (dish.ingredients || []).map(ing => {
+    if (typeof ing === 'string') {
+      return { name: ing, amount: '1', unit: 'serving' };
+    }
+    return {
+      name: ing.name || 'Ingredient',
+      amount: String(ing.amount || '1'),
+      unit: ing.unit || 'pcs'
+    };
+  });
+
+  const formattedInstructions = Array.isArray(dish.instructions) 
+    ? dish.instructions 
+    : [dish.instructions || 'Prepare ingredients and cook on medium flame until tender.'];
+
+  return {
+    id: String(dish.id || `rec-${Math.random().toString(36).substr(2, 6)}`),
+    title: dish.name || dish.title || 'Delicious Meal Option',
+    description: dish.description || `${dish.cuisine || 'Regional'} ${dish.mealType || 'Meal'} high in nutrients and balanced macros.`,
+    prep_time_minutes: Number(dish.prepTimeMin || dish.prepTime || dish.cookTimeMin || 15),
+    calories: Number(dish.calories || dish.macros?.calories || 250),
+    protein_grams: Number(dish.protein || dish.macros?.protein || 12),
+    dietary_tags: Array.isArray(dish.suitableFor) ? dish.suitableFor : [dish.dietType || 'Healthy'],
+    ingredients: formattedIngredients,
+    instructions: formattedInstructions,
+    option_type: optionType
+  };
+}
+
+function suggestRecipes(userInputPayload = {}) {
+  const allDishes = loadDatabase();
+  const parsedIntent = parseUserIntent(userInputPayload.prompt || userInputPayload.text, userInputPayload);
+
+  const scored = allDishes.map(dish => {
+    const prepTime = Number(dish.prepTimeMin || dish.prepTime || 15);
+    const dishIngs = (dish.ingredients || []).map(i => typeof i === 'string' ? i.toLowerCase() : (i.name || '').toLowerCase());
+    
+    let matchedCount = 0;
+    if (parsedIntent.ingredients.length > 0) {
+      dishIngs.forEach(ding => {
+        if (parsedIntent.ingredients.some(ping => ding.includes(ping) || ping.includes(ding))) {
+          matchedCount++;
+        }
+      });
+    }
+
+    const matchRatio = dishIngs.length > 0 ? (matchedCount / dishIngs.length) : 0.5;
+    
+    let score = matchRatio * 50;
+    if (parsedIntent.max_prep_time && prepTime <= parsedIntent.max_prep_time) {
+      score += 30;
+    }
+    
+    return { dish, score, matchRatio, prepTime, protein: Number(dish.protein || 10) };
+  });
+
+  let candidates = scored.filter(s => s.matchRatio >= 0.6 || parsedIntent.ingredients.length === 0);
+  if (candidates.length === 0) {
+    candidates = scored;
+  }
+
+  candidates.sort((a, b) => b.score - a.score);
+
+  const quickCandidate = [...candidates].sort((a, b) => a.prepTime - b.prepTime)[0]?.dish || candidates[0]?.dish || allDishes[0];
+
+  const proteinCandidates = candidates.filter(c => c.dish.id !== quickCandidate.id);
+  const proteinCandidate = [...(proteinCandidates.length ? proteinCandidates : candidates)].sort((a, b) => b.protein - a.protein)[0]?.dish || candidates[1]?.dish || allDishes[1];
+
+  const balancedCandidates = candidates.filter(c => c.dish.id !== quickCandidate.id && c.dish.id !== proteinCandidate.id);
+  const balancedCandidate = balancedCandidates[0]?.dish || candidates[2]?.dish || allDishes[2];
+
+  const suggestions = [
+    formatRecipePayload(quickCandidate, 'Quick & Easy'),
+    formatRecipePayload(proteinCandidate, 'High Protein / Healthy'),
+    formatRecipePayload(balancedCandidate, 'Balanced / Chef Choice')
+  ].slice(0, 3);
+
+  return {
+    parsed_intent: {
+      ingredients_detected: parsedIntent.ingredients,
+      max_prep_time: parsedIntent.max_prep_time
+    },
+    suggestions
+  };
+}
+
 module.exports = {
   loadDatabase,
   recommendDishes,
   generateMealPlan,
   getDatasetStats,
-  getSmartSubstitutions
+  getSmartSubstitutions,
+  suggestRecipes
 };

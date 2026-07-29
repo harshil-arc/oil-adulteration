@@ -181,6 +181,7 @@ app.use('/api/complaints', complaintRoutes);
 app.use('/api/mess', messRoutes); // Legacy
 app.use('/api/platform', platformRoutes);
 app.use('/api/meal-planner', mealPlannerRoutes);
+app.use('/api/recipes', mealPlannerRoutes);
 app.use('/api/', offlineRoutes);
 
 // ── 404 handler ───────────────────────────────────────────

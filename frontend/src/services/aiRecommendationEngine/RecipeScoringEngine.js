@@ -1,5 +1,5 @@
 /**
- * Samsung Food-Level Intelligent Recipe Scoring & Recommendation Engine
+ * SpectraTrust Intelligent Recipe Scoring & Recommendation Engine
  * Weighted Multi-Factor Scoring Algorithm with Dynamic Re-ranking,
  * Behavioral History Learning, Smart Substitutions & SpectraTrust Food Safety Integration.
  */

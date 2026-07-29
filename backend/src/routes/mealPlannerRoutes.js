@@ -81,6 +81,21 @@ router.get('/pairings', (req, res) => {
 });
 
 /**
+ * @route   POST /api/recipes/suggest or /api/meal-planner/suggest
+ * @desc    Intent-driven recipe recommendation returning max 3 distinct options
+ */
+router.post('/suggest', (req, res) => {
+  try {
+    const payload = req.body || {};
+    const response = mealPlannerService.suggestRecipes(payload);
+    res.json(response);
+  } catch (err) {
+    console.error('[MealPlannerRoutes] Suggest error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+/**
  * @route   POST /api/meal-planner/recommend
  * @desc    Recommends and ranks recipes dynamically based on pantry items, medical conditions, allergies, diet, and goals.
  */
