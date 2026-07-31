@@ -517,12 +517,13 @@ function parseUserIntent(promptText = '', payload = {}) {
 function formatRecipePayload(dish, optionType) {
   const formattedIngredients = (dish.ingredients || []).map(ing => {
     if (typeof ing === 'string') {
-      return { name: ing, amount: '1', unit: 'serving' };
+      return { name: ing, amount: 1, unit: 'serving', original: ing };
     }
     return {
       name: ing.name || 'Ingredient',
-      amount: String(ing.amount || '1'),
-      unit: ing.unit || 'pcs'
+      amount: Number(ing.amount) || 1,
+      unit: ing.unit || 'pcs',
+      original: ing.original || `${ing.amount || 1} ${ing.unit || ''} ${ing.name || ''}`.trim()
     };
   });
 
@@ -530,11 +531,20 @@ function formatRecipePayload(dish, optionType) {
     ? dish.instructions 
     : [dish.instructions || 'Prepare ingredients and cook on medium flame until tender.'];
 
+  const prepTime = Number(dish.prepTimeMin || dish.prepTime || dish.cookTimeMin || 15);
+  const servings = Number(dish.servings || 2);
+  const cleanSummary = (dish.description || dish.summary || `${dish.cuisine || 'Regional'} ${dish.mealType || 'Meal'} high in nutrients.`).replace(/<[^>]*>?/gm, '');
+
   return {
-    id: String(dish.id || `rec-${Math.random().toString(36).substr(2, 6)}`),
+    id: Number(dish.id) || Math.floor(Math.random() * 100000),
     title: dish.name || dish.title || 'Delicious Meal Option',
-    description: dish.description || `${dish.cuisine || 'Regional'} ${dish.mealType || 'Meal'} high in nutrients and balanced macros.`,
-    prep_time_minutes: Number(dish.prepTimeMin || dish.prepTime || dish.cookTimeMin || 15),
+    image: dish.image || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80',
+    prepTimeMinutes: prepTime,
+    prep_time_minutes: prepTime,
+    servings,
+    sourceUrl: dish.sourceUrl || 'https://smartfooddish.local',
+    summary: cleanSummary,
+    description: cleanSummary,
     calories: Number(dish.calories || dish.macros?.calories || 250),
     protein_grams: Number(dish.protein || dish.macros?.protein || 12),
     dietary_tags: Array.isArray(dish.suitableFor) ? dish.suitableFor : [dish.dietType || 'Healthy'],
@@ -544,10 +554,13 @@ function formatRecipePayload(dish, optionType) {
   };
 }
 
-function suggestRecipes(userInputPayload = {}) {
-  const allDishes = loadDatabase();
+async function suggestRecipes(userInputPayload = {}) {
   const parsedIntent = parseUserIntent(userInputPayload.prompt || userInputPayload.text, userInputPayload);
+  return suggestRecipesLocalFallback(userInputPayload, parsedIntent);
+}
 
+function suggestRecipesLocalFallback(userInputPayload, parsedIntent) {
+  const allDishes = loadDatabase();
   const scored = allDishes.map(dish => {
     const prepTime = Number(dish.prepTimeMin || dish.prepTime || 15);
     const dishIngs = (dish.ingredients || []).map(i => typeof i === 'string' ? i.toLowerCase() : (i.name || '').toLowerCase());
@@ -562,27 +575,19 @@ function suggestRecipes(userInputPayload = {}) {
     }
 
     const matchRatio = dishIngs.length > 0 ? (matchedCount / dishIngs.length) : 0.5;
-    
     let score = matchRatio * 50;
-    if (parsedIntent.max_prep_time && prepTime <= parsedIntent.max_prep_time) {
-      score += 30;
-    }
-    
+    if (parsedIntent.max_prep_time && prepTime <= parsedIntent.max_prep_time) score += 30;
     return { dish, score, matchRatio, prepTime, protein: Number(dish.protein || 10) };
   });
 
   let candidates = scored.filter(s => s.matchRatio >= 0.6 || parsedIntent.ingredients.length === 0);
-  if (candidates.length === 0) {
-    candidates = scored;
-  }
+  if (candidates.length === 0) candidates = scored;
 
   candidates.sort((a, b) => b.score - a.score);
 
   const quickCandidate = [...candidates].sort((a, b) => a.prepTime - b.prepTime)[0]?.dish || candidates[0]?.dish || allDishes[0];
-
   const proteinCandidates = candidates.filter(c => c.dish.id !== quickCandidate.id);
   const proteinCandidate = [...(proteinCandidates.length ? proteinCandidates : candidates)].sort((a, b) => b.protein - a.protein)[0]?.dish || candidates[1]?.dish || allDishes[1];
-
   const balancedCandidates = candidates.filter(c => c.dish.id !== quickCandidate.id && c.dish.id !== proteinCandidate.id);
   const balancedCandidate = balancedCandidates[0]?.dish || candidates[2]?.dish || allDishes[2];
 

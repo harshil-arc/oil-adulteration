@@ -84,10 +84,10 @@ router.get('/pairings', (req, res) => {
  * @route   POST /api/recipes/suggest or /api/meal-planner/suggest
  * @desc    Intent-driven recipe recommendation returning max 3 distinct options
  */
-router.post('/suggest', (req, res) => {
+router.post('/suggest', async (req, res) => {
   try {
     const payload = req.body || {};
-    const response = mealPlannerService.suggestRecipes(payload);
+    const response = await mealPlannerService.suggestRecipes(payload);
     res.json(response);
   } catch (err) {
     console.error('[MealPlannerRoutes] Suggest error:', err);

@@ -9,7 +9,11 @@ const GROQ_MODEL = 'llama-3.3-70b-versatile';
 
 const SYSTEM_PROMPT = `You are FoodIntel AI, an expert assistant embedded in a smart food quality and waste management app.
 Your role is to help with oil adulteration detection, interpret sensor readings, explain FSSAI regulations, identify adulterants, and also assist with event food demand forecasting, predicting food surplus, and organizing NGO food redistribution.
-Be concise, technically accurate, and use markdown bold (**text**) for key values. Never make up sensor data or event data. If unsure, say so.`;
+
+Rules for response generation:
+1. Always respond directly and dynamically to the user's LATEST message.
+2. If the user says a greeting (like "hi", "hello", "hey", "good morning"), respond with a friendly, concise greeting asking how you can assist them today. Do NOT repeat prior technical reports, templates, or old responses.
+3. Be concise, technically accurate, and use markdown bold (**text**) for key values. Never make up sensor data or event data. If unsure, say so.`;
 
 const DEFAULT_GREETING = {
   id: 'init',
@@ -51,22 +55,25 @@ export default function AiChatbot({ onClose }) {
 
   // ── Grok API call ──────────────────────────────────────────
   const callGroq = async (conversationHistory) => {
-    if (!GROQ_API_KEY) throw new Error('NO_KEY');
+    const activeKey = import.meta.env.VITE_GROQ_API_KEY || GROQ_API_KEY;
+    if (!activeKey) throw new Error('NO_KEY');
+
+    // Filter out initial static UI greeting and keep recent conversation turns
+    const pastMessages = conversationHistory.filter(m => m.id !== 'init');
+    const recentMessages = pastMessages.slice(-10);
 
     const apiMessages = [
       { role: 'system', content: SYSTEM_PROMPT },
-      ...conversationHistory
-        .filter(m => m.sender !== 'system')
-        .map(m => ({
-          role: m.sender === 'user' ? 'user' : 'assistant',
-          content: m.text
-        }))
+      ...recentMessages.map(m => ({
+        role: m.sender === 'user' ? 'user' : 'assistant',
+        content: m.text
+      }))
     ];
 
     const res = await fetch(GROQ_API_URL, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${GROQ_API_KEY}`,
+        'Authorization': `Bearer ${activeKey}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
@@ -74,7 +81,8 @@ export default function AiChatbot({ onClose }) {
         messages: apiMessages,
         stream: false,
         max_tokens: 1024,
-        temperature: 0.7
+        temperature: 0.7,
+        presence_penalty: 0.3
       })
     });
 

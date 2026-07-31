@@ -28,7 +28,6 @@ import {
 import RecipeDetailModal from '../components/RecipeDetailModal';
 import CookingWorkspaceModal from '../components/CookingWorkspaceModal';
 import AiCookingAssistantDrawer from '../components/AiCookingAssistantDrawer';
-import { suggestRecipesApi } from '../lib/api';
 
 export default function Nutrition() {
   const navigate = useNavigate();
@@ -89,25 +88,6 @@ export default function Nutrition() {
   const [selectedRecipeDetail, setSelectedRecipeDetail] = useState(null);
   const [cookingWorkspaceRecipe, setCookingWorkspaceRecipe] = useState(null);
   const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(false);
-
-  // Intent-Driven On-Demand Recipe Suggestions State
-  const [intentSuggestions, setIntentSuggestions] = useState(null);
-  const [isSuggesting, setIsSuggesting] = useState(false);
-
-  const handleSuggestMeals = async (customPrompt) => {
-    setIsSuggesting(true);
-    try {
-      const promptText = customPrompt || searchQuery || `I have ${pantryItems.slice(0, 4).join(', ')}, need something under 30 mins`;
-      const res = await suggestRecipesApi({ text: promptText, ingredients: pantryItems });
-      if (res?.data?.suggestions) {
-        setIntentSuggestions(res.data);
-      }
-    } catch (e) {
-      console.warn('[Suggest API Error] Using dynamic recommendation fallback', e);
-    } finally {
-      setIsSuggesting(false);
-    }
-  };
 
   // Shopping List State
   const [shoppingListItems, setShoppingListItems] = useState([
@@ -289,7 +269,7 @@ export default function Nutrition() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0d1117] text-gray-100 font-sans pb-24 relative">
+    <div className="min-h-screen bg-[var(--bg-page)] text-[var(--text-primary)] font-sans pb-24 relative transition-colors duration-300">
       {/* Floating AI Cooking Assistant Launcher Button */}
       <button 
         onClick={() => setIsAiDrawerOpen(true)}
@@ -300,22 +280,22 @@ export default function Nutrition() {
       </button>
 
       {/* Top Header Bar */}
-      <header className="sticky top-0 z-40 bg-[#161b22]/90 backdrop-blur-md border-b border-gray-800 px-4 py-3">
+      <header className="sticky top-0 z-40 bg-[var(--bg-card)]/90 backdrop-blur-md border-b border-[var(--border-color)] px-4 py-3 shadow-sm">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={() => navigate('/home')} className="p-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300">
+            <button onClick={() => navigate('/home')} className="p-2 rounded-xl bg-[var(--bg-elevated)] hover:bg-[var(--border-color)] text-[var(--text-primary)] transition-all">
               <ChevronLeft size={20} />
             </button>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold bg-gradient-to-r from-amber-400 via-amber-200 to-yellow-500 bg-clip-text text-transparent">
+                <h1 className="text-xl font-bold bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 bg-clip-text text-transparent">
                   SpectraTrust Meal Intelligence
                 </h1>
-                <span className="bg-amber-500/20 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-500/30">
-                  AI Recommendation Engine
+                <span className="bg-amber-500/10 text-amber-600 dark:text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-amber-500/30">
+                  SpectraTrust AI Engine
                 </span>
               </div>
-              <p className="text-xs text-gray-400">Context-Aware Nutrition & Oil Safety Recommendation System</p>
+              <p className="text-xs text-[var(--text-muted)]">Context-Aware Nutrition & Oil Safety Recommendation System</p>
             </div>
           </div>
 
@@ -445,7 +425,7 @@ export default function Nutrition() {
       )}
 
       {/* Main Tab Navigation Bar */}
-      <div className="bg-[#161b22] border-b border-gray-800 sticky top-[57px] z-30 px-4">
+      <div className="bg-[var(--bg-card)] border-b border-[var(--border-color)] sticky top-[57px] z-30 px-4 shadow-xs">
         <div className="max-w-6xl mx-auto flex items-center justify-between overflow-x-auto no-scrollbar py-2 gap-2 text-xs">
           {[
             { id: 'planner', label: 'Intelligent Planner', icon: Sparkles },
@@ -463,7 +443,7 @@ export default function Nutrition() {
                 className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all ${
                   isActive 
                     ? 'bg-gradient-to-r from-amber-500 to-yellow-600 text-black shadow-lg shadow-amber-500/20' 
-                    : 'bg-gray-800/60 text-gray-400 hover:text-white hover:bg-gray-800'
+                    : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-color)]'
                 }`}
               >
                 <Icon size={16} />
@@ -481,19 +461,19 @@ export default function Nutrition() {
           <div className="space-y-6">
             
             {/* Search & Voice Bar */}
-            <div className="bg-[#161b22] border border-gray-800 rounded-2xl p-4 shadow-xl space-y-3">
+            <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl p-4 shadow-md space-y-3">
               <div className="flex items-center gap-3">
                 <div className="relative flex-1">
-                  <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <Search size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]" />
                   <input 
                     type="text"
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
                     placeholder="Search dishes, ingredients (e.g. 'High protein breakfast under 400 cals')..."
-                    className="w-full bg-gray-900 border border-gray-700 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:border-amber-500"
+                    className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] text-[var(--text-primary)] placeholder-[var(--text-muted)] rounded-xl pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-amber-500 transition-all"
                   />
                   {searchQuery && (
-                    <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white">
+                    <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)]">
                       <X size={16} />
                     </button>
                   )}
@@ -503,56 +483,26 @@ export default function Nutrition() {
                   onClick={toggleVoiceSearch}
                   className={`p-3 rounded-xl border font-semibold flex items-center gap-2 text-xs transition-all ${
                     isListening 
-                      ? 'bg-rose-500/20 text-rose-400 border-rose-500 animate-pulse' 
-                      : 'bg-gray-800 text-gray-300 border-gray-700 hover:bg-gray-700'
+                      ? 'bg-rose-500/20 text-rose-500 border-rose-500 animate-pulse' 
+                      : 'bg-[var(--bg-elevated)] text-[var(--text-primary)] border-[var(--border-color)] hover:border-amber-500/40'
                   }`}
                 >
                   {isListening ? <MicOff size={16} /> : <Mic size={16} />}
                   <span className="hidden sm:inline">{isListening ? 'Listening...' : 'Voice Search'}</span>
                 </button>
-
-                <button 
-                  onClick={() => handleSuggestMeals()}
-                  disabled={isSuggesting}
-                  className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 font-bold text-black text-xs hover:opacity-90 flex items-center gap-1.5 shadow-lg shadow-amber-500/20 disabled:opacity-50 transition-all"
-                >
-                  <Sparkles size={14} />
-                  <span>{isSuggesting ? 'Parsing Intent...' : 'Suggest Meal'}</span>
-                </button>
               </div>
 
-              {/* Quick Filter & Intent Chips */}
+              {/* Quick Filter Chips */}
               <div className="flex items-center gap-2 flex-wrap text-xs pt-1">
-                <span className="text-gray-400 flex items-center gap-1 font-semibold">
-                  <Filter size={12} /> Quick Intent:
+                <span className="text-[var(--text-muted)] flex items-center gap-1 font-semibold">
+                  <Filter size={12} /> Filters:
                 </span>
-
-                <button 
-                  onClick={() => handleSuggestMeals("under 15 mins")}
-                  className="bg-amber-500/10 text-amber-300 border border-amber-500/30 text-[11px] font-semibold px-2.5 py-1 rounded-full hover:bg-amber-500/20 transition-all"
-                >
-                  ⚡ &lt;15 mins
-                </button>
-
-                <button 
-                  onClick={() => handleSuggestMeals("high protein")}
-                  className="bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 text-[11px] font-semibold px-2.5 py-1 rounded-full hover:bg-emerald-500/20 transition-all"
-                >
-                  💪 High Protein
-                </button>
-
-                <button 
-                  onClick={() => handleSuggestMeals("vegetarian")}
-                  className="bg-sky-500/10 text-sky-300 border border-sky-500/30 text-[11px] font-semibold px-2.5 py-1 rounded-full hover:bg-sky-500/20 transition-all"
-                >
-                  🌿 Veg
-                </button>
                 
                 {/* Meal Type Filter */}
                 <select 
                   value={mealTypeFilter}
                   onChange={e => setMealTypeFilter(e.target.value)}
-                  className="bg-gray-900 border border-gray-700 text-gray-300 rounded-lg px-2.5 py-1"
+                  className="bg-[var(--bg-input)] border border-[var(--border-color)] text-[var(--text-primary)] rounded-lg px-2.5 py-1 focus:outline-none focus:border-amber-500"
                 >
                   <option value="All">All Meal Types</option>
                   <option value="Breakfast">Breakfast</option>
@@ -565,7 +515,7 @@ export default function Nutrition() {
                 <select 
                   value={cuisineFilter}
                   onChange={e => setCuisineFilter(e.target.value)}
-                  className="bg-gray-900 border border-gray-700 text-gray-300 rounded-lg px-2.5 py-1"
+                  className="bg-[var(--bg-input)] border border-[var(--border-color)] text-[var(--text-primary)] rounded-lg px-2.5 py-1 focus:outline-none focus:border-amber-500"
                 >
                   <option value="All">All Cuisines</option>
                   {REGIONS_LIST.map(c => <option key={c} value={c}>{c}</option>)}
@@ -575,7 +525,7 @@ export default function Nutrition() {
                 <select 
                   value={dietFilter}
                   onChange={e => setDietFilter(e.target.value)}
-                  className="bg-gray-900 border border-gray-700 text-gray-300 rounded-lg px-2.5 py-1"
+                  className="bg-[var(--bg-input)] border border-[var(--border-color)] text-[var(--text-primary)] rounded-lg px-2.5 py-1 focus:outline-none focus:border-amber-500"
                 >
                   <option value="All">All Diets</option>
                   {DIET_PREFERENCES.map(d => <option key={d} value={d}>{d}</option>)}
@@ -589,75 +539,6 @@ export default function Nutrition() {
               <span className="text-amber-400 font-semibold">⚡ Re-ranked in real-time</span>
             </div>
 
-            {/* Intent-Driven On-Demand Suggestions (Max 3 Options) */}
-            {intentSuggestions && intentSuggestions.suggestions && (
-              <div className="bg-[#161b22] border border-amber-500/40 rounded-2xl p-5 shadow-2xl space-y-4 animate-fade-in">
-                <div className="flex items-center justify-between border-b border-gray-800 pb-3">
-                  <div>
-                    <h2 className="text-base font-bold text-amber-300 flex items-center gap-2">
-                      <Sparkles size={18} className="text-amber-400" />
-                      Intent-Driven On-Demand Suggestions (3 Distinct Options)
-                    </h2>
-                    <p className="text-xs text-gray-400">
-                      Detected: {intentSuggestions.parsed_intent?.ingredients_detected?.join(', ') || 'Core Pantry'} • Max Prep Time: {intentSuggestions.parsed_intent?.max_prep_time} mins
-                    </p>
-                  </div>
-                  <button onClick={() => setIntentSuggestions(null)} className="text-xs text-gray-400 hover:text-white">
-                    Clear ✕
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {intentSuggestions.suggestions.map((sug, sIdx) => {
-                    const badgeColor = sIdx === 0 ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' : (sIdx === 1 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' : 'bg-sky-500/20 text-sky-300 border-sky-500/30');
-                    return (
-                      <div key={sug.id || sIdx} className="bg-gray-900 border border-gray-800 rounded-xl p-4 flex flex-col justify-between space-y-3">
-                        <div className="space-y-2">
-                          <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full border ${badgeColor}`}>
-                            {sug.option_type || (sIdx === 0 ? 'Quick & Easy' : (sIdx === 1 ? 'High Protein / Healthy' : 'Balanced / Chef Choice'))}
-                          </span>
-                          <h3 className="text-sm font-bold text-gray-100">{sug.title}</h3>
-                          <p className="text-xs text-gray-400 leading-relaxed">{sug.description}</p>
-                        </div>
-
-                        <div className="space-y-2 text-xs pt-2 border-t border-gray-800">
-                          <div className="flex justify-between text-gray-300">
-                            <span>Prep Time: <strong>{sug.prep_time_minutes} mins</strong></span>
-                            <span>Calories: <strong>{sug.calories} kcal</strong></span>
-                          </div>
-                          <div className="flex justify-between text-gray-300">
-                            <span>Protein: <strong className="text-emerald-400">{sug.protein_grams}g</strong></span>
-                            <span className="text-gray-400">Tags: {sug.dietary_tags?.slice(0, 2).join(', ')}</span>
-                          </div>
-
-                          <button 
-                            onClick={() => {
-                              const found = INDIAN_RECIPES_DATABASE.find(r => r.id === sug.id || r.name.toLowerCase().includes(sug.title.toLowerCase()));
-                              setCookingWorkspaceRecipe(found || {
-                                id: sug.id,
-                                name: sug.title,
-                                cuisine: 'Indian',
-                                mealType: 'Meal',
-                                prepTime: sug.prep_time_minutes,
-                                cookTimeMin: sug.prep_time_minutes,
-                                calories: sug.calories,
-                                protein: sug.protein_grams,
-                                ingredients: sug.ingredients.map(i => typeof i === 'string' ? i : i.name),
-                                instructions: sug.instructions
-                              });
-                            }}
-                            className="w-full py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-black text-xs font-bold flex items-center justify-center gap-1.5 transition-all mt-2"
-                          >
-                            <Play size={14} /> Start Cooking Option {sIdx + 1}
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
             {/* Recipe Cards Feed */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {scoredRecipes.map(recipe => {
@@ -668,7 +549,7 @@ export default function Nutrition() {
                 return (
                   <div 
                     key={recipe.id}
-                    className="bg-[#161b22] border border-gray-800 hover:border-amber-500/50 rounded-2xl overflow-hidden shadow-xl hover:shadow-2xl transition-all duration-300 flex flex-col group"
+                    className="bg-[var(--bg-card)] border border-[var(--border-color)] hover:border-amber-500/50 rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 flex flex-col group"
                   >
                     {/* Hero Image Header */}
                     <div className="relative h-48 w-full overflow-hidden">
@@ -677,7 +558,7 @@ export default function Nutrition() {
                         alt={recipe.name} 
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-[#161b22] via-transparent to-black/60" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/60" />
 
                       {/* Top Badges */}
                       <div className="absolute top-3 left-3 right-3 flex justify-between items-center z-10">
@@ -699,69 +580,69 @@ export default function Nutrition() {
                       </div>
 
                       <div className="absolute bottom-3 left-3 right-3 text-white">
-                        <div className="text-[10px] font-bold uppercase tracking-wider text-amber-400">{recipe.cuisine} • {recipe.mealType}</div>
-                        <h3 className="text-base font-bold truncate">{recipe.name}</h3>
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-amber-300">{recipe.cuisine} • {recipe.mealType}</div>
+                        <h3 className="text-base font-bold truncate forced-white">{recipe.name}</h3>
                       </div>
                     </div>
 
                     {/* Card Content Body */}
                     <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
                       {/* Macro Pills */}
-                      <div className="grid grid-cols-4 gap-1 text-center bg-gray-900/80 p-2 rounded-xl border border-gray-800 text-[11px]">
+                      <div className="grid grid-cols-4 gap-1 text-center bg-[var(--bg-elevated)] p-2 rounded-xl border border-[var(--border-color)] text-[11px]">
                         <div>
-                          <div className="text-gray-400 font-medium">Cals</div>
-                          <div className="font-bold text-amber-400">{recipe.macros?.calories || recipe.calories}</div>
+                          <div className="text-[var(--text-muted)] font-medium">Cals</div>
+                          <div className="font-bold text-amber-600 dark:text-amber-400">{recipe.macros?.calories || recipe.calories}</div>
                         </div>
                         <div>
-                          <div className="text-gray-400 font-medium">Prot</div>
-                          <div className="font-bold text-emerald-400">{recipe.macros?.protein || recipe.protein}g</div>
+                          <div className="text-[var(--text-muted)] font-medium">Prot</div>
+                          <div className="font-bold text-emerald-600 dark:text-emerald-400">{recipe.macros?.protein || recipe.protein}g</div>
                         </div>
                         <div>
-                          <div className="text-gray-400 font-medium">Carbs</div>
-                          <div className="font-bold text-sky-400">{recipe.macros?.carbs || recipe.carbs}g</div>
+                          <div className="text-[var(--text-muted)] font-medium">Carbs</div>
+                          <div className="font-bold text-sky-600 dark:text-sky-400">{recipe.macros?.carbs || recipe.carbs}g</div>
                         </div>
                         <div>
-                          <div className="text-gray-400 font-medium">Fat</div>
-                          <div className="font-bold text-rose-400">{recipe.macros?.fat || recipe.fat}g</div>
+                          <div className="text-[var(--text-muted)] font-medium">Fat</div>
+                          <div className="font-bold text-rose-600 dark:text-rose-400">{recipe.macros?.fat || recipe.fat}g</div>
                         </div>
                       </div>
 
                       {/* Explanation Rationale Badges */}
                       <div className="flex flex-wrap gap-1">
                         {scoreResult.rationaleBadges.slice(0, 3).map((badge, bIdx) => (
-                          <span key={bIdx} className="bg-gray-800 text-gray-300 border border-gray-700 text-[10px] px-2 py-0.5 rounded-md font-medium">
+                          <span key={bIdx} className="bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--border-color)] text-[10px] px-2 py-0.5 rounded-md font-medium">
                             {badge}
                           </span>
                         ))}
                       </div>
 
                       {/* Pantry Match & Substitutions */}
-                      <div className="text-xs space-y-1 bg-gray-900/50 p-2.5 rounded-xl border border-gray-800/80">
-                        <div className="flex items-center justify-between text-gray-300">
+                      <div className="text-xs space-y-1 bg-[var(--bg-elevated)] p-2.5 rounded-xl border border-[var(--border-color)]">
+                        <div className="flex items-center justify-between text-[var(--text-secondary)]">
                           <span>Pantry Match:</span>
-                          <span className="font-bold text-emerald-400">{scoreResult.matchedCount} of {scoreResult.totalIngredientsCount} available</span>
+                          <span className="font-bold text-emerald-600 dark:text-emerald-400">{scoreResult.matchedCount} of {scoreResult.totalIngredientsCount} available</span>
                         </div>
 
                         {scoreResult.suggestedSubstitutes.length > 0 && (
-                          <div className="text-[11px] text-amber-300/90 pt-1 border-t border-gray-800">
+                          <div className="text-[11px] text-amber-600 dark:text-amber-300 pt-1 border-t border-[var(--border-color)]">
                             💡 <strong>Smart Sub:</strong> {scoreResult.suggestedSubstitutes[0].ingredient} ➔ {scoreResult.suggestedSubstitutes[0].substitute}
                           </div>
                         )}
                       </div>
 
                       {/* SpectraTrust Food Safety Badge */}
-                      <div className="flex items-center justify-between bg-emerald-950/30 border border-emerald-500/30 p-2 rounded-xl text-[11px]">
-                        <span className="text-emerald-400 font-semibold flex items-center gap-1">
+                      <div className="flex items-center justify-between bg-emerald-500/10 border border-emerald-500/30 p-2 rounded-xl text-[11px]">
+                        <span className="text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
                           <ShieldCheck size={14} /> SpectraTrust Safe Oil Verified
                         </span>
-                        <span className="text-gray-400 text-[10px]">Cold-Pressed</span>
+                        <span className="text-[var(--text-muted)] text-[10px]">Cold-Pressed</span>
                       </div>
 
                       {/* Card Action Controls */}
-                      <div className="flex items-center gap-2 pt-2 border-t border-gray-800">
+                      <div className="flex items-center gap-2 pt-2 border-t border-[var(--border-color)]">
                         <button 
                           onClick={() => setSelectedRecipeDetail(recipe)}
-                          className="flex-1 py-2 px-3 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition-all"
+                          className="flex-1 py-2 px-3 rounded-xl bg-[var(--bg-elevated)] hover:bg-[var(--border-color)] text-[var(--text-primary)] text-xs font-semibold flex items-center justify-center gap-1.5 transition-all border border-[var(--border-color)]"
                         >
                           <Eye size={14} /> View Details
                         </button>

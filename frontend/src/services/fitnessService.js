@@ -242,6 +242,13 @@ export function getAiWorkoutRationale(profile = {}, workoutPlan = {}) {
 export function askAiFitnessCoach(prompt = '', currentPlan = {}) {
   const query = prompt.toLowerCase();
 
+  if (query.includes('hi') || query.includes('hello') || query.includes('hey')) {
+    return {
+      response: '👋 Hello! How can I help adapt your workout today? Let me know if you have joint pain, limited time, or lack equipment.',
+      modifiedWorkout: null
+    };
+  }
+
   if (query.includes('knee') || query.includes('joint')) {
     return {
       response: '⚠️ Knee joint care activated. I have modified today\'s lower-body exercises to low-impact joint-safe movements (Chair Squats, Glute Bridges, and Wall Sit).',
