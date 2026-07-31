@@ -208,7 +208,7 @@ export default function Community() {
                   Authority: {featuredAlert.authority}
                 </span>
                 <span className="bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-lg border border-amber-500/30">
-                  📍 {featuredAlert.affectedStates.join(', ')}
+                  📍 {Array.isArray(featuredAlert.affectedStates) ? featuredAlert.affectedStates.join(', ') : (featuredAlert.affectedStates || 'Pan-India')}
                 </span>
                 <span className="text-gray-400">Published: {featuredAlert.publicationDate}</span>
               </div>
@@ -312,7 +312,7 @@ export default function Community() {
                   <div className="flex items-center justify-between pt-2 border-t border-[var(--border-color)] text-[10px]">
                     <div className="flex items-center gap-1 text-amber-300 font-mono font-bold truncate max-w-[65%]">
                       <span>📍 Affected:</span>
-                      <span className="truncate">{item.affectedStates.join(', ')}</span>
+                      <span className="truncate">{Array.isArray(item.affectedStates) ? item.affectedStates.join(', ') : (item.affectedStates || 'Pan-India')}</span>
                     </div>
 
                     <button 

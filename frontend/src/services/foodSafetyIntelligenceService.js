@@ -41,30 +41,35 @@ export function fetchVerifiedAlerts({ category = 'All', searchQuery = '', stateF
 
   // Filter by State
   if (stateFilter && stateFilter !== 'All') {
-    list = list.filter(item => 
-      item.affectedStates.some(s => s.toLowerCase().includes(stateFilter.toLowerCase()) || s.toLowerCase() === 'pan-india')
-    );
+    list = list.filter(item => {
+      const states = Array.isArray(item.affectedStates) ? item.affectedStates : [item.affectedStates || 'Pan-India'];
+      return states.some(s => String(s).toLowerCase().includes(stateFilter.toLowerCase()) || String(s).toLowerCase() === 'pan-india');
+    });
   }
 
   // Filter by Severity
   if (severityFilter && severityFilter !== 'All') {
-    list = list.filter(item => item.severity.toLowerCase() === severityFilter.toLowerCase());
+    list = list.filter(item => String(item.severity || '').toLowerCase() === severityFilter.toLowerCase());
   }
 
   // Filter by Search Query (Brand, Company, Oil, Milk, Ghee, Honey, Rice, Wheat, District, State, Product)
   if (searchQuery && searchQuery.trim().length > 0) {
     const q = searchQuery.toLowerCase().trim();
-    list = list.filter(item => 
-      item.title.toLowerCase().includes(q) ||
-      item.productName.toLowerCase().includes(q) ||
-      item.brand.toLowerCase().includes(q) ||
-      item.company.toLowerCase().includes(q) ||
-      item.oilType.toLowerCase().includes(q) ||
-      item.authority.toLowerCase().includes(q) ||
-      item.description.toLowerCase().includes(q) ||
-      item.affectedStates.some(s => s.toLowerCase().includes(q)) ||
-      item.tags.some(t => t.toLowerCase().includes(q))
-    );
+    list = list.filter(item => {
+      const states = Array.isArray(item.affectedStates) ? item.affectedStates : [item.affectedStates || 'Pan-India'];
+      const tags = Array.isArray(item.tags) ? item.tags : [];
+      return (
+        String(item.title || '').toLowerCase().includes(q) ||
+        String(item.productName || '').toLowerCase().includes(q) ||
+        String(item.brand || '').toLowerCase().includes(q) ||
+        String(item.company || '').toLowerCase().includes(q) ||
+        String(item.oilType || '').toLowerCase().includes(q) ||
+        String(item.authority || '').toLowerCase().includes(q) ||
+        String(item.description || '').toLowerCase().includes(q) ||
+        states.some(s => String(s).toLowerCase().includes(q)) ||
+        tags.some(t => String(t).toLowerCase().includes(q))
+      );
+    });
   }
 
   return list;

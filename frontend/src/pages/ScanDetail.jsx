@@ -174,7 +174,7 @@ export default function ScanDetail() {
             <Field label="Vendor / Location" value={scan.vendor} />
             <Field label="Sample ID" value={scan.id} />
             <Field label="Notes" value={scan.notes} />
-            {scan.likely_adulterants?.length > 0 && (
+            {Array.isArray(scan.likely_adulterants) && scan.likely_adulterants.length > 0 && (
               <Field label="Detected Adulterants" value={scan.likely_adulterants.join(', ')} />
             )}
           </div>

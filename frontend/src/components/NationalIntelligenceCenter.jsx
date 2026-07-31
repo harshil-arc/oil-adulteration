@@ -325,7 +325,7 @@ export default function NationalIntelligenceCenter() {
                 <p className="text-red-300 text-[11px] font-semibold">{rec.reason}</p>
                 <div className="flex justify-between text-[10px] text-gray-400 pt-1">
                   <span>Batch: {rec.batch}</span>
-                  <span>States: {rec.states.join(', ')}</span>
+                  <span>States: {Array.isArray(rec.states) ? rec.states.join(', ') : (rec.states || 'Pan-India')}</span>
                 </div>
               </div>
             ))}

@@ -315,7 +315,7 @@ export default function FoodReliefNetwork() {
                         <h4 className="text-base font-black text-white leading-tight">{emg.title}</h4>
                       </div>
                       <p className="text-[11px] text-gray-400 mt-1 font-mono">
-                        📍 {emg.state} — {emg.districts.slice(0, 2).join(', ')}
+                        📍 {emg.state} — {Array.isArray(emg.districts) ? emg.districts.slice(0, 2).join(', ') : (emg.districts || '')}
                       </p>
                     </div>
 
