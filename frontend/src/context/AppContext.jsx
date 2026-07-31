@@ -14,6 +14,7 @@ const defaultSettings = {
   themeMode: 'system',
   appPin: null, // null means no lock
   dataSharing: false,
+  testingMode80to85: false, // Testing mode: only show 80-85% pure oils
 };
 
 const defaultProfile = {

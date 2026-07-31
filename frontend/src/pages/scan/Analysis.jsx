@@ -209,6 +209,20 @@ export default function Analysis() {
     }
   });
   const [result] = useState(() => {
+    const sensorSnap = JSON.parse(sessionStorage.getItem('sensor_snapshot') || '{"temperature": 28.2, "spectral_data": "0,1,5,4,4,2,7,7,4,2,0,9,0"}');
+    const oilObj = JSON.parse(sessionStorage.getItem('selected_oil') || '{"oilName": "Mustard Oil"}');
+    
+    // Check if Testing Mode (80-85% purity) is active
+    let testingMode80to85 = false;
+    try {
+      const savedSettings = JSON.parse(localStorage.getItem('pureoil_settings') || '{}');
+      testingMode80to85 = !!savedSettings.testingMode80to85;
+    } catch (e) {}
+
+    if (testingMode80to85) {
+      return calculateAdulteration(sensorSnap, oilObj);
+    }
+
     try {
       const stored = sessionStorage.getItem('analysis_result');
       if (stored) {
@@ -217,8 +231,6 @@ export default function Analysis() {
       }
     } catch (_) {}
 
-    const sensorSnap = JSON.parse(sessionStorage.getItem('sensor_snapshot') || '{"temperature": 28.2, "spectral_data": "0,1,5,4,4,2,7,7,4,2,0,9,0"}');
-    const oilObj = JSON.parse(sessionStorage.getItem('selected_oil') || '{"oilName": "Mustard Oil"}');
     return calculateAdulteration(sensorSnap, oilObj);
   });
 
@@ -412,6 +424,26 @@ Provide 2-3 likely adulterants only.`;
           <button onClick={() => setDevSettingsOpen(true)} className="underline text-xs font-black">
             Settings →
           </button>
+        </div>
+      )}
+
+      {/* ── 🧪 TESTING MODE BANNER ON SCAN PAGE ── */}
+      {JSON.parse(localStorage.getItem('pureoil_settings') || '{}').testingMode80to85 && (
+        <div className="bg-amber-500/15 border-b border-amber-500/40 p-3 px-4 text-xs flex items-center justify-between gap-2 animate-fade-in">
+          <div className="flex items-center gap-2">
+            <span className="text-base">🧪</span>
+            <div>
+              <span className="font-black text-amber-400 uppercase tracking-wider text-[11px] block">
+                Testing Mode Active: Output Enforced to 80%–85% Purity Range
+              </span>
+              <span className="text-[10px] text-gray-300">
+                Purity score for this {selectedOil.oilName} scan: <strong className="text-amber-300 font-mono">{result.purityPercentage.toFixed(1)}%</strong>
+              </span>
+            </div>
+          </div>
+          <span className="text-[9px] font-black text-amber-400 bg-amber-500/20 px-2.5 py-1 rounded-full border border-amber-500/40 shrink-0">
+            80.0% ≤ PURITY ≤ 85.0%
+          </span>
         </div>
       )}
 
