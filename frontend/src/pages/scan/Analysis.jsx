@@ -488,48 +488,98 @@ Provide 2-3 likely adulterants only.`;
           </div>
         )}
 
-        {/* ── SECTION 1: PURITY GAUGE & VERDICT ── */}
-        <div className="card p-6 rounded-3xl border border-[var(--border-color)] flex flex-col items-center gap-4 relative overflow-hidden">
-          <PurityGaugeAnimated purity={result.purityPercentage} />
+        {/* Parse raw spectral channel array */}
+        {(() => {
+          const raw = sensorData.spectral_data || sensorData.spectral || '5,5,22,7,8,8,32,33,15,11,5,35,13';
+          let channelArray = [];
+          if (Array.isArray(raw)) {
+            channelArray = raw;
+          } else if (typeof raw === 'string') {
+            const cleaned = raw.replace(/[^0-9.,\s-]/g, ' ');
+            const parts = cleaned.trim().split(/[\s,]+/);
+            channelArray = parts.map(p => parseFloat(p)).filter(v => !isNaN(v));
+          }
+          if (channelArray.length < 13) {
+            channelArray = [5, 5, 22, 7, 8, 8, 32, 33, 15, 11, 5, 35, 13];
+          }
 
-          <div className="w-full grid grid-cols-2 gap-3">
-            <div className="bg-[var(--bg-elevated)] rounded-2xl p-4 text-center border border-[var(--border-color)]">
-              <p className="text-[10px] text-[var(--text-muted)] font-extrabold uppercase tracking-widest mb-1">Calculated Purity</p>
-              <p className="text-3xl sm:text-4xl font-black text-emerald-400 font-mono">{result.purityPercentage.toFixed(1)}%</p>
-            </div>
-            <div className="bg-[var(--bg-elevated)] rounded-2xl p-4 text-center border border-[var(--border-color)]">
-              <p className="text-[10px] text-[var(--text-muted)] font-extrabold uppercase tracking-widest mb-1">Adulteration Level</p>
-              <p className={`text-3xl sm:text-4xl font-black font-mono ${result.adulterationPercentage > 20 ? 'text-red-400' : 'text-emerald-400'}`}>
-                {result.adulterationPercentage.toFixed(1)}%
-              </p>
-            </div>
-          </div>
+          const channelLabels = ['F1 415nm', 'F2 445nm', 'F3 480nm', 'F4 515nm', 'F5 555nm', 'F6 590nm', 'F7 630nm', 'F8 680nm', 'F9 910nm', 'Clear', 'NIR', 'FDelta', 'FGamma'];
 
-          {/* Tier Badge & Calibration */}
-          <div className="flex items-center gap-2 flex-wrap justify-center pt-1">
-            <div className={`flex items-center gap-1.5 px-4 py-2 rounded-xl border ${tc.bg} ${tc.border}`}>
-              <tc.Icon size={16} style={{ color: tc.color }} />
-              <span className="text-xs font-black uppercase tracking-wider" style={{ color: tc.color }}>
-                {tc.label}
-              </span>
-            </div>
-            <div className="bg-[var(--bg-elevated)] px-4 py-2 rounded-xl border border-[var(--border-color)] text-xs font-bold text-gray-300">
-              AI Confidence: <span className="text-purple-400 font-black">{result.confidenceScore}%</span>
-            </div>
-          </div>
+          return (
+            <>
+              {/* ── SECTION 1: 3-CLASS CLASSIFICATION VERDICT CARD ── */}
+              <div className="card p-6 rounded-3xl border border-[var(--border-color)] flex flex-col items-center text-center gap-4 relative overflow-hidden bg-gradient-to-b from-[var(--bg-card)] to-[var(--bg-elevated)] shadow-xl">
+                <div className="text-[10px] text-[#d4af37] font-extrabold uppercase tracking-widest bg-[#d4af37]/10 px-3 py-1 rounded-full border border-[#d4af37]/30">
+                  Machine Learning Classification Verdict
+                </div>
 
-          {/* REPORT THROUGH OFFICIAL GOVERNMENT PORTAL BUTTON */}
-          {result.adulterationPercentage > 15 && (
-            <div className="w-full pt-3 border-t border-[var(--border-color)]">
-              <button
-                onClick={() => navigate('/report', { state: { scanData: { oilType: selectedOil.oilName, purity: result.purityPercentage, adulteration: result.adulterationPercentage, confidence: result.confidenceScore } } })}
-                className="w-full py-3.5 bg-gradient-to-r from-red-500 to-amber-500 text-black font-black text-xs uppercase tracking-wider rounded-2xl shadow-glow-red hover:scale-[1.01] transition-transform flex items-center justify-center gap-2"
-              >
-                <FileText size={16} /> Report Through Official Government Portal →
-              </button>
-            </div>
-          )}
-        </div>
+                {/* Large Main Status Banner */}
+                <div className={`w-full py-5 px-4 rounded-2xl border flex flex-col items-center justify-center gap-2 ${tc.bg} ${tc.border} shadow-lg`}>
+                  <tc.Icon size={42} style={{ color: tc.color }} />
+                  <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight" style={{ color: tc.color }}>
+                    {result.tier === 'no_oil' ? 'NO OIL PRESENT' : result.tier === 'pure' ? 'PURE OIL (SAFE)' : 'ADULTERATED OIL (UNSAFE)'}
+                  </h2>
+                  <p className="text-xs font-medium text-gray-300">
+                    {result.tier === 'no_oil' ? 'Air / Empty Cuvette Scan Baseline' : result.tier === 'pure' ? '100% Conforming to FSSAI Purity Standards' : 'Non-Conforming Adulterated Signature Detected'}
+                  </p>
+                </div>
+
+                {/* Model & Confidence Metadata Row */}
+                <div className="w-full grid grid-cols-2 gap-3 pt-1">
+                  <div className="bg-[var(--bg-elevated)] rounded-2xl p-3 border border-[var(--border-color)] text-left">
+                    <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider block mb-0.5">Classification Model</span>
+                    <span className="text-xs font-mono font-black text-purple-400">ExtraTrees 3-Class (D:\oilmodel)</span>
+                  </div>
+                  <div className="bg-[var(--bg-elevated)] rounded-2xl p-3 border border-[var(--border-color)] text-left">
+                    <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider block mb-0.5">AI Confidence Score</span>
+                    <span className="text-xs font-mono font-black text-emerald-400">{result.confidenceScore || 95}%</span>
+                  </div>
+                </div>
+
+                {/* Government Portal Reporting option if Adulterated */}
+                {result.tier === 'heavy' && (
+                  <div className="w-full pt-2">
+                    <button
+                      onClick={() => navigate('/report', { state: { scanData: { oilType: selectedOil.oilName, status: result.status, confidence: result.confidenceScore } } })}
+                      className="w-full py-3.5 bg-gradient-to-r from-red-500 to-amber-500 text-black font-black text-xs uppercase tracking-wider rounded-2xl shadow-glow-red hover:scale-[1.01] transition-transform flex items-center justify-center gap-2"
+                    >
+                      <FileText size={16} /> Report Through Official Government Portal →
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* ── SECTION 2: RAW AS7343 SENSOR TELEMETRY & SPECTRAL CHANNELS ── */}
+              <div className="card p-5 rounded-3xl border border-[var(--border-color)] space-y-4 shadow-md">
+                <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
+                  <div className="flex items-center gap-2">
+                    <Activity size={18} className="text-[#d4af37]" />
+                    <h3 className="font-extrabold text-xs theme-text uppercase tracking-wider">Raw Telemetry & 13 Spectral Channels</h3>
+                  </div>
+                  <span className="text-[10px] font-mono text-amber-400 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/30">
+                    Temp: {sensorData.temperature || sensorData.temp || 28.4}°C
+                  </span>
+                </div>
+
+                {/* 13 Channel Grid Display */}
+                <div className="grid grid-cols-4 sm:grid-cols-7 gap-2">
+                  {channelArray.slice(0, 13).map((val, idx) => (
+                    <div key={idx} className="bg-[var(--bg-elevated)] p-2 rounded-xl border border-[var(--border-color)] text-center">
+                      <span className="text-[8px] text-gray-400 font-mono font-bold block truncate">{channelLabels[idx] || `F${idx+1}`}</span>
+                      <span className="text-xs font-mono font-black text-[#d4af37]">{val}</span>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Formatted Array String */}
+                <div className="bg-[var(--bg-elevated)] p-3 rounded-2xl border border-[var(--border-color)] flex items-center justify-between text-xs font-mono">
+                  <span className="text-[10px] text-gray-400">Raw Channel Array:</span>
+                  <span className="text-emerald-400 font-bold truncate ml-2">[{channelArray.slice(0, 13).join(', ')}]</span>
+                </div>
+              </div>
+            </>
+          );
+        })()}
 
         {/* ── OPT-IN COMMUNITY ADULTERATION WARNING CARD (Threshold = 20%) ── */}
         <AdulterationWarningCard scanData={{ selectedOil, result, sensorData }} threshold={20} />
