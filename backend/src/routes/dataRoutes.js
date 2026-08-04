@@ -137,6 +137,28 @@ router.post('/predict-ml', async (req, res) => {
   }
 });
 
+// POST /api/ml/re-train – Active learning feedback loop to append correction & re-train ML model
+router.post('/re-train', async (req, res) => {
+  try {
+    const { temperature, spectral_data, corrected_class } = req.body;
+    const { retrainModelWithCorrection, predictMustardOilML } = require('../services/mlService');
+
+    const temp = Number(temperature || 28.2);
+    const specStr = typeof spectral_data === 'string' ? spectral_data : (Array.isArray(spectral_data) ? spectral_data.join(',') : '5,5,22,7,8,8,32,33,15,11,5,35,13');
+    const cls = corrected_class || 'NO_OIL';
+
+    // 1. Append sample to dataset and run train.py
+    await retrainModelWithCorrection(temp, specStr, cls);
+
+    // 2. Re-run inference with newly updated model
+    const updatedPrediction = await predictMustardOilML({ temperature: temp, spectral_data: specStr });
+    res.json({ success: true, message: 'ML Model re-trained and updated successfully!', updatedPrediction });
+  } catch (err) {
+    console.error('[POST /api/ml/re-train] Error:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // POST /readings - Receive readings from ESP32 and save to readings collection
 router.post('/readings', async (req, res) => {
   try {

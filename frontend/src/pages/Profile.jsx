@@ -117,20 +117,8 @@ export default function Profile() {
         { id: 'scan-101', oil_type: 'Mustard Oil', purity: 94.2, confidence_score: 98, quality: 'Safe', vendor: 'Amul Center', timestamp: new Date().toISOString() },
         { id: 'scan-102', oil_type: 'Groundnut Oil', purity: 96.5, confidence_score: 99, quality: 'Safe', vendor: 'Surat Market', timestamp: new Date(Date.now() - 86400000).toISOString() },
         { id: 'scan-103', oil_type: 'Sunflower Oil', purity: 42.0, confidence_score: 94, quality: 'Unsafe', vendor: 'Local Wholesale', timestamp: new Date(Date.now() - 172800000).toISOString() },
-        { id: 'scan-104', oil_type: 'Sesame Oil', purity: 91.8, confidence_score: 96, quality: 'Safe', vendor: 'Rajkot Mart', timestamp: new Date(Date.now() - 259200000).toISOString() },
-        { id: 'scan-105', oil_type: 'Refined Soybean Oil', purity: 82.5, confidence_score: 95, quality: 'Safe', vendor: 'Veraval Refinery', timestamp: new Date(Date.now() - 345600000).toISOString() },
-        { id: 'scan-106', oil_type: 'Filtered Olive Oil', purity: 84.1, confidence_score: 93, quality: 'Safe', vendor: 'Heritage Traders', timestamp: new Date(Date.now() - 432000000).toISOString() },
-        { id: 'scan-107', oil_type: 'Blended Kachi Ghani', purity: 81.0, confidence_score: 91, quality: 'Safe', vendor: 'Bhavnagar Mill', timestamp: new Date(Date.now() - 518400000).toISOString() },
-        { id: 'scan-108', oil_type: 'Cold Pressed Sunflower Oil', purity: 83.8, confidence_score: 94, quality: 'Safe', vendor: 'Ahmedabad Organic', timestamp: new Date(Date.now() - 604800000).toISOString() }
+        { id: 'scan-104', oil_type: 'Sesame Oil', purity: 91.8, confidence_score: 96, quality: 'Safe', vendor: 'Rajkot Mart', timestamp: new Date(Date.now() - 259200000).toISOString() }
       ];
-    }
-
-    // Testing Mode: Filter oils around 80% to 85% pure
-    if (settings?.testingMode80to85) {
-      result = result.filter(s => {
-        const p = parseFloat(s.purity || 0);
-        return p >= 80 && p <= 85;
-      });
     }
 
     if (searchQuery.trim()) {
@@ -155,7 +143,7 @@ export default function Profile() {
     }
 
     return result;
-  }, [scans, searchQuery, filterQuality, sortOption, settings?.testingMode80to85]);
+  }, [scans, searchQuery, filterQuality, sortOption]);
 
   const scrollToCerts = () => {
     if (certSectionRef.current) {
@@ -213,67 +201,6 @@ export default function Profile() {
       </div>
 
       <div className="p-4 space-y-5 max-w-5xl mx-auto w-full">
-
-        {/* ── 🧪 TESTING MODE CONTROL CARD (80% - 85% PURITY ONLY) ───────────────── */}
-        <div className={`card p-5 rounded-3xl border transition-all ${
-          settings?.testingMode80to85 
-            ? 'border-amber-400 bg-gradient-to-r from-amber-500/20 via-[var(--bg-card)] to-amber-500/10 shadow-glow-gold' 
-            : 'border-[var(--border-color)] bg-[var(--bg-card)]'
-        }`}>
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-start gap-3.5">
-              <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shrink-0 transition-transform ${
-                settings?.testingMode80to85 ? 'bg-amber-500/20 text-amber-400 scale-105 border border-amber-500/40' : 'bg-[var(--bg-elevated)] text-gray-400 border border-[var(--border-color)]'
-              }`}>
-                🧪
-              </div>
-              <div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <h3 className="text-sm font-black uppercase tracking-wider text-white">Testing Mode: 80%–85% Pure Oils</h3>
-                  <span className={`text-[9px] font-black uppercase px-2.5 py-0.5 rounded-full border ${
-                    settings?.testingMode80to85 
-                      ? 'bg-amber-500/20 text-amber-400 border-amber-500/50 animate-pulse' 
-                      : 'bg-gray-800 text-gray-400 border-gray-700'
-                  }`}>
-                    {settings?.testingMode80to85 ? '🟢 ACTIVE' : 'OFF'}
-                  </span>
-                </div>
-                <p className="text-[11px] text-gray-400 mt-1 leading-relaxed">
-                  {settings?.testingMode80to85 
-                    ? 'Currently filtering directory & scan history to show ONLY oils with purity between 80% and 85%.' 
-                    : 'Turn on this toggle to filter all app oil scan records to show only 80%–85% pure oils for testing.'}
-                </p>
-              </div>
-            </div>
-
-            {/* Toggle Button */}
-            <div className="flex items-center gap-3 self-end sm:self-center">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 hidden sm:inline">
-                {settings?.testingMode80to85 ? '80-85% Mode On' : 'Testing Filter Off'}
-              </span>
-              <button
-                onClick={() => updateSetting('testingMode80to85', !settings?.testingMode80to85)}
-                className={`px-4 py-2.5 rounded-2xl font-black text-xs uppercase tracking-wider flex items-center gap-2 transition-all shadow-md active:scale-95 ${
-                  settings?.testingMode80to85 
-                    ? 'bg-gradient-to-r from-amber-400 to-[#d4af37] text-black shadow-amber-500/30' 
-                    : 'bg-[var(--bg-elevated)] hover:bg-gray-800 text-gray-300 border border-[var(--border-color)]'
-                }`}
-              >
-                <Beaker size={16} />
-                <span>{settings?.testingMode80to85 ? 'Turn OFF' : 'Turn ON (80-85%)'}</span>
-              </button>
-            </div>
-          </div>
-
-          {settings?.testingMode80to85 && (
-            <div className="mt-3.5 pt-3 border-t border-amber-500/30 flex items-center justify-between text-xs text-amber-300 font-medium">
-              <span className="flex items-center gap-1.5 text-[10px] uppercase font-bold text-amber-400">
-                <CheckCircle2 size={13} /> Active Filter: 80.0% ≤ Purity ≤ 85.0%
-              </span>
-              <span className="text-[10px] font-mono text-gray-400">Displaying {processedScans.length} Verified Records</span>
-            </div>
-          )}
-        </div>
 
         {/* ── UNIFIED INSPECTOR STATUS CARD ──────────────────────────────────── */}
         <div className="card p-5 rounded-3xl border border-[#d4af37]/40 bg-gradient-to-r from-[var(--bg-card)] via-[var(--bg-elevated)] to-[#d4af37]/10 space-y-3 shadow-glow-gold">
@@ -673,27 +600,6 @@ export default function Profile() {
                   onChange={() => updateSetting('notifications', !settings.notifications)}
                   className="w-5 h-5 accent-[#d4af37] rounded cursor-pointer"
                 />
-              </div>
-
-              {/* Testing Purpose Filter Toggle (80-85% Pure Oils Only) */}
-              <div className="flex items-center justify-between p-3.5 bg-[var(--bg-elevated)] rounded-2xl border border-[var(--border-color)]">
-                <div className="flex items-center gap-2.5">
-                  <Beaker size={16} className="text-amber-400" />
-                  <div>
-                    <span className="font-bold text-white block">Testing Mode (80%–85% Purity)</span>
-                    <span className="text-[10px] text-gray-400">Show only oils around 80 to 85 percent pure</span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => updateSetting('testingMode80to85', !settings?.testingMode80to85)}
-                  className={`px-3 py-1.5 rounded-xl font-black text-[10px] uppercase tracking-wider transition-all ${
-                    settings?.testingMode80to85 
-                      ? 'bg-amber-400 text-black shadow-glow-gold' 
-                      : 'bg-gray-800 text-gray-400 hover:text-white'
-                  }`}
-                >
-                  {settings?.testingMode80to85 ? 'ON' : 'OFF'}
-                </button>
               </div>
 
               {/* Hardware Connection */}

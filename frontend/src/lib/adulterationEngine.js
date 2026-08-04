@@ -106,6 +106,8 @@ export function calculateAdulteration(sensorReadings, oilRef) {
   // Check for No Oil Present baseline signatures (e.g. Air / Empty Scan / Baseline readings)
   const sumRaw = rawArray.reduce((a, b) => a + Math.abs(b), 0);
   const isNoOilBaseline = (sumRaw === 0) || 
+    (rawArray[0] >= 4 && rawArray[1] >= 4) ||
+    (rawArray[2] >= 20 && rawArray[11] >= 30) ||
     (Math.abs(pure_dist - adulterated_dist) < 0.005 && rawArray[1] <= 1 && rawArray[2] <= 4 && rawArray[3] <= 4);
 
   if (isNoOilBaseline && isMustard) {
@@ -166,47 +168,17 @@ export function calculateAdulteration(sensorReadings, oilRef) {
   }
   
   purity = Math.min(Math.max(purity, 0), 100);
-
-  // CHECK TESTING MODE (80-85% PURITY ONLY) FROM PROFILE TAB SETTINGS
-  let testingMode80to85 = false;
-  try {
-    const savedSettings = JSON.parse(localStorage.getItem('pureoil_settings') || '{}');
-    testingMode80to85 = !!savedSettings.testingMode80to85;
-  } catch (e) {
-    console.warn('[adulterationEngine] Could not read settings:', e);
-  }
-
-  if (testingMode80to85) {
-    const nameLower = (oilRef?.oilName || '').toLowerCase();
-    if (nameLower.includes('groundnut') || nameLower.includes('peanut')) {
-      purity = 84.2;
-    } else if (nameLower.includes('coconut')) {
-      purity = 83.5;
-    } else if (nameLower.includes('sunflower')) {
-      purity = 81.8;
-    } else if (nameLower.includes('soybean') || nameLower.includes('soya')) {
-      purity = 82.5;
-    } else if (nameLower.includes('olive')) {
-      purity = 84.8;
-    } else {
-      purity = 82.5; // Default 82.5% pure for Mustard / Other Oils in Testing Mode
-    }
-  }
-
   const adulterationLevel = Math.round((100 - purity) * 10) / 10;
   
   let status = pure_dist <= adulterated_dist ? "Pure Oil" : "Adulterated Oil";
   if (isMustard) {
     status = pure_dist <= adulterated_dist ? "Pure Mustard Oil" : "Adulterated Mustard Oil";
   }
-  if (testingMode80to85) {
-    status = `Safe (${purity.toFixed(1)}% Pure - Testing Mode)`;
-  }
   let matched_with = pure_dist <= adulterated_dist ? "pure" : "adulterated";
   
   let tier = 'pure';
   if (adulterationLevel > 60) tier = 'heavy';
-  else if (adulterationLevel > 20 && !testingMode80to85) tier = 'moderate';
+  else if (adulterationLevel > 20) tier = 'moderate';
 
   let confidence = 100 - (Math.min(pure_dist, adulterated_dist) * 200);
   confidence = Math.min(Math.max(confidence, 0), 100);
@@ -215,11 +187,11 @@ export function calculateAdulteration(sensorReadings, oilRef) {
     ? "Trained Mustard Oil ML Model (D:\\oilmodel)" 
     : "Spectral Match";
 
-  if (testingMode80to85) {
-    primaryIndicator = "🧪 Testing Mode Active: Enforced 80%–85% Spectral Purity Baseline";
-  } else if (temp < 20 || temp > 40) {
+  if (temp < 20 || temp > 40) {
     primaryIndicator = "Warning: Sensor accuracy may be affected due to temperature variation";
-  } else if (Math.abs(pure_dist - adulterated_dist) < 0.01 && total_dist > 0) {
+  }
+
+  if (Math.abs(pure_dist - adulterated_dist) < 0.01 && total_dist > 0) {
     primaryIndicator = "Result uncertain, retest recommended";
   }
 

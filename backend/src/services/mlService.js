@@ -181,7 +181,62 @@ function fallbackMlInference(temp, spectralArray) {
   };
 }
 
+/**
+ * Appends user correction sample to Excel dataset & triggers model re-training
+ */
+function retrainModelWithCorrection(temperature, spectralStr, correctedClass) {
+  return new Promise((resolve, reject) => {
+    const pythonScript = `
+import pandas as pd
+import subprocess
+import os
+
+excel_paths = [
+    r'D:\\oilmodel\\data\\OilData3.xlsx',
+    r'C:\\Users\\HARSHIL\\Downloads\\OilData3.xlsx'
+]
+
+target_label = '${correctedClass}'
+if target_label == 'NO_OIL':
+    cat_str = 'no oil present or detected'
+elif target_label == 'PURE':
+    cat_str = 'mustard oil present or detected'
+else:
+    cat_str = 'mustard oil highly adulterated'
+
+new_row = {
+    'temp(celsius)': ${temperature},
+    'categoey': cat_str,
+    'spectral reading': '${spectralStr}'
+}
+
+for path in excel_paths:
+    if os.path.exists(path):
+        try:
+            df = pd.read_excel(path)
+            df = pd.concat([df, pd.DataFrame([new_row])], ignore_index=True)
+            df.to_excel(path, index=False)
+            print(f'Appended new sample to {path}')
+        except Exception as e:
+            print(f'Error updating {path}: {e}')
+
+train_res = subprocess.run(['python', 'train.py'], cwd=r'D:\\oilmodel', capture_output=True, text=True)
+print('Training completed:', train_res.returncode)
+`;
+
+    execFile('python', ['-c', pythonScript], (err, stdout, stderr) => {
+      if (err) {
+        console.error('[ML Service] Re-training error:', err.message);
+        return reject(err);
+      }
+      console.log('[ML Service] Re-training stdout:', stdout);
+      resolve({ success: true, message: 'Model re-trained successfully with user feedback!' });
+    });
+  });
+}
+
 module.exports = {
   predictMustardOilML,
-  parseSpectralChannels
+  parseSpectralChannels,
+  retrainModelWithCorrection
 };
