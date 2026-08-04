@@ -98,26 +98,44 @@ async function predictMustardOilML(sensorReadings) {
   pureDist = Math.sqrt(pureDist);
   adultDist = Math.sqrt(adultDist);
 
-  // 3. Extract Purity % & Adulteration Level directly from Retrained Multi-Class & Regressor ML Model
-  const purityPercentage = pyResult.purity_percentage != null ? pyResult.purity_percentage : 0.0;
-  const adulterationPercentage = pyResult.adulteration_percentage != null ? pyResult.adulteration_percentage : 0.0;
-  const status = pyResult.status || "Pure Mustard Oil";
-  const tier = pyResult.tier || "pure";
-  const confidenceScore = Math.round((pyResult.confidence || 0.95) * 100);
+  // 3. Extract 3-Class Prediction from ExtraTrees ML Model
+  const classLabel = pyResult.prediction || pyResult.class_label || (pyResult.oil_present ? "PURE" : "NO_OIL");
+  const confidenceScore = Math.round(pyResult.confidence_score || (pyResult.confidence ? (typeof pyResult.confidence === 'number' ? pyResult.confidence * 100 : parseFloat(pyResult.confidence)) : 95));
+  
+  let status = pyResult.status || "Pure Mustard Oil";
+  let tier = pyResult.tier || "pure";
+  let purityPercentage = pyResult.purity_percentage != null ? pyResult.purity_percentage : (classLabel === 'PURE' ? 98 : classLabel === 'NO_OIL' ? 0 : 45);
+  let adulterationPercentage = pyResult.adulteration_percentage != null ? pyResult.adulteration_percentage : (classLabel === 'PURE' ? 2 : classLabel === 'NO_OIL' ? 0 : 55);
+
+  if (classLabel === 'UNCERTAIN' || !pyResult.is_certain) {
+    status = "Uncertain prediction. Please scan again.";
+    tier = "moderate";
+  } else if (classLabel === 'NO_OIL') {
+    status = "No Oil Present";
+    tier = "no_oil";
+    purityPercentage = 0;
+    adulterationPercentage = 0;
+  } else if (classLabel === 'PURE') {
+    status = "Pure Mustard Oil";
+    tier = "pure";
+  } else if (classLabel === 'ADULTERATED') {
+    status = "Adulterated Mustard Oil";
+    tier = "heavy";
+  }
 
   return {
     usingMlModel: true,
     isMlModel: true,
     modelPath: MODEL_DIR,
-    modelType: 'Random Forest Classifier (Mustard Oil)',
-    modelVersion: 'D:\\oilmodel (Mustard RF v1.0)',
+    modelType: 'ExtraTrees 3-Class Classifier (Mustard Oil)',
+    modelVersion: 'D:\\oilmodel (3-Class ExtraTrees v2.0)',
     oil_type: 'Mustard Oil',
     purityPercentage,
     adulterationPercentage,
     confidenceScore,
     status,
     tier,
-    primaryIndicator: `ML Random Forest Model (D:\\oilmodel) — P(Oil) = ${((pyResult.probability_oil_present || 0.95) * 100).toFixed(1)}%`,
+    primaryIndicator: `ML ExtraTrees 3-Class Model (D:\\oilmodel) — ${classLabel} (${confidenceScore}%)`,
     rawMlOutput: pyResult,
     deviationDetails: {
       pure_match: {
@@ -141,7 +159,7 @@ async function predictMustardOilML(sensorReadings) {
       pure: pureDist.toFixed(4),
       adulterated: adultDist.toFixed(4)
     },
-    matched_with: pureDist <= adultDist ? 'pure' : 'adulterated',
+    matched_with: classLabel === 'NO_OIL' ? 'no_oil' : (pureDist <= adultDist ? 'pure' : 'adulterated'),
     temperature: temp,
     scanId: `ML-MUSTARD-${Math.floor(100000 + Math.random() * 900000)}`
   };

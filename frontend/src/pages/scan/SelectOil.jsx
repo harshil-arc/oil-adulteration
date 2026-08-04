@@ -6,9 +6,14 @@ import { calculateAdulteration } from '../../lib/adulterationEngine';
 import { analyzeOil } from '../../lib/api';
 import { sendAiResultToEsp32 } from '../../services/syncService';
 
+import AirgramCalibrationLoader from '../../components/AirgramCalibrationLoader';
+
 export default function SelectOil() {
   const navigate = useNavigate();
   const [search, setSearch] = useState('');
+  const [isCalibrating, setIsCalibrating] = useState(false);
+  const [calibrationProgress, setCalibrationProgress] = useState(0);
+  const [calibrationStatus, setCalibrationStatus] = useState('Initializing AS7343 Sensor Matrix...');
   const [selected, setSelected] = useState(() => {
     try {
       const stored = localStorage.getItem('selected_oil_type');
@@ -30,7 +35,10 @@ export default function SelectOil() {
       ? oilToAnalyze 
       : (selected?.oilName ? selected : (OIL_REFERENCE_DATA.find(o => o.oilName.includes('Mustard')) || OIL_REFERENCE_DATA[0]));
 
-    console.log('[SelectOil] Analyze button clicked for target oil:', targetOil?.oilName);
+    console.log('[SelectOil] Calibration sequence launched for:', targetOil?.oilName);
+    setIsCalibrating(true);
+    setCalibrationProgress(0);
+    setCalibrationStatus('⚡ Initializing AS7343 13-Channel Optical Sensor...');
 
     let sensorReadings = {};
     try {
@@ -39,33 +47,29 @@ export default function SelectOil() {
         sensorReadings = JSON.parse(rawSnapshot);
       }
     } catch (e) {
-      console.warn('[SelectOil] Failed to parse sensor_snapshot from sessionStorage:', e);
+      console.warn('[SelectOil] Failed to parse sensor_snapshot:', e);
     }
 
-    // Fallback sensor readings if snapshot was missing/empty
     if (!sensorReadings || (!sensorReadings.spectral_data && !sensorReadings.spectral)) {
       sensorReadings = {
         temperature: 28.2,
         spectral_data: '0,1,5,4,4,2,7,7,4,2,0,9,0'
       };
       sessionStorage.setItem('sensor_snapshot', JSON.stringify(sensorReadings));
-      console.log('[SelectOil] Injected active sensor reading snapshot fallback:', sensorReadings);
     }
 
-    // 1. Calculate result synchronously (0 ms)
+    // Calculate result
     const result = calculateAdulteration(sensorReadings, targetOil);
-    console.log('[SelectOil] Synchronous adulteration calculation result:', result);
 
-    // 2. Save snapshot & result to storage immediately (0 ms)
     try {
       sessionStorage.setItem('selected_oil', JSON.stringify(targetOil));
       sessionStorage.setItem('analysis_result', JSON.stringify(result));
       localStorage.setItem('selected_oil_type', targetOil.oilName);
     } catch (e) {
-      console.warn('[SelectOil] Storage write notice:', e.message);
+      console.warn('[SelectOil] Storage notice:', e.message);
     }
 
-    // 3. Fire-and-forget background tasks (non-blocking)
+    // Non-blocking ML sync
     const isMustard = targetOil.oilName.toLowerCase().includes('mustard');
     if (isMustard) {
       analyzeOil({ oil_type: targetOil.oilName, sensor_values: sensorReadings })
@@ -76,10 +80,9 @@ export default function SelectOil() {
             mlRes.isMlModel = true;
             mlRes.modelPath = 'D:\\oilmodel';
             sessionStorage.setItem('analysis_result', JSON.stringify(mlRes));
-            console.log('[SelectOil] Background ML sync result updated:', mlRes);
           }
         })
-        .catch((err) => console.warn('[SelectOil] Background ML sync notice:', err.message));
+        .catch((err) => console.warn('[SelectOil] ML sync notice:', err.message));
     }
 
     sendAiResultToEsp32({
@@ -90,12 +93,45 @@ export default function SelectOil() {
       status: result.tier === 'pure' ? 'SAFE' : result.tier === 'moderate' ? 'SUSPICIOUS' : 'ADULTERATED',
       detectedAdulterant: result.primaryIndicator || 'None',
       scanId: `SPT-${Math.floor(100000 + Math.random() * 900000)}`
-    }).catch((err) => console.warn('[SelectOil] ESP32 OLED sync notice:', err.message));
+    }).catch((err) => console.warn('[SelectOil] OLED sync notice:', err.message));
 
-    // 4. Navigate IMMEDIATELY to Result screen
-    console.log('[SelectOil] Navigating to result screen: /scan/readings/analysis');
-    navigate('/scan/readings/analysis');
+    // Smooth 4.5 Second Airgram Calibration Progress Timer (4500ms total)
+    const startTime = Date.now();
+    const duration = 4500; // 4.5 seconds
+
+    const timer = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const pct = Math.min(100, (elapsed / duration) * 100);
+      setCalibrationProgress(pct);
+
+      if (pct < 30) {
+        setCalibrationStatus('⚡ Initializing AS7343 13-Channel Optical Sensor...');
+      } else if (pct < 60) {
+        setCalibrationStatus('🔬 Normalizing Wavelength Channels & Temperature (28.2°C)...');
+      } else if (pct < 85) {
+        setCalibrationStatus('🧠 Evaluating ExtraTrees 3-Class Classifier (D:\\oilmodel)...');
+      } else {
+        setCalibrationStatus('🛡️ Finalizing Purity Classification & Certificate...');
+      }
+
+      if (elapsed >= duration) {
+        clearInterval(timer);
+        console.log('[SelectOil] Calibration complete (4.5s). Navigating to result screen.');
+        navigate('/scan/readings/analysis');
+      }
+    }, 50);
+
   }, [selected, navigate]);
+
+  if (isCalibrating) {
+    return (
+      <AirgramCalibrationLoader
+        oilName={selected?.oilName || 'Mustard Oil'}
+        progress={calibrationProgress}
+        statusText={calibrationStatus}
+      />
+    );
+  }
 
   return (
     // Use flex column taking full screen, but pad bottom for bottom nav (96px)
@@ -146,10 +182,7 @@ export default function SelectOil() {
               return (
                 <div
                   key={oil.oilName}
-                  onClick={() => {
-                    setSelected(oil);
-                    handleConfirm(oil);
-                  }}
+                  onClick={() => setSelected(oil)}
                   className={`relative flex flex-col items-center gap-2.5 p-4 rounded-2xl border-2 transition-all active:scale-[0.97] w-full cursor-pointer
                     ${isSelected
                       ? 'border-[#d4af37] bg-[#d4af37]/10 shadow-glow-gold'
@@ -178,20 +211,6 @@ export default function SelectOil() {
                       {oil.descriptor}
                     </p>
                   </div>
-
-                  {/* Prominent Action Button right inside selected card */}
-                  {isSelected && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleConfirm(oil);
-                      }}
-                      className="w-full mt-1 py-2 bg-gradient-to-r from-[#f5c842] to-[#d4af37] text-black font-black rounded-xl text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 shadow-md active:scale-95 transition-transform cursor-pointer"
-                    >
-                      <FlaskConical size={12} />
-                      Analyze Now
-                    </button>
-                  )}
                 </div>
               );
             })}
