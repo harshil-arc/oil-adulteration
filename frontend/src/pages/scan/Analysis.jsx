@@ -12,6 +12,7 @@ import AdulterationWarningCard from '../../components/AdulterationWarningCard';
 import { processScanResult, getVerificationSettings } from '../../services/intelligenceService';
 import { sendAiResultToEsp32, clearEsp32OledResult } from '../../services/syncService';
 import { calculateAdulteration } from '../../lib/adulterationEngine';
+import { retrainMlModelApi } from '../../lib/api';
 
 // ─── Groq config (same as AiChatbot) ────────────────────────────────────────
 const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
@@ -258,17 +259,12 @@ export default function Analysis() {
       const specStr = typeof rawSpec === 'string' ? rawSpec : (Array.isArray(rawSpec) ? rawSpec.join(',') : '5,5,22,7,8,8,32,33,15,11,5,35,13');
       const temp = Number(sensorData.temperature || sensorData.temp || 28.2);
 
-      const res = await fetch('/api/ml/re-train', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          temperature: temp,
-          spectral_data: specStr,
-          corrected_class: correctedClass
-        })
+      const res = await retrainMlModelApi({
+        temperature: temp,
+        spectral_data: specStr,
+        corrected_class: correctedClass
       });
 
-      const data = await res.json();
       const updatedStatus = correctedClass === 'NO_OIL' ? 'No Oil Present' : correctedClass === 'PURE' ? 'Pure Mustard Oil' : 'Adulterated Mustard Oil';
       const updatedTier = correctedClass === 'NO_OIL' ? 'no_oil' : correctedClass === 'PURE' ? 'pure' : 'heavy';
       
@@ -629,11 +625,11 @@ Provide 2-3 likely adulterants only.`;
                   <select
                     value={correctedClass}
                     onChange={(e) => setCorrectedClass(e.target.value)}
-                    className="flex-1 bg-[var(--bg-elevated)] border border-[var(--border-color)] focus:border-purple-500 text-sm font-bold text-gray-200 rounded-xl p-3 outline-none cursor-pointer"
+                    className="flex-1 bg-[#0b0e14] border border-purple-500/50 focus:border-purple-400 text-sm font-bold text-white rounded-xl p-3 outline-none cursor-pointer shadow-md"
                   >
-                    <option value="NO_OIL">🚫 NO_OIL (No Oil Present / Air Baseline)</option>
-                    <option value="PURE">🟢 PURE (Pure Mustard Oil / Safe)</option>
-                    <option value="ADULTERATED">🔴 ADULTERATED (Adulterated Mustard Oil / Unsafe)</option>
+                    <option value="NO_OIL" className="bg-[#0b0e14] text-white py-2 font-medium">🚫 NO_OIL (No Oil Present / Air Baseline)</option>
+                    <option value="PURE" className="bg-[#0b0e14] text-white py-2 font-medium">🟢 PURE (Pure Mustard Oil / Safe)</option>
+                    <option value="ADULTERATED" className="bg-[#0b0e14] text-white py-2 font-medium">🔴 ADULTERATED (Adulterated Mustard Oil / Unsafe)</option>
                   </select>
 
                   <button

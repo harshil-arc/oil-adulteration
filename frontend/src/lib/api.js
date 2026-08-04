@@ -48,4 +48,7 @@ export const searchIngredients = (params) => api.get('/api/meal-planner/search-i
 export const validateIngredient = (payload) => api.post('/api/meal-planner/validate-ingredient', payload);
 export const getIngredientPairings = (params) => api.get('/api/meal-planner/pairings', { params });
 
+// ── Active ML Model Re-training Endpoint ──
+export const retrainMlModelApi = (payload) => api.post('/api/ml/re-train', payload);
+
 export default api;
