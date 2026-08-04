@@ -242,6 +242,13 @@ export default function Analysis() {
   const [isReTraining, setIsReTraining] = useState(false);
   const [retrainSuccess, setRetrainSuccess] = useState(false);
 
+  // AI state
+  const [adulterants, setAdulterants] = useState(null);
+  const [aiLoading, setAiLoading] = useState(true);
+
+  // Historical Timeline
+  const [timelineScans, setTimelineScans] = useState([]);
+
   const handleReTrainModel = async () => {
     setIsReTraining(true);
     setRetrainSuccess(false);
