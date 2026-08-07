@@ -141,6 +141,198 @@ export const ACTIVE_EMERGENCIES = [
       { stage: 'Government Response', time: '2026-07-18 02:00 PM', desc: '75,000 coastal residents relocated.' },
       { stage: 'NGOs Arrived', time: '2026-07-19 09:00 AM', desc: 'Relief kitchens active in Bhuj and Dwarka.' }
     ]
+  },
+  {
+    id: 'emg-uttarakhand-flashfloods-2026',
+    title: 'Uttarakhand Cloudburst & Chamoli Flash Floods',
+    category: 'Flood',
+    state: 'Uttarakhand',
+    districts: ['Chamoli', 'Rudraprayag', 'Pithoragarh'],
+    status: 'Critical',
+    severity: 'Critical',
+    updatedAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+    affectedPopulation: 68000,
+    activeCampsCount: 16,
+    respondingNgosCount: 10,
+    foodRequirement: 'High',
+    latitude: 30.5500,
+    longitude: 79.3300,
+    weather: 'Torrential Rain (92mm/hr)',
+    governmentAdvisory: 'Red Alert issued by State Disaster Management Authority. Air evacuation in progress near Alaknanda basin.',
+    startDate: '2026-08-01',
+    situationSummary: 'Cloudburst over Chamoli district triggered sudden flash floods along Alaknanda and Mandakini river valleys, disrupting road connectivity.',
+    requirementMeters: {
+      food: { percent: 80, urgency: 'Critical', status: '80% Shortage - Ready-to-Eat Food Packets & High Energy Bars' },
+      water: { percent: 85, urgency: 'Critical', status: '85% Shortage - Water Purification Tablets & Bottled Water' },
+      medicines: { percent: 75, urgency: 'High', status: '75% Needed - Emergency Trauma & First Aid Kits' },
+      blankets: { percent: 90, urgency: 'Critical', status: '90% Needed - Waterproof Tents & Thermal Blankets' }
+    },
+    priorityItems: [
+      { name: 'Energy Bars & Dry Biscuits', category: 'Biscuits', priority: 'Critical', unit: 'packs' },
+      { name: 'Waterproof Tents & Tarpaulins', category: 'Blankets', priority: 'Critical', unit: 'units' },
+      { name: 'Water Purification Tablets', category: 'Medicines', priority: 'Critical', unit: 'strips' }
+    ],
+    timeline: [
+      { stage: 'Cloudburst Reported', time: '2026-08-01 02:30 AM', desc: 'Sudden high intensity rainfall recorded in upper Chamoli.' },
+      { stage: 'Rescue Forces Deployed', time: '2026-08-01 05:00 AM', desc: 'NDRF & Army aviation helicopters mobilized.' }
+    ]
+  },
+  {
+    id: 'emg-himachal-beas-2026',
+    title: 'Himachal Pradesh Beas Basin Inundation & Landslides',
+    category: 'Landslide',
+    state: 'Himachal Pradesh',
+    districts: ['Kullu', 'Mandi', 'Shimla'],
+    status: 'Active',
+    severity: 'High',
+    updatedAt: new Date(Date.now() - 50 * 60 * 1000).toISOString(),
+    affectedPopulation: 54000,
+    activeCampsCount: 14,
+    respondingNgosCount: 8,
+    foodRequirement: 'High',
+    latitude: 31.9579,
+    longitude: 77.1095,
+    weather: 'Heavy Monsoonal Rain (16°C)',
+    governmentAdvisory: 'National Highway 21 closed due to rockslides. District administration setting up relief camps.',
+    startDate: '2026-08-02',
+    situationSummary: 'Overflowing Beas river and multiple landslide blockades cut off remote villages in Kullu-Manali sector.',
+    requirementMeters: {
+      food: { percent: 70, urgency: 'High', status: '70% Shortage - Dry Ration & Warm Meals' },
+      water: { percent: 60, urgency: 'Medium', status: '60% Shortage - Clean Water Cans' },
+      medicines: { percent: 65, urgency: 'High', status: '65% Needed - Essential Medicines & Bandages' }
+    },
+    priorityItems: [
+      { name: 'Dry Rice & Flour Rations', category: 'Dry Food', priority: 'High', unit: 'kg' },
+      { name: 'Warm Clothes & Jackets', category: 'Clothes', priority: 'High', unit: 'sets' }
+    ],
+    timeline: [
+      { stage: 'NH21 Blocked', time: '2026-08-02 08:00 AM', desc: 'Massive landslide near Aut tunnel.' }
+    ]
+  },
+  {
+    id: 'emg-bihar-kosi-2026',
+    title: 'Bihar Kosi River Severe Inundation Alert',
+    category: 'Flood',
+    state: 'Bihar',
+    districts: ['Saharasa', 'Supaul', 'Madhepura', 'Katihar'],
+    status: 'Critical',
+    severity: 'Critical',
+    updatedAt: new Date(Date.now() - 20 * 60 * 1000).toISOString(),
+    affectedPopulation: 190000,
+    activeCampsCount: 35,
+    respondingNgosCount: 18,
+    foodRequirement: 'Very High',
+    latitude: 25.8800,
+    longitude: 86.6000,
+    weather: 'Monsoonal Downpour (78mm/hr)',
+    governmentAdvisory: 'Kosi Barrage discharge reached 3.8 lakh cusecs. Evacuation order for low-lying embankment villages.',
+    startDate: '2026-07-28',
+    situationSummary: 'Massive water inflow from Nepal upper catchments inundated over 320 villages across Supaul and Saharasa districts.',
+    requirementMeters: {
+      food: { percent: 90, urgency: 'Critical', status: '90% Shortage - Dry Chura, Gur & Cooked Food' },
+      water: { percent: 88, urgency: 'Critical', status: '88% Shortage - Water Pouches & Chlorine Tablets' },
+      medicines: { percent: 70, urgency: 'High', status: '70% Needed - Anti-snake venom & ORS Packets' }
+    },
+    priorityItems: [
+      { name: 'Chura (Flattened Rice) & Gur', category: 'Dry Food', priority: 'Critical', unit: 'kg' },
+      { name: 'ORS Packets & Zinc Tablets', category: 'Medicines', priority: 'Critical', unit: 'boxes' }
+    ],
+    timeline: [
+      { stage: 'Barrage Gate Opened', time: '2026-07-28 05:00 AM', desc: '3.8 lakh cusecs water released.' }
+    ]
+  },
+  {
+    id: 'emg-odisha-storm-2026',
+    title: 'Odisha Bay of Bengal Cyclonic Depression Alert',
+    category: 'Cyclone',
+    state: 'Odisha',
+    districts: ['Puri', 'Jagatsinghpur', 'Kendrapara', 'Bhadrak'],
+    status: 'Active',
+    severity: 'High',
+    updatedAt: new Date(Date.now() - 40 * 60 * 1000).toISOString(),
+    affectedPopulation: 76000,
+    activeCampsCount: 22,
+    respondingNgosCount: 12,
+    foodRequirement: 'Moderate',
+    latitude: 19.8135,
+    longitude: 85.8312,
+    weather: 'Gale Wind (75km/h) & Heavy Rain',
+    governmentAdvisory: 'Fishermen advised not to venture into deep sea. Cyclone shelters activated along Odisha coastline.',
+    startDate: '2026-08-03',
+    situationSummary: 'Deep depression in Bay of Bengal causing heavy coastal downpours and storm surges in Puri and Kendrapara.',
+    requirementMeters: {
+      food: { percent: 55, urgency: 'Medium', status: '55% Shortage - Dry Ration Kits' },
+      water: { percent: 50, urgency: 'Medium', status: '50% Shortage - Drinking Water Containers' }
+    },
+    priorityItems: [
+      { name: 'Dry Ration Kits', category: 'Dry Food', priority: 'High', unit: 'kits' },
+      { name: 'Drinking Water (20L Cans)', category: 'Drinking Water', priority: 'High', unit: 'cans' }
+    ],
+    timeline: [
+      { stage: 'IMD Red Alert', time: '2026-08-03 11:00 AM', desc: 'Heavy rainfall alert for 8 coastal districts.' }
+    ]
+  },
+  {
+    id: 'emg-delhi-yamuna-2026',
+    title: 'Delhi Yamuna River Danger Mark Crossing',
+    category: 'Flood',
+    state: 'Delhi',
+    districts: ['East Delhi', 'North East Delhi', 'Central Delhi'],
+    status: 'Active',
+    severity: 'High',
+    updatedAt: new Date(Date.now() - 60 * 60 * 1000).toISOString(),
+    affectedPopulation: 31000,
+    activeCampsCount: 15,
+    respondingNgosCount: 8,
+    foodRequirement: 'High',
+    latitude: 28.6600,
+    longitude: 77.2300,
+    weather: 'Overcast (29°C)',
+    governmentAdvisory: 'Yamuna water level reached 206.20 meters (+0.87m above danger mark). Relief tents pitched near Old Railway Bridge.',
+    startDate: '2026-08-04',
+    situationSummary: 'Water release from Hathnikund Barrage raised Yamuna water level, evacuating floodplain residents to relief tents.',
+    requirementMeters: {
+      food: { percent: 65, urgency: 'High', status: '65% Shortage - Cooked Food Distribution' },
+      water: { percent: 60, urgency: 'Medium', status: '60% Shortage - Tanker Drinking Water' }
+    },
+    priorityItems: [
+      { name: 'Cooked Khichdi Packets', category: 'Cooked Food', priority: 'High', unit: 'packets' },
+      { name: 'Tarpaulin Sheets', category: 'Blankets', priority: 'High', unit: 'sheets' }
+    ],
+    timeline: [
+      { stage: 'Danger Mark Crossed', time: '2026-08-04 04:00 PM', desc: 'Yamuna crossed 205.33m danger mark.' }
+    ]
+  },
+  {
+    id: 'emg-jk-landslide-2026',
+    title: 'Jammu & Kashmir Ganderbal Landslide & Highway Cutoff',
+    category: 'Landslide',
+    state: 'Jammu & Kashmir',
+    districts: ['Ganderbal', 'Anantnag', 'Ramban'],
+    status: 'Active',
+    severity: 'High',
+    updatedAt: new Date(Date.now() - 90 * 60 * 1000).toISOString(),
+    affectedPopulation: 28000,
+    activeCampsCount: 8,
+    respondingNgosCount: 5,
+    foodRequirement: 'Moderate',
+    latitude: 34.3000,
+    longitude: 75.3000,
+    weather: 'Continuous Rain (14°C)',
+    governmentAdvisory: 'Jammu-Srinagar National Highway (NH-44) blocked at Ramban. Traffic diverted.',
+    startDate: '2026-08-03',
+    situationSummary: 'Shooting stones and landslide debris halted highway movement near Ramban and Sonamarg bypass.',
+    requirementMeters: {
+      food: { percent: 50, urgency: 'Medium', status: '50% Shortage - Food Packets for Stranded Passengers' },
+      blankets: { percent: 75, urgency: 'High', status: '75% Needed - Warm Blankets' }
+    },
+    priorityItems: [
+      { name: 'Hot Meals & Tea', category: 'Cooked Food', priority: 'High', unit: 'servings' },
+      { name: 'Woolen Blankets', category: 'Blankets', priority: 'High', unit: 'pieces' }
+    ],
+    timeline: [
+      { stage: 'NH-44 Closed', time: '2026-08-03 01:00 PM', desc: 'Shooting stones near Panthyal.' }
+    ]
   }
 ];
 

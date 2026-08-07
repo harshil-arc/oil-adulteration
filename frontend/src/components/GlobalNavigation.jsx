@@ -18,6 +18,7 @@ export default function GlobalNavigation() {
     { id: 'scan', label: 'Oil Analysis', desc: 'Real-time Adulteration Check', icon: ScanLine, path: '/scan', roles: ['citizen', 'inspector', 'admin'] },
     { id: 'hotspots', label: 'Safety Hotspots', desc: 'Interactive Adulteration Map', icon: MapIcon, path: '/hotspots', roles: ['citizen', 'inspector', 'senior_officer', 'admin'] },
     { id: 'community', label: 'Safety Intelligence', desc: 'Complaints, Recalls & Labs', icon: Users, path: '/community', roles: ['citizen', 'vendor', 'inspector', 'laboratory', 'ngo', 'senior_officer', 'admin'] },
+    { id: 'disaster', label: 'Disaster & Emergency', desc: 'Live GDACS Alerts & Monitoring', icon: Zap, path: '/disaster', roles: ['citizen', 'ngo', 'volunteer', 'inspector', 'senior_officer', 'admin'] },
     { id: 'relief', label: 'Food Relief Network', desc: 'Surplus Food & NGO Logistics', icon: Heart, path: '/relief', roles: ['citizen', 'ngo', 'volunteer', 'admin'] },
     { id: 'nutrition', label: 'AI Meal Planner', desc: 'Smart Meal Planner & Recipes', icon: Apple, path: '/nutrition', roles: ['citizen', 'admin'] },
     { id: 'fitness', label: 'AI Fitness Coach', desc: 'Adaptive Workouts & Burn Engine', icon: Dumbbell, path: '/fitness', roles: ['citizen', 'admin'] },

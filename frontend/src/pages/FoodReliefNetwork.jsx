@@ -18,6 +18,7 @@ import {
 } from '../data/ngoDisasterDataset';
 import { 
   fetchActiveEmergencies, 
+  fetchLiveMergedActiveEmergencies,
   fetchNgosForEmergency, 
   fetchReliefCampsForEmergency, 
   fetchCommunityKitchensForEmergency, 
@@ -25,6 +26,7 @@ import {
   getSmartAiRecommendation 
 } from '../services/reliefCoordinationService';
 import DonationWizardModal from '../components/DonationWizardModal';
+import OverpassEmergencySection from '../components/overpass/OverpassEmergencySection';
 import 'leaflet/dist/leaflet.css';
 
 // Fix default leaflet icons
@@ -97,18 +99,54 @@ export default function FoodReliefNetwork() {
   // State Management
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
+  const [allMergedEmergencies, setAllMergedEmergencies] = useState(ACTIVE_EMERGENCIES);
   const [selectedEmergency, setSelectedEmergency] = useState(ACTIVE_EMERGENCIES[0]);
   const [selectedNode, setSelectedNode] = useState(null);
   const [donationWizardOpen, setDonationWizardOpen] = useState(false);
   const [donationTarget, setDonationTarget] = useState(null);
 
   // Map state
-  const [mapCenter, setMapCenter] = useState([26.1445, 91.7362]); // Assam center
+  const [mapCenter, setMapCenter] = useState([20.5937, 78.9629]); // India Center
+
+  // Async load live GDACS alerts + Indian active emergencies
+  useEffect(() => {
+    async function loadLiveEmergencies() {
+      try {
+        const liveMerged = await fetchLiveMergedActiveEmergencies('All', '');
+        if (liveMerged && liveMerged.length > 0) {
+          setAllMergedEmergencies(liveMerged);
+          if (!selectedEmergency) {
+            setSelectedEmergency(liveMerged[0]);
+          }
+        }
+      } catch (err) {
+        console.warn('[FoodReliefNetwork] Error fetching live emergencies:', err);
+      }
+    }
+
+    loadLiveEmergencies();
+  }, []);
 
   // Filtered active emergencies
   const emergencies = useMemo(() => {
-    return fetchActiveEmergencies(selectedCategory, searchQuery);
-  }, [selectedCategory, searchQuery]);
+    let list = [...allMergedEmergencies];
+
+    if (selectedCategory && selectedCategory !== 'All') {
+      list = list.filter(e => e.category.toLowerCase() === selectedCategory.toLowerCase());
+    }
+
+    if (searchQuery && searchQuery.trim().length > 0) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter(e => 
+        e.title.toLowerCase().includes(q) ||
+        e.state.toLowerCase().includes(q) ||
+        (Array.isArray(e.districts) && e.districts.some(d => d.toLowerCase().includes(q))) ||
+        e.category.toLowerCase().includes(q)
+      );
+    }
+
+    return list;
+  }, [allMergedEmergencies, selectedCategory, searchQuery]);
 
   // Data for currently selected emergency
   const activeNgos = useMemo(() => {
@@ -129,23 +167,28 @@ export default function FoodReliefNetwork() {
 
   // Smart AI Recommendation
   const aiRec = useMemo(() => {
-    return getSmartAiRecommendation(mapCenter[0], mapCenter[1]);
-  }, [mapCenter]);
+    return getSmartAiRecommendation(mapCenter[0], mapCenter[1], allMergedEmergencies);
+  }, [mapCenter, allMergedEmergencies]);
 
-  // Aggregate Map Markers for active emergency
+  // Aggregate Map Markers for ALL active emergencies across India & GDACS feed
   const mapNodes = useMemo(() => {
     const nodes = [];
-    if (selectedEmergency) {
-      nodes.push({
-        id: selectedEmergency.id,
-        name: selectedEmergency.title,
-        type: 'Disaster Location',
-        latitude: selectedEmergency.latitude,
-        longitude: selectedEmergency.longitude,
-        status: selectedEmergency.status,
-        details: `${selectedEmergency.affectedPopulation.toLocaleString()} people affected`
-      });
-    }
+    
+    // Add ALL live active emergency locations onto the map
+    emergencies.forEach(emg => {
+      if (typeof emg.latitude === 'number' && typeof emg.longitude === 'number') {
+        nodes.push({
+          id: emg.id,
+          name: emg.title,
+          type: 'Disaster Location',
+          latitude: emg.latitude,
+          longitude: emg.longitude,
+          status: emg.status,
+          severity: emg.severity,
+          details: `${(emg.affectedPopulation || 0).toLocaleString()} people affected`
+        });
+      }
+    });
 
     activeNgos.forEach(n => nodes.push({ ...n, type: 'NGO' }));
     activeCamps.forEach(c => nodes.push({ ...c, type: 'Relief Camp' }));
@@ -153,7 +196,7 @@ export default function FoodReliefNetwork() {
     activeGovtCenters.forEach(g => nodes.push({ ...g, type: 'Government Collection Center' }));
 
     return nodes;
-  }, [selectedEmergency, activeNgos, activeCamps, activeKitchens, activeGovtCenters]);
+  }, [emergencies, activeNgos, activeCamps, activeKitchens, activeGovtCenters]);
 
   const handleSelectEmergency = (emg) => {
     setSelectedEmergency(emg);
@@ -634,6 +677,11 @@ export default function FoodReliefNetwork() {
                   </div>
                 ))}
               </div>
+            </div>
+
+            {/* OPENSTREETMAP OVERPASS API EMERGENCY RESOURCES */}
+            <div className="pt-4 border-t border-[var(--border-color)]">
+              <OverpassEmergencySection activeGdacsAlert={selectedEmergency} />
             </div>
 
           </div>

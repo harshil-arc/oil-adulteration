@@ -170,7 +170,13 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+const gdacsRoutes = require('./routes/gdacsRoutes');
+const overpassRoutes = require('./routes/overpassRoutes');
+
 // ── Routes ────────────────────────────────────────────────
+app.use('/api/gdacs', gdacsRoutes);
+app.use('/api/disasters/gdacs', gdacsRoutes);
+app.use('/api/overpass', overpassRoutes);
 app.use('/api/data', dataRoutes);
 app.use('/api/ingest-reading', dataRoutes);
 app.use('/api/history', historyRoutes);
