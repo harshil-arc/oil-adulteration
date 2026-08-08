@@ -32,73 +32,70 @@ export default function GdacsAlertCard({ alert, onSelect }) {
   const severityConfig = SEVERITY_CONFIG[alert.severity] || SEVERITY_CONFIG.Green;
 
   return (
-    <div className="group relative rounded-3xl bg-white dark:bg-[#161b22] border border-gray-200 dark:border-[#30363d] p-5 shadow-sm hover:shadow-xl hover:border-red-500/30 transition-all duration-300 flex flex-col justify-between">
+    <div className="group relative rounded-3xl bg-[#11151e] border border-gray-800 p-5 shadow-lg hover:shadow-2xl hover:border-red-500/40 transition-all duration-300 flex flex-col justify-between">
       {/* Top Meta Bar */}
       <div>
         <div className="flex items-center justify-between gap-2 mb-3">
-          <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-2xl bg-red-500/10 text-red-500 flex items-center justify-center shrink-0 border border-red-500/20 group-hover:scale-110 transition-transform">
-              <CategoryIcon disasterType={alert.disasterType} className="w-5 h-5" />
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-2xl bg-red-500/15 text-red-400 flex items-center justify-center shrink-0 border border-red-500/30 group-hover:scale-110 transition-transform">
+              <CategoryIcon disasterType={alert.disasterType} className="w-4 h-4" />
             </div>
             <div>
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-500 dark:text-gray-400 block">
-                {alert.disasterType}
-              </span>
-              <div className="flex items-center gap-1 text-[11px] font-bold text-gray-900 dark:text-white">
-                <MapPin size={12} className="text-red-500 shrink-0" />
-                <span className="truncate max-w-[140px] sm:max-w-[200px]">{alert.country}</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-black uppercase tracking-wider !text-gray-200">
+                  {alert.disasterType}
+                </span>
+                <span className="text-[10px] text-gray-500">•</span>
+                <span className="text-[10px] font-bold !text-gray-300 flex items-center gap-0.5">
+                  <MapPin size={10} className="text-red-400" />
+                  {alert.country}
+                </span>
               </div>
             </div>
           </div>
 
           {/* Severity Badge */}
           <div className="flex flex-col items-end">
-            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-extrabold uppercase border ${severityConfig.badgeBg}`}>
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider border ${severityConfig.badgeBg}`}>
               <span className={`w-1.5 h-1.5 rounded-full ${severityConfig.dotClass}`} />
-              {alert.severity} ({severityConfig.label})
+              {alert.severity === 'Red' ? 'RED (HIGH)' : alert.severity === 'Orange' ? 'ORANGE (MEDIUM)' : `${alert.severity} (LOW)`}
             </span>
           </div>
         </div>
 
         {/* Title */}
-        <h3 className="text-sm font-black text-gray-900 dark:text-white leading-snug line-clamp-2 mb-2 group-hover:text-red-500 transition-colors">
+        <h3 className="text-sm font-black !text-white forced-white leading-snug line-clamp-2 mb-2 group-hover:!text-red-400 transition-colors">
           {alert.title}
         </h3>
 
         {/* Location & Date */}
-        <div className="flex items-center justify-between text-[10px] font-semibold text-gray-500 dark:text-gray-400 mb-3 pt-1 border-t border-gray-100 dark:border-[#30363d]">
-          <span className="truncate max-w-[180px]">Location: {alert.location}</span>
-          <span className="flex items-center gap-1 shrink-0">
-            <Calendar size={11} />
-            {alert.date}
-          </span>
+        <div className="flex items-center justify-between text-[10px] font-semibold !text-gray-300 mb-3 pt-1 border-t border-gray-800/80">
+          <span className="truncate max-w-[200px] !text-gray-300">Lo... 📅 {alert.date}</span>
         </div>
 
         {/* Description */}
-        <p className="text-xs text-gray-600 dark:text-gray-300 line-clamp-3 leading-relaxed mb-4">
+        <p className="text-xs !text-gray-200 line-clamp-3 leading-relaxed mb-4">
           {alert.description}
         </p>
       </div>
 
-      {/* Action Button */}
-      <div className="pt-2 flex items-center justify-between gap-3 border-t border-gray-100 dark:border-[#30363d]">
+      {/* Action Buttons */}
+      <div className="pt-2 flex items-center justify-between gap-3 border-t border-gray-800/80">
         <button
           onClick={() => onSelect && onSelect(alert)}
-          className="text-xs font-bold text-gray-700 dark:text-gray-300 hover:text-red-500 dark:hover:text-red-400 transition-colors flex items-center gap-1 cursor-pointer"
+          className="text-xs font-bold !text-gray-300 hover:!text-white transition-colors flex items-center gap-1 cursor-pointer"
         >
           <span>View Details</span>
           <ChevronRight size={14} />
         </button>
 
-        <a
-          href={alert.link}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 active:scale-95 text-white text-xs font-bold transition-all shadow-md shadow-red-600/20"
+        <button
+          onClick={() => onSelect && onSelect(alert)}
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-red-600 hover:bg-red-500 active:scale-95 text-white text-xs font-black transition-all shadow-md shadow-red-600/30 cursor-pointer"
         >
-          <span>Read More</span>
-          <ExternalLink size={12} />
-        </a>
+          <span className="!text-white forced-white">Read More</span>
+          <ChevronRight size={14} />
+        </button>
       </div>
     </div>
   );

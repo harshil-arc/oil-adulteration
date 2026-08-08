@@ -25,6 +25,7 @@ import {
   fetchGovtCollectionCentersForEmergency, 
   getSmartAiRecommendation 
 } from '../services/reliefCoordinationService';
+import { getNavigationUrl } from '../models/overpassModel';
 import DonationWizardModal from '../components/DonationWizardModal';
 import OverpassEmergencySection from '../components/overpass/OverpassEmergencySection';
 import 'leaflet/dist/leaflet.css';
@@ -93,7 +94,7 @@ function ChangeMapView({ center }) {
   return null;
 }
 
-export default function FoodReliefNetwork() {
+export default function FoodReliefNetwork({ isEmbedded = false }) {
   const navigate = useNavigate();
 
   // State Management
@@ -150,11 +151,11 @@ export default function FoodReliefNetwork() {
 
   // Data for currently selected emergency
   const activeNgos = useMemo(() => {
-    return fetchNgosForEmergency(selectedEmergency?.id);
+    return fetchNgosForEmergency(selectedEmergency);
   }, [selectedEmergency]);
 
   const activeCamps = useMemo(() => {
-    return fetchReliefCampsForEmergency(selectedEmergency?.id);
+    return fetchReliefCampsForEmergency(selectedEmergency);
   }, [selectedEmergency]);
 
   const activeKitchens = useMemo(() => {
@@ -210,40 +211,44 @@ export default function FoodReliefNetwork() {
   };
 
   return (
-    <div className="min-h-screen theme-bg theme-text pb-28 pt-safe relative overflow-x-hidden">
+    <div className={isEmbedded ? "space-y-6" : "min-h-screen theme-bg theme-text pb-28 pt-safe relative overflow-x-hidden"}>
       
       {/* Glow backdrop */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-red-500 opacity-[0.06] rounded-full blur-[140px] pointer-events-none" />
+      {!isEmbedded && (
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[300px] bg-red-500 opacity-[0.06] rounded-full blur-[140px] pointer-events-none" />
+      )}
 
       {/* ── 1. HEADER & BRANDING ────────────────────────────────────────── */}
-      <div className="px-5 pt-4 pb-3 flex items-center justify-between border-b border-[var(--border-color)] bg-[var(--bg-card)]/90 backdrop-blur-md sticky top-0 z-30">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-400 shrink-0 shadow-glow-red">
-            <LifeBuoy size={22} />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg font-black tracking-tight text-white">
-                Relief & <span className="text-red-400">Disaster</span> Platform
-              </h1>
-              <span className="bg-red-500/20 text-red-300 border border-red-500/40 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" /> NDMA Sync
-              </span>
+      {!isEmbedded && (
+        <div className="px-5 pt-4 pb-3 flex items-center justify-between border-b border-[var(--border-color)] bg-[var(--bg-card)]/90 backdrop-blur-md sticky top-0 z-30">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-400 shrink-0 shadow-glow-red">
+              <LifeBuoy size={22} />
             </div>
-            <p className="text-[10px] text-gray-400 font-medium">Real-Time Humanitarian Coordination & Food Dispatch</p>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg font-black tracking-tight text-white">
+                  Relief & <span className="text-red-400">Disaster</span> Platform
+                </h1>
+                <span className="bg-red-500/20 text-red-300 border border-red-500/40 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" /> NDMA Sync
+                </span>
+              </div>
+              <p className="text-[10px] text-gray-400 font-medium">Real-Time Humanitarian Coordination & Food Dispatch</p>
+            </div>
           </div>
+
+          <button 
+            onClick={() => navigate('/community')}
+            className="p-2.5 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-color)] text-gray-400 hover:text-white transition-colors"
+            title="Community Redistribution"
+          >
+            <Heart size={18} className="text-rose-400" />
+          </button>
         </div>
+      )}
 
-        <button 
-          onClick={() => navigate('/community')}
-          className="p-2.5 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-color)] text-gray-400 hover:text-white transition-colors"
-          title="Community Redistribution"
-        >
-          <Heart size={18} className="text-rose-400" />
-        </button>
-      </div>
-
-      <div className="p-4 space-y-6 max-w-lg mx-auto">
+      <div className={isEmbedded ? "space-y-6 w-full" : "p-4 space-y-6 max-w-lg mx-auto"}>
 
         {/* ── 2. SEARCH & EMERGENCY CATEGORY FILTER CHIPS ─────────────────── */}
         <div className="space-y-3">
@@ -419,8 +424,8 @@ export default function FoodReliefNetwork() {
               zoomControl={false}
             >
               <TileLayer
-                attribution='&copy; ESRI / CartoDB'
-                url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
               <ChangeMapView center={mapCenter} />
 
@@ -433,10 +438,41 @@ export default function FoodReliefNetwork() {
                     click: () => setSelectedNode(node)
                   }}
                 >
-                  <Popup className="custom-popup">
-                    <div className="p-2 text-xs">
-                      <strong className="text-white block">{node.name}</strong>
-                      <span className="text-gray-400 text-[10px] font-mono">{node.type}</span>
+                  <Popup className="relief-map-popup">
+                    <div className="p-2 text-xs font-sans max-w-[240px]">
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <span className="px-2 py-0.5 rounded text-[9px] font-black uppercase bg-emerald-100 text-emerald-800 border border-emerald-300">
+                          {node.type}
+                        </span>
+                        {node.distanceKm && (
+                          <span className="font-mono text-[9px] font-bold text-gray-600">
+                            {node.distanceKm} km
+                          </span>
+                        )}
+                      </div>
+                      <strong className="text-gray-900 block text-xs font-black leading-tight mb-1">
+                        {node.name}
+                      </strong>
+                      {node.address && (
+                        <p className="text-[10px] text-gray-700 font-medium mb-1">
+                          📍 {node.address}
+                        </p>
+                      )}
+                      {node.contactNumber && (
+                        <p className="text-[10px] text-blue-700 font-bold mb-1">
+                          📞 {node.contactNumber}
+                        </p>
+                      )}
+                      {node.latitude && node.longitude && (
+                        <a
+                          href={getNavigationUrl(node.latitude, node.longitude, node.name, selectedEmergency?.latitude, selectedEmergency?.longitude)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="mt-1.5 w-full block text-center py-1.5 bg-blue-600 hover:bg-blue-700 !text-white forced-white font-black text-[10px] rounded-lg shadow-sm cursor-pointer"
+                        >
+                          Navigate via Maps →
+                        </a>
+                      )}
                     </div>
                   </Popup>
                 </Marker>
@@ -527,49 +563,64 @@ export default function FoodReliefNetwork() {
 
               <div className="space-y-3">
                 {activeNgos.map(ngo => (
-                  <div key={ngo.id} className="bg-[var(--bg-elevated)] p-4 rounded-2xl border border-[var(--border-color)] space-y-3">
+                  <div key={ngo.id} className="bg-[#121620] p-4 rounded-2xl border border-gray-800 space-y-3 text-white">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-start gap-3">
-                        <img src={ngo.logo} alt={ngo.name} className="w-10 h-10 rounded-xl object-cover border border-emerald-500/30 shrink-0" />
-                        <div>
-                          <div className="flex items-center gap-1.5">
-                            <h4 className="text-xs font-black text-white">{ngo.name}</h4>
+                        <img src={ngo.logo} alt={ngo.name} className="w-11 h-11 rounded-xl object-cover border border-emerald-500/40 shrink-0 mt-0.5" />
+                        <div className="space-y-1">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <h4 className="text-xs font-black !text-white forced-white">{ngo.name}</h4>
                             <ShieldCheck size={14} className="text-emerald-400 shrink-0" />
+                            <span className="text-[9px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                              {ngo.verificationBadge || 'Verified NGO'}
+                            </span>
                           </div>
-                          <p className="text-[10px] text-gray-400 font-mono mt-0.5">📍 {ngo.address}</p>
-                          <p className="text-[10px] text-emerald-400 font-bold mt-0.5">Distance: ~{ngo.distanceKm} km away • {ngo.operatingStatus}</p>
+                          
+                          <p className="text-[11px] text-gray-300 font-medium leading-tight">
+                            📍 <strong>Address:</strong> {ngo.address}
+                          </p>
+                          <p className="text-[11px] text-emerald-400 font-bold">
+                            🧭 <strong>Direction & Distance:</strong> {ngo.direction || `~${ngo.distanceKm} km away`} • Status: {ngo.operatingStatus}
+                          </p>
+                          <p className="text-[11px] text-blue-400 font-bold flex items-center gap-2">
+                            <span>📞 <strong>Contact:</strong> {ngo.contactNumber}</span>
+                            {ngo.email && <span className="text-gray-400 text-[10px]">({ngo.email})</span>}
+                          </p>
                         </div>
                       </div>
                     </div>
 
                     {/* Accepted Categories Chips */}
                     <div className="flex flex-wrap gap-1.5 pt-1">
+                      <span className="text-[9px] font-bold text-gray-400 uppercase self-center mr-1">Accepting:</span>
                       {ngo.acceptedCategories.map(cat => (
-                        <span key={cat} className="text-[9px] bg-emerald-500/15 text-emerald-300 px-2 py-0.5 rounded-lg border border-emerald-500/30 font-bold">
+                        <span key={cat} className="text-[9px] bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-lg border border-emerald-500/40 font-bold">
                           ✓ {cat}
                         </span>
                       ))}
                     </div>
 
                     {/* Action Buttons */}
-                    <div className="grid grid-cols-3 gap-2 pt-2 border-t border-gray-800">
-                      <button
-                        onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${ngo.latitude},${ngo.longitude}`, '_blank')}
-                        className="py-2.5 bg-gray-800 text-gray-300 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1 hover:text-white"
+                    <div className="grid grid-cols-3 gap-2 pt-2.5 border-t border-gray-800">
+                      <a
+                        href={getNavigationUrl(ngo.latitude, ngo.longitude, ngo.name, selectedEmergency?.latitude, selectedEmergency?.longitude)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="py-2.5 bg-blue-600 hover:bg-blue-500 !text-white forced-white rounded-xl text-[10px] font-black flex items-center justify-center gap-1 shadow-md cursor-pointer transition-colors"
                       >
-                        <Navigation size={12} className="rotate-45" /> Directions
-                      </button>
-                      <button
-                        onClick={() => window.open(`tel:${ngo.contactNumber}`)}
-                        className="py-2.5 bg-gray-800 text-gray-300 rounded-xl text-[10px] font-bold flex items-center justify-center gap-1 hover:text-white"
+                        <Navigation size={12} /> Navigate
+                      </a>
+                      <a
+                        href={`tel:${ngo.contactNumber}`}
+                        className="py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-200 hover:text-white rounded-xl text-[10px] font-bold flex items-center justify-center gap-1 border border-gray-700 transition-colors cursor-pointer"
                       >
-                        <Phone size={12} /> Call
-                      </button>
+                        <Phone size={12} className="text-emerald-400" /> Call NGO
+                      </a>
                       <button
                         onClick={() => handleOpenDonationWizard(ngo)}
-                        className="py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-black font-black rounded-xl text-[10px] flex items-center justify-center gap-1 shadow-glow-teal hover:scale-105 transition-transform"
+                        className="py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-black font-black rounded-xl text-[10px] flex items-center justify-center gap-1 shadow-lg cursor-pointer hover:scale-105 transition-transform"
                       >
-                        <Heart size={12} /> Donate
+                        <Heart size={12} /> Donate Now
                       </button>
                     </div>
                   </div>
@@ -588,13 +639,23 @@ export default function FoodReliefNetwork() {
 
               <div className="space-y-3">
                 {activeCamps.map(camp => (
-                  <div key={camp.id} className="bg-[var(--bg-elevated)] p-4 rounded-2xl border border-[var(--border-color)] space-y-3">
-                    <div className="flex justify-between items-start">
+                  <div key={camp.id} className="bg-[#121620] p-4 rounded-2xl border border-gray-800 space-y-3 text-white">
+                    <div className="flex justify-between items-start gap-3">
                       <div>
-                        <h4 className="text-xs font-black text-white">{camp.name}</h4>
-                        <p className="text-[10px] text-gray-400 font-mono mt-0.5">Landmark: {camp.nearestLandmark}</p>
+                        <h4 className="text-xs font-black !text-white forced-white">{camp.name}</h4>
+                        <p className="text-[11px] text-gray-300 font-medium mt-1">
+                          📍 <strong>Address:</strong> {camp.address || camp.nearestLandmark}
+                        </p>
+                        {camp.contactNumber && (
+                          <p className="text-[11px] text-blue-400 font-bold mt-0.5">
+                            📞 <strong>Contact Shelter:</strong> {camp.contactNumber}
+                          </p>
+                        )}
+                        <p className="text-[10px] text-amber-400 font-bold mt-0.5">
+                          📍 Landmark: {camp.nearestLandmark}
+                        </p>
                       </div>
-                      <span className="text-[10px] bg-blue-500/20 text-blue-300 font-mono font-bold px-2 py-0.5 rounded-full border border-blue-500/30">
+                      <span className="text-[10px] bg-blue-500/20 text-blue-300 font-mono font-black px-2.5 py-1 rounded-full border border-blue-500/40 shrink-0">
                         {camp.peopleSheltered} / {camp.capacity} Sheltered
                       </span>
                     </div>
@@ -603,24 +664,41 @@ export default function FoodReliefNetwork() {
                     <div className="grid grid-cols-3 gap-2 text-center text-[9px] bg-black/40 p-2 rounded-xl border border-gray-800 font-bold">
                       <div>
                         <span className="text-gray-400 block">Breakfast</span>
-                        <span className={camp.mealsRequired.breakfast === 'Required' ? 'text-red-400' : 'text-emerald-400'}>{camp.mealsRequired.breakfast}</span>
+                        <span className={camp.mealsRequired.breakfast === 'Required' ? 'text-red-400 font-black' : 'text-emerald-400'}>{camp.mealsRequired.breakfast}</span>
                       </div>
                       <div className="border-x border-gray-800">
                         <span className="text-gray-400 block">Lunch</span>
-                        <span className={camp.mealsRequired.lunch === 'Required' ? 'text-red-400' : 'text-emerald-400'}>{camp.mealsRequired.lunch}</span>
+                        <span className={camp.mealsRequired.lunch === 'Required' ? 'text-red-400 font-black' : 'text-emerald-400'}>{camp.mealsRequired.lunch}</span>
                       </div>
                       <div>
                         <span className="text-gray-400 block">Dinner</span>
-                        <span className={camp.mealsRequired.dinner === 'Required' ? 'text-red-400' : 'text-emerald-400'}>{camp.mealsRequired.dinner}</span>
+                        <span className={camp.mealsRequired.dinner === 'Required' ? 'text-red-400 font-black' : 'text-emerald-400'}>{camp.mealsRequired.dinner}</span>
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => handleOpenDonationWizard(camp)}
-                      className="w-full py-3 bg-gradient-to-r from-blue-500 to-indigo-600 text-white font-black text-xs uppercase tracking-wider rounded-xl shadow-glow-blue flex items-center justify-center gap-2 hover:scale-[1.01] transition-transform"
-                    >
-                      <Heart size={14} /> Deliver Food / Supplies to Camp
-                    </button>
+                    {/* Action Buttons */}
+                    <div className="grid grid-cols-3 gap-2 pt-2 border-t border-gray-800">
+                      <a
+                        href={getNavigationUrl(camp.latitude, camp.longitude, camp.name, selectedEmergency?.latitude, selectedEmergency?.longitude)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="py-2.5 bg-blue-600 hover:bg-blue-500 !text-white forced-white rounded-xl text-[10px] font-black flex items-center justify-center gap-1 shadow-md cursor-pointer transition-colors"
+                      >
+                        <Navigation size={12} /> Navigate
+                      </a>
+                      <a
+                        href={`tel:${camp.contactNumber}`}
+                        className="py-2.5 bg-gray-800 hover:bg-gray-700 text-gray-200 hover:text-white rounded-xl text-[10px] font-bold flex items-center justify-center gap-1 border border-gray-700 transition-colors cursor-pointer"
+                      >
+                        <Phone size={12} className="text-blue-400" /> Call Shelter
+                      </a>
+                      <button
+                        onClick={() => handleOpenDonationWizard(camp)}
+                        className="py-2.5 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-400 hover:to-indigo-500 text-white font-black rounded-xl text-[10px] flex items-center justify-center gap-1 shadow-md cursor-pointer hover:scale-105 transition-transform"
+                      >
+                        <Heart size={12} /> Deliver Food
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -677,11 +755,6 @@ export default function FoodReliefNetwork() {
                   </div>
                 ))}
               </div>
-            </div>
-
-            {/* OPENSTREETMAP OVERPASS API EMERGENCY RESOURCES */}
-            <div className="pt-4 border-t border-[var(--border-color)]">
-              <OverpassEmergencySection activeGdacsAlert={selectedEmergency} />
             </div>
 
           </div>

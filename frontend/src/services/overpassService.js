@@ -17,8 +17,46 @@ const OVERPASS_CLIENT_SERVERS = [
 
 /**
  * IP-based Location Fallback if Browser Geolocation Fails
+ * Queries 4 distinct free IP geolocation providers for high precision
  */
 export async function fetchIpLocation() {
+  // Provider 1: ipwho.is (fast, highly accurate, no CORS restriction)
+  try {
+    const res = await fetch('https://ipwho.is/', { timeout: 4000 });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.success && data.latitude && data.longitude) {
+        return {
+          lat: data.latitude,
+          lon: data.longitude,
+          city: `${data.city || data.region || 'Local Area'}, ${data.country || 'India'}`,
+          source: 'ipwhois'
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('[IP Location] ipwho.is failed, trying next provider...', err.message);
+  }
+
+  // Provider 2: ip-api.com
+  try {
+    const res = await fetch('http://ip-api.com/json/?fields=status,country,regionName,city,lat,lon', { timeout: 4000 });
+    if (res.ok) {
+      const data = await res.json();
+      if (data && data.status === 'success' && data.lat && data.lon) {
+        return {
+          lat: data.lat,
+          lon: data.lon,
+          city: `${data.city || data.regionName || 'Local Area'}, ${data.country || 'India'}`,
+          source: 'ip_api'
+        };
+      }
+    }
+  } catch (err) {
+    console.warn('[IP Location] ip-api.com failed, trying next provider...', err.message);
+  }
+
+  // Provider 3: ipapi.co
   try {
     const res = await fetch('https://ipapi.co/json/', { timeout: 4000 });
     if (res.ok) {
@@ -28,14 +66,15 @@ export async function fetchIpLocation() {
           lat: data.latitude,
           lon: data.longitude,
           city: `${data.city || 'Local City'}, ${data.region || ''} (${data.country_name || 'India'})`,
-          source: 'ip_geolocation'
+          source: 'ipapi'
         };
       }
     }
   } catch (err) {
-    console.warn('[IP Location] ipapi.co failed, trying backup...', err.message);
+    console.warn('[IP Location] ipapi.co failed, trying next provider...', err.message);
   }
 
+  // Provider 4: geolocation-db.com
   try {
     const res = await fetch('https://geolocation-db.com/json/', { timeout: 4000 });
     if (res.ok) {
@@ -45,12 +84,12 @@ export async function fetchIpLocation() {
           lat: data.latitude,
           lon: data.longitude,
           city: `${data.city || 'Local Area'}, ${data.country_name || 'India'}`,
-          source: 'ip_geolocation'
+          source: 'geolocation_db'
         };
       }
     }
   } catch (err) {
-    console.warn('[IP Location] Backup IP location failed:', err.message);
+    console.warn('[IP Location] All IP location providers failed:', err.message);
   }
 
   return null;
@@ -224,7 +263,7 @@ async function fetchDirectOverpass(lat, lon, radius) {
 
       if (res.ok) {
         const json = await res.json();
-        if (json && Array.isArray(json.elements)) {
+        if (json && Array.isArray(json.elements) && json.elements.length > 0) {
           const valid = json.elements.filter(el => el.tags && (el.lat || el.center));
           const normalized = valid.map(el => normalizeClientElement(el, lat, lon));
           normalized.sort((a, b) => a.distanceKm - b.distanceKm);
@@ -236,7 +275,18 @@ async function fetchDirectOverpass(lat, lon, radius) {
     }
   }
 
-  throw new Error('All client Overpass API mirrors failed');
+  // If Overpass mirrors return no elements or fail, try Nominatim real POI search
+  try {
+    const nomPois = await fetchNominatimPois(lat, lon);
+    if (nomPois.length > 0) {
+      nomPois.sort((a, b) => a.distanceKm - b.distanceKm);
+      return nomPois;
+    }
+  } catch (err) {
+    console.warn('[Nominatim POI] Fallback failed:', err.message);
+  }
+
+  throw new Error('All client Overpass API mirrors & Nominatim fallbacks failed');
 }
 
 /**

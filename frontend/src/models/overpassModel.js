@@ -106,12 +106,23 @@ export function getHaversineKm(lat1, lon1, lat2, lon2) {
 }
 
 /**
- * Generates direct Maps navigation URL (Google Maps or OpenStreetMap)
+ * Generates accurate Google Maps directions URL from user origin to target destination
  */
-export function getNavigationUrl(lat, lon, label = '') {
-  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-  if (isMobile) {
-    return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`;
+export function getNavigationUrl(destLat, destLon, label = '', userLat = null, userLon = null) {
+  if (!destLat || !destLon || isNaN(destLat) || isNaN(destLon)) {
+    return 'https://maps.google.com';
   }
-  return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`;
+
+  const dLat = parseFloat(destLat).toFixed(6);
+  const dLon = parseFloat(destLon).toFixed(6);
+
+  // If user origin coordinates are present, include explicit origin for 100% precise route
+  if (userLat && userLon && !isNaN(userLat) && !isNaN(userLon)) {
+    const oLat = parseFloat(userLat).toFixed(6);
+    const oLon = parseFloat(userLon).toFixed(6);
+    return `https://www.google.com/maps/dir/?api=1&origin=${oLat},${oLon}&destination=${dLat},${dLon}&travelmode=driving`;
+  }
+
+  // Universal Google Maps Query for exact pin location
+  return `https://www.google.com/maps/search/?api=1&query=${dLat},${dLon}`;
 }

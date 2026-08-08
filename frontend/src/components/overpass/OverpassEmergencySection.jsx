@@ -3,7 +3,7 @@
  * Full OpenStreetMap Overpass Nearby Emergency Services Component
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Building2, Activity, Tent, Shield, Flame, 
   Truck, Utensils, AlertTriangle, RefreshCw, Layers 
@@ -15,7 +15,7 @@ import OverpassInteractiveMap from './OverpassInteractiveMap';
 import OverpassResourceCard, { OverpassSkeletonCard } from './OverpassResourceCard';
 import { getNavigationUrl } from '../../models/overpassModel';
 
-export default function OverpassEmergencySection({ activeGdacsAlert = null }) {
+export default function OverpassEmergencySection({ activeGdacsAlert = null, initialCategory = null }) {
   const {
     resources,
     allResources,
@@ -41,6 +41,12 @@ export default function OverpassEmergencySection({ activeGdacsAlert = null }) {
     setSearchQuery,
     refresh
   } = useOverpassEmergency();
+
+  useEffect(() => {
+    if (initialCategory) {
+      setSelectedCategory(initialCategory);
+    }
+  }, [initialCategory, setSelectedCategory]);
 
   const [selectedDetailResource, setSelectedDetailResource] = useState(null);
 
@@ -131,12 +137,12 @@ export default function OverpassEmergencySection({ activeGdacsAlert = null }) {
 
       {/* ── 5. LIST VIEW & CATEGORIZED SECTIONS ────────────────────────── */}
       <div className="space-y-6">
-        <div className="flex items-center justify-between pl-1 border-b border-gray-200 dark:border-[#30363d] pb-2">
-          <h3 className="text-sm font-black uppercase tracking-wider text-gray-900 dark:text-white">
+        <div className="flex items-center justify-between pl-1 border-b border-gray-800 pb-2">
+          <h3 className="text-sm font-black uppercase tracking-wider !text-white forced-white">
             Categorized Emergency Facilities ({resources.length})
           </h3>
           {selectedCategory !== 'All' && (
-            <span className="text-xs font-bold text-blue-500">
+            <span className="text-xs font-bold text-blue-400">
               Showing: {selectedCategory}
             </span>
           )}
@@ -154,28 +160,28 @@ export default function OverpassEmergencySection({ activeGdacsAlert = null }) {
 
         {/* Empty State */}
         {!loading && (error || resources.length === 0) && (
-          <div className="rounded-3xl bg-white dark:bg-[#161b22] border border-gray-200 dark:border-[#30363d] p-8 text-center space-y-4 shadow-sm">
-            <div className="w-16 h-16 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/30 flex items-center justify-center mx-auto">
+          <div className="rounded-3xl bg-[#11151e] border border-gray-800 p-8 text-center space-y-4 shadow-lg text-white">
+            <div className="w-16 h-16 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center justify-center mx-auto">
               <AlertTriangle size={32} />
             </div>
             <div>
-              <h3 className="text-base font-black text-gray-900 dark:text-white">
+              <h3 className="text-base font-black !text-white forced-white">
                 No emergency resources found nearby.
               </h3>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-md mx-auto">
+              <p className="text-xs text-gray-300 mt-1 max-w-md mx-auto">
                 No facilities matching your filter were detected within {(radius / 1000)} km. Try increasing the search radius to 20 km or 50 km.
               </p>
             </div>
             <div className="flex justify-center gap-3">
               <button
                 onClick={() => setRadius(20000)}
-                className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs transition-all shadow-md cursor-pointer"
+                className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs transition-all shadow-md cursor-pointer"
               >
                 Expand Radius to 20 km
               </button>
               <button
                 onClick={refresh}
-                className="px-4 py-2.5 rounded-xl bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 font-bold text-xs transition-all border cursor-pointer inline-flex items-center gap-1.5"
+                className="px-4 py-2.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-200 font-bold text-xs transition-all border border-gray-700 cursor-pointer inline-flex items-center gap-1.5"
               >
                 <RefreshCw size={14} />
                 <span>Retry</span>
@@ -194,7 +200,7 @@ export default function OverpassEmergencySection({ activeGdacsAlert = null }) {
               return (
                 <div key={group.key} className="space-y-3">
                   <div className="flex items-center justify-between pl-1">
-                    <h4 className="text-xs font-black uppercase tracking-wider text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                    <h4 className="text-xs font-black uppercase tracking-wider !text-white forced-white flex items-center gap-2">
                       <Icon size={16} className={group.color} />
                       {group.title} ({group.items.length})
                     </h4>
@@ -205,6 +211,7 @@ export default function OverpassEmergencySection({ activeGdacsAlert = null }) {
                       <OverpassResourceCard
                         key={item.id}
                         resource={item}
+                        userCoords={coords}
                         onSelect={(res) => setSelectedDetailResource(res)}
                       />
                     ))}
@@ -222,6 +229,7 @@ export default function OverpassEmergencySection({ activeGdacsAlert = null }) {
               <OverpassResourceCard
                 key={item.id}
                 resource={item}
+                userCoords={coords}
                 onSelect={(res) => setSelectedDetailResource(res)}
               />
             ))}
@@ -233,43 +241,43 @@ export default function OverpassEmergencySection({ activeGdacsAlert = null }) {
       {selectedDetailResource && (
         <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
           <div 
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/70 backdrop-blur-md"
             onClick={() => setSelectedDetailResource(null)}
           />
-          <div className="relative w-full max-w-lg bg-white dark:bg-[#161b22] border border-gray-200 dark:border-[#30363d] rounded-3xl p-6 shadow-2xl z-10 space-y-4">
-            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#30363d] pb-3">
-              <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase border ${selectedDetailResource.categoryConfig.badgeBg}`}>
+          <div className="relative w-full max-w-lg bg-[#11151e] border border-gray-800 rounded-3xl p-6 shadow-2xl z-10 text-white space-y-4">
+            <div className="flex items-center justify-between border-b border-gray-800 pb-3">
+              <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase border ${selectedDetailResource.categoryConfig.badgeBg}`}>
                 {selectedDetailResource.categoryConfig.symbol} {selectedDetailResource.categoryLabel}
               </span>
               <button
                 onClick={() => setSelectedDetailResource(null)}
-                className="text-gray-400 hover:text-white text-sm"
+                className="text-gray-400 hover:text-white text-sm cursor-pointer"
               >
                 ✕
               </button>
             </div>
 
             <div>
-              <h3 className="text-base font-black text-gray-900 dark:text-white leading-tight">
+              <h3 className="text-base font-black !text-white forced-white leading-tight">
                 {selectedDetailResource.name}
               </h3>
-              <p className="text-xs font-bold text-blue-500 mt-1 font-mono">
+              <p className="text-xs font-bold text-blue-400 mt-1 font-mono">
                 {selectedDetailResource.distanceKm} km away from your location
               </p>
             </div>
 
-            <div className="p-4 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 space-y-2 text-xs">
-              <p className="text-gray-700 dark:text-gray-300">
-                <strong>Address:</strong> {selectedDetailResource.address}
+            <div className="p-4 rounded-2xl bg-[#161c28] border border-gray-800 space-y-2 text-xs">
+              <p className="!text-gray-200">
+                <strong className="text-white">Address:</strong> {selectedDetailResource.address}
               </p>
               {selectedDetailResource.phone && (
-                <p className="text-blue-500 font-bold">
-                  <strong>Phone:</strong> {selectedDetailResource.phone}
+                <p className="text-blue-400 font-bold">
+                  <strong className="text-white">Phone:</strong> {selectedDetailResource.phone}
                 </p>
               )}
               {selectedDetailResource.openingHours && (
-                <p className="text-emerald-500 font-medium">
-                  <strong>Hours:</strong> {selectedDetailResource.openingHours}
+                <p className="text-emerald-400 font-medium">
+                  <strong className="text-white">Hours:</strong> {selectedDetailResource.openingHours}
                 </p>
               )}
               <p className="text-gray-400 font-mono text-[10px]">
@@ -277,20 +285,20 @@ export default function OverpassEmergencySection({ activeGdacsAlert = null }) {
               </p>
             </div>
 
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex justify-end gap-2 pt-2 border-t border-gray-800">
               <button
                 onClick={() => setSelectedDetailResource(null)}
-                className="px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-xs font-bold text-gray-700 dark:text-gray-300 cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-gray-800 hover:bg-gray-700 text-xs font-bold text-gray-200 cursor-pointer"
               >
                 Close
               </button>
               <a
-                href={getNavigationUrl(selectedDetailResource.latitude, selectedDetailResource.longitude, selectedDetailResource.name)}
+                href={getNavigationUrl(selectedDetailResource.latitude, selectedDetailResource.longitude, selectedDetailResource.name, coords?.lat, coords?.lon)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-xs font-bold text-white shadow-md cursor-pointer flex items-center gap-1.5"
+                className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-xs font-black text-white shadow-md cursor-pointer flex items-center gap-1.5"
               >
-                Navigate via Maps →
+                <span className="!text-white forced-white">Navigate via Maps →</span>
               </a>
             </div>
           </div>

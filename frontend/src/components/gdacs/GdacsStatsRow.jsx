@@ -10,63 +10,54 @@ import { AlertCircle, Droplets, Activity, Wind, Flame } from 'lucide-react';
 export default function GdacsStatsRow({ stats }) {
   const statItems = [
     {
-      label: 'Total Alerts',
+      label: 'TOTAL ALERTS',
       value: stats?.total || 0,
-      icon: AlertCircle,
-      color: 'text-amber-500',
-      bgColor: 'bg-amber-500/10 border-amber-500/20'
+      textColor: 'text-amber-400',
+      bgColor: 'bg-[#1e1b18] border-amber-500/40'
     },
     {
-      label: 'Floods',
+      label: 'FLOODS',
       value: stats?.floods || 0,
-      icon: Droplets,
-      color: 'text-blue-500',
-      bgColor: 'bg-blue-500/10 border-blue-500/20'
+      textColor: 'text-blue-400',
+      bgColor: 'bg-[#151c28] border-blue-500/40'
     },
     {
-      label: 'Earthquakes',
+      label: 'EARTHQUAKES',
       value: stats?.earthquakes || 0,
-      icon: Activity,
-      color: 'text-yellow-500',
-      bgColor: 'bg-yellow-500/10 border-yellow-500/20'
+      textColor: 'text-yellow-400',
+      bgColor: 'bg-[#1e1c14] border-yellow-500/40'
     },
     {
-      label: 'Cyclones',
+      label: 'CYCLONES',
       value: stats?.cyclones || 0,
-      icon: Wind,
-      color: 'text-cyan-500',
-      bgColor: 'bg-cyan-500/10 border-cyan-500/20'
+      textColor: 'text-cyan-400',
+      bgColor: 'bg-[#13222a] border-cyan-500/40'
     },
     {
-      label: 'Wildfires',
+      label: 'WILDFIRES',
       value: stats?.wildfires || 0,
-      icon: Flame,
-      color: 'text-red-500',
-      bgColor: 'bg-red-500/10 border-red-500/20'
+      textColor: 'text-rose-400',
+      bgColor: 'bg-[#23171b] border-rose-500/40'
     }
   ];
 
   return (
-    <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
       {statItems.map((item, idx) => {
-        const Icon = item.icon;
         return (
           <div
             key={idx}
-            className={`p-3.5 rounded-2xl border ${item.bgColor} backdrop-blur-md flex flex-col justify-between transition-all hover:scale-[1.02] shadow-sm`}
+            className={`p-3 rounded-2xl border ${item.bgColor} flex flex-col justify-between transition-all hover:scale-[1.02] shadow-md`}
           >
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-                {item.label}
-              </span>
-              <Icon size={16} className={item.color} />
-            </div>
+            <span className="text-[9px] font-black uppercase tracking-wider text-gray-300">
+              {item.label}
+            </span>
             <div className="mt-2 flex items-baseline justify-between">
-              <span className="text-xl md:text-2xl font-black text-gray-900 dark:text-white">
+              <span className={`text-2xl font-black font-mono ${item.textColor}`}>
                 {item.value}
               </span>
-              <span className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest">
-                Active
+              <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider">
+                ACTIVE
               </span>
             </div>
           </div>

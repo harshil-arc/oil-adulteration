@@ -273,7 +273,7 @@ export default function Home() {
 
             {/* FEATURED: DISASTER & EMERGENCY RELIEF PLATFORM BUTTON */}
             <button
-              onClick={() => navigate('/relief-network')}
+              onClick={() => navigate('/disaster?tab=disaster')}
               className="p-4 rounded-2xl bg-gradient-to-br from-[var(--bg-card)] via-[var(--bg-card)] to-red-950/30 border border-red-500/40 hover:border-red-400 text-left transition-all group flex flex-col justify-between h-24 col-span-2 shadow-glow-red relative overflow-hidden"
             >
               <div className="flex items-center justify-between">
@@ -286,8 +286,8 @@ export default function Home() {
               </div>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-black text-red-400 uppercase tracking-wider">Disaster & Emergency</p>
-                  <p className="text-[9px] text-gray-300">Connect with Verified NGOs, Camps & Relief Supply Nodes</p>
+                  <p className="text-xs font-black text-red-400 uppercase tracking-wider">Disaster, Emergency & Relief</p>
+                  <p className="text-[9px] text-gray-300">Connect with Verified NGOs, Camps & Food Relief Nodes</p>
                 </div>
                 <ChevronRight size={16} className="text-red-400 group-hover:translate-x-1 transition-transform" />
               </div>
@@ -359,7 +359,7 @@ export default function Home() {
             </button>
 
             <button
-              onClick={() => navigate('/community')}
+              onClick={() => navigate('/disaster?tab=relief')}
               className="p-4 rounded-2xl bg-[var(--bg-card)] border border-rose-500/30 hover:border-rose-400 text-left transition-all group flex flex-col justify-between h-24"
             >
               <div className="w-9 h-9 rounded-xl bg-rose-500/15 text-rose-400 flex items-center justify-center group-hover:scale-110 transition-transform">

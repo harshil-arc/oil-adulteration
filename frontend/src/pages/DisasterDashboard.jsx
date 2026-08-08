@@ -1,14 +1,8 @@
-/**
- * frontend/src/pages/DisasterDashboard.jsx
- * Comprehensive Disaster & Emergency Platform
- * Combines GDACS Live Global Disaster Monitoring + OpenStreetMap Overpass Nearby Emergency Services
- */
-
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
   AlertTriangle, RefreshCw, Layers, Heart, 
-  MapPin, ShieldAlert, Radio, Compass 
+  MapPin, ShieldAlert, Radio, Compass, Utensils, LifeBuoy
 } from 'lucide-react';
 import { useGdacsDisasters } from '../hooks/useGdacsDisasters';
 import GdacsHeaderCard from '../components/gdacs/GdacsHeaderCard';
@@ -18,11 +12,46 @@ import GdacsFilterBar from '../components/gdacs/GdacsFilterBar';
 import GdacsInteractiveMap from '../components/gdacs/GdacsInteractiveMap';
 import GdacsAlertCard, { GdacsAlertSkeleton } from '../components/gdacs/GdacsAlertCard';
 import GdacsEmergencyActions from '../components/gdacs/GdacsEmergencyActions';
+import GdacsAlertDetailModal from '../components/gdacs/GdacsAlertDetailModal';
 import OverpassEmergencySection from '../components/overpass/OverpassEmergencySection';
+import FoodReliefNetwork from './FoodReliefNetwork';
 
 export default function DisasterDashboard() {
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('all'); // 'all' | 'gdacs' | 'overpass'
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+
+  // 'disaster' | 'relief' | 'overpass' | 'all'
+  const [activeTab, setActiveTab] = useState(() => {
+    if (tabParam === 'relief' || tabParam === 'food-donation' || tabParam === 'donations') return 'relief';
+    if (tabParam === 'overpass') return 'overpass';
+    if (tabParam === 'all') return 'all';
+    return 'disaster';
+  });
+
+  useEffect(() => {
+    if (tabParam === 'relief' || tabParam === 'food-donation' || tabParam === 'donations') {
+      setActiveTab('relief');
+    } else if (tabParam === 'overpass') {
+      setActiveTab('overpass');
+    } else if (tabParam === 'all') {
+      setActiveTab('all');
+    } else if (tabParam === 'disaster') {
+      setActiveTab('disaster');
+    }
+  }, [tabParam]);
+
+  const handleTabChange = (newTab) => {
+    setActiveTab(newTab);
+    setSearchParams({ tab: newTab });
+  };
+
+  const [overpassCategory, setOverpassCategory] = useState(null);
+
+  const handleSelectHospital = () => {
+    setOverpassCategory('Hospital');
+    handleTabChange('overpass');
+  };
 
   // ViewModel Custom Hook for GDACS
   const {
@@ -59,43 +88,59 @@ export default function DisasterDashboard() {
           onRefresh={refresh} 
         />
 
-        {/* Section Navigation Tabs (GDACS Live Feed vs Overpass OSM Services) */}
-        <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-white/60 dark:bg-[#161b22]/60 border border-gray-200 dark:border-[#30363d] backdrop-blur-md overflow-x-auto scrollbar-none">
+        {/* Unified Platform Navigation Tabs */}
+        <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-[#121620] border border-gray-800 backdrop-blur-md overflow-x-auto custom-scrollbar scrollbar-none shadow-lg">
           <button
-            onClick={() => setActiveTab('all')}
-            className={`flex-1 min-w-[120px] py-2 px-3 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
-              activeTab === 'all'
-                ? 'bg-red-600 text-white shadow-md'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+            onClick={() => handleTabChange('disaster')}
+            className={`flex-1 min-w-[130px] py-2.5 px-3 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              activeTab === 'disaster'
+                ? 'bg-red-600 !text-white forced-white shadow-lg shadow-red-600/30 font-black'
+                : '!text-gray-300 hover:!text-white font-bold'
             }`}
           >
-            <Radio size={14} className="animate-pulse" />
-            <span>Full Overview</span>
+            <Radio size={14} className={activeTab === 'disaster' ? 'animate-pulse text-white' : ''} />
+            <span className={activeTab === 'disaster' ? '!text-white forced-white' : ''}>Disaster Alerts</span>
           </button>
 
           <button
-            onClick={() => setActiveTab('overpass')}
-            className={`flex-1 min-w-[140px] py-2 px-3 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+            onClick={() => handleTabChange('relief')}
+            className={`flex-1 min-w-[160px] py-2.5 px-3 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              activeTab === 'relief'
+                ? 'bg-rose-600 !text-white forced-white shadow-lg shadow-rose-600/30 font-black'
+                : '!text-gray-300 hover:!text-white font-bold'
+            }`}
+          >
+            <Heart size={14} />
+            <span className={activeTab === 'relief' ? '!text-white forced-white' : ''}>Food Relief & NGO Donations</span>
+          </button>
+
+          <button
+            onClick={() => handleTabChange('overpass')}
+            className={`flex-1 min-w-[160px] py-2.5 px-3 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
               activeTab === 'overpass'
-                ? 'bg-blue-600 text-white shadow-md'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                ? 'bg-blue-600 !text-white forced-white shadow-lg shadow-blue-600/30 font-black'
+                : '!text-gray-300 hover:!text-white font-bold'
             }`}
           >
             <Compass size={14} />
-            <span>Nearby OSM Services (10km)</span>
+            <span className={activeTab === 'overpass' ? '!text-white forced-white' : ''}>Emergency Services (10km)</span>
           </button>
 
           <button
-            onClick={() => navigate('/relief')}
-            className="flex-1 min-w-[120px] py-2 px-3 rounded-xl text-xs font-bold text-rose-500 hover:bg-rose-500/10 transition-all border border-rose-500/20 cursor-pointer flex items-center justify-center gap-1.5"
+            onClick={() => handleTabChange('all')}
+            className={`flex-1 min-w-[120px] py-2.5 px-3 rounded-xl text-xs font-black transition-all cursor-pointer flex items-center justify-center gap-1.5 ${
+              activeTab === 'all'
+                ? 'bg-gradient-to-r from-red-600 via-rose-600 to-amber-600 !text-white forced-white shadow-lg font-black'
+                : '!text-gray-300 hover:!text-white font-bold'
+            }`}
           >
-            <Heart size={14} />
-            <span>NGO Food Relief →</span>
+            <Layers size={14} />
+            <span className={activeTab === 'all' ? '!text-white forced-white' : ''}>Full Overview</span>
           </button>
         </div>
 
         {/* ── 2. GDACS LIVE MONTIORING SECTION ──────────────────────────── */}
-        {(activeTab === 'all' || activeTab === 'gdacs') && (
+        {(activeTab === 'all' || activeTab === 'disaster' || activeTab === 'gdacs') && (
           <div className="space-y-6 animate-in fade-in">
             {/* STATS BAR */}
             <GdacsStatsRow stats={stats} />
@@ -116,11 +161,11 @@ export default function DisasterDashboard() {
             {/* INTERACTIVE DISASTER MAP */}
             <div className="space-y-3">
               <div className="flex items-center justify-between pl-1">
-                <h2 className="text-xs font-black uppercase tracking-wider text-gray-400 flex items-center gap-2">
+                <h2 className="text-xs font-black uppercase tracking-wider text-gray-700 dark:text-gray-300 flex items-center gap-2">
                   <MapPin size={16} className="text-red-500" />
                   Live Interactive Disaster Map ({alerts.length} Locations)
                 </h2>
-                <div className="flex items-center gap-2 text-[10px] font-bold text-gray-500">
+                <div className="flex items-center gap-2 text-[10px] font-bold text-gray-600 dark:text-gray-400">
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-emerald-500" /> Low</span>
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-amber-500" /> Medium</span>
                   <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-red-500" /> High</span>
@@ -133,12 +178,12 @@ export default function DisasterDashboard() {
             {/* LIVE ALERTS CARDS */}
             <div className="space-y-4">
               <div className="flex items-center justify-between pl-1">
-                <h2 className="text-xs font-black uppercase tracking-wider text-gray-400 flex items-center gap-2">
+                <h2 className="text-xs font-black uppercase tracking-wider text-gray-700 dark:text-gray-300 flex items-center gap-2">
                   <AlertTriangle size={16} className="text-red-500" />
                   Live Disaster Alerts Feed ({alerts.length})
                 </h2>
                 {selectedCategory !== 'All' && (
-                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-500/10 text-red-500 border border-red-500/20">
+                  <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-red-500/20 text-red-400 border border-red-500/40">
                     Filtered: {selectedCategory}
                   </span>
                 )}
@@ -154,21 +199,21 @@ export default function DisasterDashboard() {
 
               {/* Empty / Error State */}
               {!loading && error && alerts.length === 0 && (
-                <div className="rounded-3xl bg-white dark:bg-[#161b22] border border-gray-200 dark:border-[#30363d] p-8 text-center space-y-4 shadow-md">
-                  <div className="w-16 h-16 rounded-full bg-red-500/10 text-red-500 border border-red-500/30 flex items-center justify-center mx-auto">
+                <div className="rounded-3xl bg-[#11151e] border border-gray-800 p-8 text-center space-y-4 shadow-md text-white">
+                  <div className="w-16 h-16 rounded-full bg-red-500/20 text-red-400 border border-red-500/30 flex items-center justify-center mx-auto">
                     <AlertTriangle size={32} />
                   </div>
                   <div>
-                    <h3 className="text-base font-black text-gray-900 dark:text-white">
+                    <h3 className="text-base font-black text-white">
                       No live disaster alerts available at the moment.
                     </h3>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1 max-w-md mx-auto">
+                    <p className="text-xs text-gray-300 mt-1 max-w-md mx-auto">
                       Unable to retrieve active disaster warnings from GDACS feed.
                     </p>
                   </div>
                   <button
                     onClick={refresh}
-                    className="px-6 py-2.5 rounded-xl bg-red-600 text-white font-bold text-xs shadow-md inline-flex items-center gap-2"
+                    className="px-6 py-2.5 rounded-xl bg-red-600 text-white font-bold text-xs shadow-md inline-flex items-center gap-2 cursor-pointer hover:bg-red-500 transition-colors"
                   >
                     <RefreshCw size={14} />
                     <span>Retry Fetching Feed</span>
@@ -192,13 +237,30 @@ export default function DisasterDashboard() {
 
             {/* EMERGENCY SOS QUICK ACTIONS */}
             <GdacsEmergencyActions 
-              onSelectReliefCamp={() => navigate('/relief')}
-              onSelectHospital={() => setActiveTab('overpass')}
+              onSelectReliefCamp={() => handleTabChange('relief')}
+              onSelectHospital={handleSelectHospital}
             />
           </div>
         )}
 
-        {/* ── 3. OPENSTREETMAP OVERPASS NEARBY SERVICES SECTION ──────────── */}
+        {/* ── 3. FOOD RELIEF & NGO DONATIONS SECTION ──────────────────────── */}
+        {(activeTab === 'all' || activeTab === 'relief') && (
+          <div className="pt-4 border-t border-gray-200 dark:border-[#30363d] animate-in fade-in space-y-4">
+            <div className="flex items-center justify-between pl-1">
+              <h2 className="text-sm font-black uppercase tracking-wider text-gray-900 dark:text-white flex items-center gap-2">
+                <Heart size={18} className="text-rose-500" />
+                Food Relief & NGO Donation Network
+              </h2>
+              <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                Surplus Food & Relief Dispatch
+              </span>
+            </div>
+
+            <FoodReliefNetwork isEmbedded={true} />
+          </div>
+        )}
+
+        {/* ── 4. OPENSTREETMAP OVERPASS NEARBY SERVICES SECTION ──────────── */}
         {(activeTab === 'all' || activeTab === 'overpass') && (
           <div className="pt-4 border-t border-gray-200 dark:border-[#30363d] animate-in fade-in space-y-4">
             <div className="flex items-center justify-between pl-1">
@@ -211,64 +273,19 @@ export default function DisasterDashboard() {
               </span>
             </div>
 
-            <OverpassEmergencySection activeGdacsAlert={alerts[0]} />
+            <OverpassEmergencySection activeGdacsAlert={alerts[0]} initialCategory={overpassCategory} />
           </div>
         )}
       </div>
 
-      {/* GDACS Detail Modal */}
+      {/* GDACS Live Disaster Detail Modal View */}
       {selectedAlertModal && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
-          <div 
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setSelectedAlertModal(null)}
-          />
-          <div className="relative w-full max-w-lg bg-white dark:bg-[#161b22] border border-gray-200 dark:border-[#30363d] rounded-3xl p-6 shadow-2xl z-10 space-y-4">
-            <div className="flex items-center justify-between border-b border-gray-100 dark:border-[#30363d] pb-3">
-              <span className="text-xs font-extrabold uppercase tracking-widest text-red-500">
-                GDACS Alert Details
-              </span>
-              <button
-                onClick={() => setSelectedAlertModal(null)}
-                className="text-gray-400 hover:text-white"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div>
-              <h3 className="text-base font-black text-gray-900 dark:text-white leading-tight">
-                {selectedAlertModal.title}
-              </h3>
-              <div className="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400 mt-1">
-                <span>📍 {selectedAlertModal.country}</span>
-                <span>•</span>
-                <span>📅 {selectedAlertModal.date}</span>
-              </div>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-800 text-xs text-gray-700 dark:text-gray-300 leading-relaxed">
-              {selectedAlertModal.description}
-            </div>
-
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                onClick={() => setSelectedAlertModal(null)}
-                className="px-4 py-2 rounded-xl bg-gray-100 dark:bg-gray-800 text-xs font-bold text-gray-700 dark:text-gray-300 cursor-pointer"
-              >
-                Close
-              </button>
-              <a
-                href={selectedAlertModal.link}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="px-4 py-2 rounded-xl bg-red-600 text-xs font-bold text-white shadow-md cursor-pointer"
-              >
-                Open Full GDACS Report
-              </a>
-            </div>
-          </div>
-        </div>
+        <GdacsAlertDetailModal
+          alert={selectedAlertModal}
+          onClose={() => setSelectedAlertModal(null)}
+          onSelectHospital={handleSelectHospital}
+          onSelectReliefCamp={() => handleTabChange('relief')}
+        />
       )}
     </div>
   );

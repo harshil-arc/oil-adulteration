@@ -90,14 +90,14 @@ body {
    AUTOMATIC LIGHT MODE CONTRAST ADAPTATION RULES
    ============================================================ */
 
-/* Force text visibility in Light Mode for elements marked text-white unless inside a dark button badge */
-html:not(.dark) .text-white:not(.forced-white):not(.bg-red-500):not(.bg-amber-500):not(.bg-emerald-500):not(.bg-blue-500):not(.bg-purple-500):not(.bg-black):not(.bg-gray-900):not(.bg-gray-800):not(.btn-primary):not(.btn-dark) {
-  color: var(--text-primary) !important;
+/* Ensure headings inherit text color cleanly */
+h1, h2, h3, h4, h5, h6 {
+  color: inherit;
 }
 
-/* Ensure headings & paragraphs adapt smoothly */
-h1, h2, h3, h4, h5, h6 {
-  color: var(--text-primary);
+/* Ensure forced-white always forces white text on dark cards */
+.forced-white, [data-theme="dark-card"] *, .dark-card * {
+  color: #ffffff;
 }
 
 p, span, label, td, th {

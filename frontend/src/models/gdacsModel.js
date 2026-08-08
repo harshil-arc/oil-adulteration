@@ -20,19 +20,19 @@ export const DISASTER_CATEGORIES = [
 export const SEVERITY_CONFIG = {
   Green: {
     label: 'Low',
-    badgeBg: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30',
+    badgeBg: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40',
     hex: '#22c55e',
     dotClass: 'bg-emerald-500 shadow-emerald-500/50'
   },
   Orange: {
     label: 'Medium',
-    badgeBg: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30',
+    badgeBg: 'bg-amber-500/20 text-amber-400 border-amber-500/40',
     hex: '#f97316',
     dotClass: 'bg-amber-500 shadow-amber-500/50'
   },
   Red: {
     label: 'High',
-    badgeBg: 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30',
+    badgeBg: 'bg-red-500/20 text-red-400 border-red-500/40',
     hex: '#ef4444',
     dotClass: 'bg-red-500 shadow-red-500/50 animate-pulse'
   }

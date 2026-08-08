@@ -23,12 +23,12 @@ function CategoryIcon({ categoryKey, className = "w-5 h-5" }) {
   return <Building2 className={className} />;
 }
 
-export default function OverpassResourceCard({ resource, onSelect }) {
-  const navUrl = getNavigationUrl(resource.latitude, resource.longitude, resource.name);
+export default function OverpassResourceCard({ resource, onSelect, userCoords = null }) {
+  const navUrl = getNavigationUrl(resource.latitude, resource.longitude, resource.name, userCoords?.lat, userCoords?.lon);
   const config = resource.categoryConfig;
 
   return (
-    <div className="group relative rounded-3xl bg-white dark:bg-[#161b22] border border-gray-200 dark:border-[#30363d] p-5 shadow-sm hover:shadow-xl hover:border-blue-500/30 transition-all duration-300 flex flex-col justify-between">
+    <div className="group relative rounded-3xl bg-[#11151e] border border-gray-800 p-5 shadow-lg hover:shadow-2xl hover:border-blue-500/40 transition-all duration-300 flex flex-col justify-between text-white">
       <div>
         {/* Top Header & Category Badge */}
         <div className="flex items-center justify-between gap-2 mb-3">
@@ -36,44 +36,44 @@ export default function OverpassResourceCard({ resource, onSelect }) {
             <div 
               className="w-9 h-9 rounded-2xl flex items-center justify-center shrink-0 border group-hover:scale-110 transition-transform"
               style={{
-                backgroundColor: `${config.color}15`,
-                borderColor: `${config.color}40`,
+                backgroundColor: `${config.color}20`,
+                borderColor: `${config.color}50`,
                 color: config.color
               }}
             >
               <CategoryIcon categoryKey={resource.category} className="w-5 h-5" />
             </div>
             <div>
-              <span className="text-[10px] font-extrabold uppercase tracking-wider text-gray-500 dark:text-gray-400 block">
+              <span className="text-[10px] font-black uppercase tracking-wider text-gray-300 block">
                 {resource.categoryLabel}
               </span>
-              <span className="text-xs font-black text-gray-900 dark:text-white font-mono">
+              <span className="text-xs font-black text-blue-400 font-mono">
                 {resource.distanceKm} km away
               </span>
             </div>
           </div>
 
-          <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-extrabold border ${config.badgeBg}`}>
+          <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-[10px] font-black border ${config.badgeBg}`}>
             <span>{config.symbol}</span>
             <span>{resource.categoryLabel}</span>
           </span>
         </div>
 
-        {/* Name */}
-        <h3 className="text-sm font-black text-gray-900 dark:text-white leading-snug line-clamp-2 mb-2 group-hover:text-blue-500 transition-colors">
+        {/* Hospital / Service Name */}
+        <h3 className="text-sm font-black !text-white forced-white leading-snug line-clamp-2 mb-2 group-hover:!text-blue-400 transition-colors">
           {resource.name}
         </h3>
 
         {/* Address */}
-        <div className="flex items-start gap-1.5 text-xs text-gray-600 dark:text-gray-300 mb-3">
-          <MapPin size={14} className="text-red-500 shrink-0 mt-0.5" />
-          <span className="line-clamp-2 font-medium">{resource.address}</span>
+        <div className="flex items-start gap-1.5 text-xs !text-gray-200 mb-3">
+          <MapPin size={14} className="text-red-400 shrink-0 mt-0.5" />
+          <span className="line-clamp-2 font-medium !text-gray-200">{resource.address}</span>
         </div>
 
         {/* Meta info: Phone, Website, Hours */}
-        <div className="space-y-1 text-[11px] text-gray-500 dark:text-gray-400 mb-4 pt-2 border-t border-gray-100 dark:border-[#30363d]">
+        <div className="space-y-1 text-[11px] text-gray-300 mb-4 pt-2 border-t border-gray-800/80">
           {resource.phone && (
-            <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 font-bold">
+            <div className="flex items-center gap-1.5 text-blue-400 font-bold">
               <Phone size={12} className="shrink-0" />
               <a href={`tel:${resource.phone}`} className="hover:underline">
                 {resource.phone}
@@ -82,7 +82,7 @@ export default function OverpassResourceCard({ resource, onSelect }) {
           )}
 
           {resource.website && (
-            <div className="flex items-center gap-1.5 text-indigo-500 truncate">
+            <div className="flex items-center gap-1.5 text-indigo-400 truncate">
               <Globe size={12} className="shrink-0" />
               <a href={resource.website} target="_blank" rel="noopener noreferrer" className="hover:underline truncate">
                 {resource.website}
@@ -91,7 +91,7 @@ export default function OverpassResourceCard({ resource, onSelect }) {
           )}
 
           {resource.openingHours && (
-            <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-medium">
+            <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
               <Clock size={12} className="shrink-0" />
               <span>{resource.openingHours}</span>
             </div>
@@ -100,10 +100,10 @@ export default function OverpassResourceCard({ resource, onSelect }) {
       </div>
 
       {/* Action Bar */}
-      <div className="pt-2 flex items-center justify-between gap-3 border-t border-gray-100 dark:border-[#30363d]">
+      <div className="pt-2 flex items-center justify-between gap-3 border-t border-gray-800/80">
         <button
           onClick={() => onSelect && onSelect(resource)}
-          className="text-xs font-bold text-gray-600 dark:text-gray-400 hover:text-blue-500 transition-colors cursor-pointer"
+          className="text-xs font-bold !text-gray-300 hover:!text-white transition-colors cursor-pointer"
         >
           View Details
         </button>
@@ -113,10 +113,10 @@ export default function OverpassResourceCard({ resource, onSelect }) {
           href={navUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 active:scale-95 text-white text-xs font-bold transition-all shadow-md shadow-blue-600/20 cursor-pointer"
+          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 active:scale-95 text-white text-xs font-black transition-all shadow-md shadow-blue-600/30 cursor-pointer"
         >
           <Navigation size={14} />
-          <span>Navigate</span>
+          <span className="!text-white forced-white">Navigate</span>
         </a>
       </div>
     </div>

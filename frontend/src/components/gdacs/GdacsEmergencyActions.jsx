@@ -43,87 +43,87 @@ export default function GdacsEmergencyActions({ onSelectReliefCamp, onSelectHosp
   };
 
   return (
-    <div className="rounded-3xl bg-white dark:bg-[#161b22] border border-gray-200 dark:border-[#30363d] p-6 shadow-lg space-y-4">
+    <div className="rounded-3xl bg-[#11151e] border border-gray-800 p-6 shadow-xl space-y-4 text-white">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-base font-black text-gray-900 dark:text-white uppercase tracking-wider">
-            Emergency Response & SOS Actions
+          <h2 className="text-base font-black text-white uppercase tracking-wider">
+            EMERGENCY RESPONSE & SOS ACTIONS
           </h2>
-          <p className="text-xs text-gray-500 dark:text-gray-400">
+          <p className="text-xs text-gray-400 mt-0.5">
             Immediate assistance, emergency contacts & readiness tools
           </p>
         </div>
-        <span className="px-2.5 py-1 rounded-full text-[9px] font-extrabold uppercase bg-red-500/10 text-red-500 border border-red-500/20">
-          SOS Ready
+        <span className="px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-wider bg-red-500/15 text-red-400 border border-red-500/30">
+          SOS READY
         </span>
       </div>
 
       {/* Grid of 6 Action Buttons */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3.5">
         {/* 1. Call 112 */}
         <a
           href="tel:112"
-          className="flex flex-col items-center justify-center text-center p-4 rounded-2xl bg-red-600 hover:bg-red-700 active:scale-95 text-white shadow-md shadow-red-600/20 transition-all cursor-pointer group"
+          className="flex flex-col items-center justify-center text-center p-4 rounded-2xl bg-red-600 hover:bg-red-500 active:scale-95 text-white shadow-lg shadow-red-600/30 transition-all cursor-pointer group"
         >
           <Phone size={24} className="mb-2 group-hover:animate-bounce" />
-          <span className="text-xs font-black uppercase tracking-wider">Call 112</span>
-          <span className="text-[9px] text-red-100/80 font-medium">National Emergency</span>
+          <span className="text-xs font-black uppercase tracking-wider">CALL 112</span>
+          <span className="text-[9px] text-red-100 font-bold mt-0.5">National Emergency</span>
         </a>
 
         {/* 2. Nearest Hospital */}
         <button
           onClick={() => onSelectHospital ? onSelectHospital() : alert('Searching for nearest verified hospitals...')}
-          className="flex flex-col items-center justify-center text-center p-4 rounded-2xl bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-600 dark:text-blue-400 transition-all cursor-pointer group"
+          className="flex flex-col items-center justify-center text-center p-4 rounded-2xl bg-[#162036] hover:bg-[#1c2947] border border-blue-500/40 text-blue-400 transition-all cursor-pointer group shadow-md"
         >
           <Building2 size={24} className="mb-2 group-hover:scale-110 transition-transform" />
-          <span className="text-xs font-black uppercase tracking-wider">Nearest Hospital</span>
-          <span className="text-[9px] text-gray-500 dark:text-gray-400 font-medium">Medical Assistance</span>
+          <span className="text-xs font-black uppercase tracking-wider text-blue-300">NEAREST HOSPITAL</span>
+          <span className="text-[9px] text-gray-400 font-medium mt-0.5">Medical Assistance</span>
         </button>
 
         {/* 3. Relief Camp */}
         <button
           onClick={() => onSelectReliefCamp ? onSelectReliefCamp() : alert('Showing active relief camps on map...')}
-          className="flex flex-col items-center justify-center text-center p-4 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 transition-all cursor-pointer group"
+          className="flex flex-col items-center justify-center text-center p-4 rounded-2xl bg-[#122b24] hover:bg-[#183b32] border border-emerald-500/40 text-emerald-400 transition-all cursor-pointer group shadow-md"
         >
           <Tent size={24} className="mb-2 group-hover:scale-110 transition-transform" />
-          <span className="text-xs font-black uppercase tracking-wider">Relief Camp</span>
-          <span className="text-[9px] text-gray-500 dark:text-gray-400 font-medium">Shelter & Rations</span>
+          <span className="text-xs font-black uppercase tracking-wider text-emerald-300">RELIEF CAMP</span>
+          <span className="text-[9px] text-gray-400 font-medium mt-0.5">Shelter & Rations</span>
         </button>
 
         {/* 4. Share Location */}
         <button
           onClick={handleShareLocation}
-          className="flex flex-col items-center justify-center text-center p-4 rounded-2xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-600 dark:text-purple-400 transition-all cursor-pointer group"
+          className="flex flex-col items-center justify-center text-center p-4 rounded-2xl bg-[#231a3a] hover:bg-[#2e234c] border border-purple-500/40 text-purple-400 transition-all cursor-pointer group shadow-md"
         >
           {copiedLocation ? (
-            <CheckCircle size={24} className="mb-2 text-emerald-500 animate-bounce" />
+            <CheckCircle size={24} className="mb-2 text-emerald-400 animate-bounce" />
           ) : (
             <Navigation size={24} className="mb-2 group-hover:scale-110 transition-transform" />
           )}
-          <span className="text-xs font-black uppercase tracking-wider">
-            {copiedLocation ? 'GPS Copied!' : 'Share Location'}
+          <span className="text-xs font-black uppercase tracking-wider text-purple-300">
+            {copiedLocation ? 'GPS COPIED!' : 'SHARE LOCATION'}
           </span>
-          <span className="text-[9px] text-gray-500 dark:text-gray-400 font-medium">Send Coords to Rescue</span>
+          <span className="text-[9px] text-gray-400 font-medium mt-0.5">Send Coords to Rescue</span>
         </button>
 
         {/* 5. Emergency Kit Checklist */}
         <button
           onClick={() => setKitModalOpen(true)}
-          className="flex flex-col items-center justify-center text-center p-4 rounded-2xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-600 dark:text-amber-400 transition-all cursor-pointer group"
+          className="flex flex-col items-center justify-center text-center p-4 rounded-2xl bg-[#2b2416] hover:bg-[#382f1d] border border-amber-500/40 text-amber-400 transition-all cursor-pointer group shadow-md"
         >
           <PackageCheck size={24} className="mb-2 group-hover:scale-110 transition-transform" />
-          <span className="text-xs font-black uppercase tracking-wider">Emergency Kit</span>
-          <span className="text-[9px] text-gray-500 dark:text-gray-400 font-medium">Readiness Checklist</span>
+          <span className="text-xs font-black uppercase tracking-wider text-amber-300">EMERGENCY KIT</span>
+          <span className="text-[9px] text-gray-400 font-medium mt-0.5">Readiness Checklist</span>
         </button>
 
         {/* 6. Offline Safety Guide */}
         <button
           onClick={() => setGuideModalOpen(true)}
-          className="flex flex-col items-center justify-center text-center p-4 rounded-2xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-cyan-600 dark:text-cyan-400 transition-all cursor-pointer group"
+          className="flex flex-col items-center justify-center text-center p-4 rounded-2xl bg-[#152733] hover:bg-[#1b3445] border border-cyan-500/40 text-cyan-400 transition-all cursor-pointer group shadow-md"
         >
           <BookOpen size={24} className="mb-2 group-hover:scale-110 transition-transform" />
-          <span className="text-xs font-black uppercase tracking-wider">Offline Guide</span>
-          <span className="text-[9px] text-gray-500 dark:text-gray-400 font-medium">Survival Guidelines</span>
+          <span className="text-xs font-black uppercase tracking-wider text-cyan-300">OFFLINE GUIDE</span>
+          <span className="text-[9px] text-gray-400 font-medium mt-0.5">Survival Guidelines</span>
         </button>
       </div>
 

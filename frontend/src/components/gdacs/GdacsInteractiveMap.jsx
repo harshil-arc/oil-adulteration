@@ -63,15 +63,28 @@ function createSeverityMarkerIcon(severity = 'Green', disasterType = '') {
 function MapCenterController({ alerts }) {
   const map = useMap();
   useEffect(() => {
-    if (alerts && alerts.length > 0) {
-      const valid = alerts.filter(a => a.latitude !== 0 || a.longitude !== 0);
-      if (valid.length > 0) {
-        // Fit bounds or fly to first item
-        const bounds = L.latLngBounds(valid.map(a => [a.latitude, a.longitude]));
-        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 6 });
+    if (!map) return;
+
+    const timer = setTimeout(() => {
+      try {
+        map.invalidateSize();
+
+        if (alerts && alerts.length > 0) {
+          const valid = alerts.filter(a => a && typeof a.latitude === 'number' && typeof a.longitude === 'number' && !isNaN(a.latitude) && !isNaN(a.longitude) && (a.latitude !== 0 || a.longitude !== 0));
+          if (valid.length > 0) {
+            const bounds = L.latLngBounds(valid.map(a => [a.latitude, a.longitude]));
+            if (bounds.isValid()) {
+              map.fitBounds(bounds, { padding: [40, 40], maxZoom: 6 });
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('[Gdacs MapCenterController Error]', err);
       }
-    }
-  }, [alerts, map]);
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [alerts?.length, map]);
   return null;
 }
 
@@ -110,10 +123,16 @@ export default function GdacsInteractiveMap({ alerts = [] }) {
               <Popup className="gdacs-map-popup">
                 <div className="p-1 max-w-[260px]">
                   <div className="flex items-center justify-between gap-2 mb-1.5">
-                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${sevConfig.badgeBg}`}>
-                      {sevConfig.label} Severity ({alert.severity})
+                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase border ${
+                      alert.severity === 'Red' 
+                        ? 'bg-red-100 text-red-700 border-red-300' 
+                        : alert.severity === 'Orange'
+                        ? 'bg-amber-100 text-amber-800 border-amber-300'
+                        : 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                    }`}>
+                      {sevConfig.label} ({alert.severity})
                     </span>
-                    <span className="text-[10px] font-bold text-gray-500">
+                    <span className="text-[10px] font-bold text-gray-600">
                       {alert.disasterType}
                     </span>
                   </div>

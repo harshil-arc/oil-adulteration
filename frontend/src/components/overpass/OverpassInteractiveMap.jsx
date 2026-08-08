@@ -76,23 +76,44 @@ function MapViewController({ userCoords, resources, onSelectLocation }) {
 
   useMapEvents({
     click(e) {
-      if (onSelectLocation) {
+      if (onSelectLocation && e.latlng) {
         onSelectLocation(e.latlng.lat, e.latlng.lng, `Pinned: ${e.latlng.lat.toFixed(4)}, ${e.latlng.lng.toFixed(4)}`);
       }
     }
   });
 
   useEffect(() => {
-    if (userCoords && userCoords.lat && userCoords.lon) {
-      if (resources && resources.length > 0) {
-        const bounds = L.latLngBounds(resources.map(r => [r.latitude, r.longitude]));
-        bounds.extend([userCoords.lat, userCoords.lon]);
-        map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
-      } else {
-        map.flyTo([userCoords.lat, userCoords.lon], 13, { duration: 1.2 });
+    if (!map) return;
+
+    const timer = setTimeout(() => {
+      try {
+        map.invalidateSize();
+
+        if (userCoords && typeof userCoords.lat === 'number' && typeof userCoords.lon === 'number' && !isNaN(userCoords.lat) && !isNaN(userCoords.lon)) {
+          const validResources = (resources || []).filter(
+            r => r && typeof r.latitude === 'number' && typeof r.longitude === 'number' && !isNaN(r.latitude) && !isNaN(r.longitude) && r.latitude !== 0 && r.longitude !== 0
+          );
+
+          if (validResources.length > 0) {
+            const boundsPoints = validResources.map(r => [r.latitude, r.longitude]);
+            boundsPoints.push([userCoords.lat, userCoords.lon]);
+            const bounds = L.latLngBounds(boundsPoints);
+            if (bounds.isValid()) {
+              map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+            } else {
+              map.setView([userCoords.lat, userCoords.lon], 13);
+            }
+          } else {
+            map.setView([userCoords.lat, userCoords.lon], 13);
+          }
+        }
+      } catch (err) {
+        console.warn('[Overpass MapViewController Error]', err);
       }
-    }
-  }, [userCoords, resources, map]);
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [userCoords?.lat, userCoords?.lon, resources?.length, map]);
 
   return null;
 }
@@ -130,7 +151,7 @@ export default function OverpassInteractiveMap({ userCoords, resources = [], onS
         {/* Nearby Resource Markers */}
         {resources.map((resource) => {
           const icon = createCategoryMarkerIcon(resource.category);
-          const navUrl = getNavigationUrl(resource.latitude, resource.longitude, resource.name);
+          const navUrl = getNavigationUrl(resource.latitude, resource.longitude, resource.name, userCoords?.lat, userCoords?.lon);
 
           return (
             <Marker

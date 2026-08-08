@@ -66,12 +66,34 @@ export default function Login() {
     // Ensure format matches email for supabase auth lookup
     let loginEmail = identifier.trim();
     if (!loginEmail.includes('@')) {
-      // If it's a mobile number or employee code, check DB map first or format as email
       loginEmail = `${identifier.toLowerCase()}@pureoil.gov.in`;
     }
 
-    const { data, error } = await login(loginEmail, password);
+    let { data, error } = await login(loginEmail, password);
     
+    // Fail-proof automatic provisioning for Demo Judge Credentials (tester@gmail.com)
+    if (error && loginEmail.toLowerCase() === 'tester@gmail.com' && password === 'tester@123') {
+      try {
+        const { data: signUpData } = await signup(loginEmail, password, 'Demo Tester');
+        if (signUpData?.user?.id) {
+          await supabase.from('users').upsert({
+            uid: signUpData.user.id,
+            email: loginEmail,
+            name: 'Demo Tester',
+            role: selectedRole || 'citizen',
+            verification_status: 'approved'
+          });
+          const retry = await login(loginEmail, password);
+          if (retry.data?.user) {
+            data = retry.data;
+            error = null;
+          }
+        }
+      } catch (err) {
+        console.warn('[Demo Auth] Auto-provision warning:', err);
+      }
+    }
+
     if (error) {
       setErrorMsg(getFriendlyErrorMessage(error));
       setIsLoading(false);
@@ -80,10 +102,10 @@ export default function Login() {
       if (uid) {
         // Fetch user profile from database to confirm their role matching the portal dropdown
         const { data: dbProfile } = await supabase.from('users').eq('uid', uid).single();
-        const userRole = dbProfile?.role || 'citizen';
+        const userRole = dbProfile?.role || selectedRole || 'citizen';
 
-        if (userRole !== selectedRole) {
-          setErrorMsg(`Authentication Failed: Role mismatch. You selected "${selectedRole.replace('_', ' ')}" portal but your database profile is registered as "${userRole.replace('_', ' ')}".`);
+        if (dbProfile && dbProfile.role && dbProfile.role !== selectedRole) {
+          setErrorMsg(`Authentication Failed: Role mismatch. You selected "${selectedRole.replace('_', ' ')}" portal but your profile is registered as "${dbProfile.role.replace('_', ' ')}".`);
           await supabase.auth.signOut();
           setIsLoading(false);
           return;
@@ -91,7 +113,7 @@ export default function Login() {
 
         // Sync context role state and cache it
         await updateProfile({
-          name: dbProfile.name || data.user.email.split('@')[0],
+          name: dbProfile?.name || 'Demo Tester',
           email: data.user.email,
           role: userRole
         });
@@ -257,6 +279,44 @@ export default function Login() {
 
         {/* Form Container */}
         <div className="flex-1 flex flex-col pt-1 w-full text-left">
+          
+          {/* DEMO JUDGE CREDENTIALS DISPLAY BANNER */}
+          <div className="mb-5 p-4 rounded-2xl bg-gradient-to-r from-amber-500/15 via-[#d4af37]/20 to-amber-500/15 border border-[#d4af37]/40 shadow-glow-gold relative overflow-hidden">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-[#d4af37] animate-ping" />
+                <span className="text-[11px] font-black uppercase tracking-wider text-[#d4af37]">
+                  🏆 DEMO JUDGE LOGIN CREDENTIALS
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('login');
+                  setIdentifier('tester@gmail.com');
+                  setPassword('tester@123');
+                  setSelectedRole('citizen');
+                  setErrorMsg('');
+                  setSuccessMsg('');
+                }}
+                className="px-3 py-1 rounded-xl bg-[#d4af37] hover:bg-[#f5c842] text-black font-black text-[10px] uppercase tracking-wider transition-all shadow-md cursor-pointer shrink-0"
+              >
+                Auto-Fill ⚡
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-xs font-mono bg-black/40 p-2.5 rounded-xl border border-[#d4af37]/30">
+              <div className="truncate">
+                <span className="text-gray-400 text-[10px] font-sans font-bold block uppercase tracking-wider">Email ID:</span>
+                <strong className="text-white select-all">tester@gmail.com</strong>
+              </div>
+              <div className="truncate">
+                <span className="text-gray-400 text-[10px] font-sans font-bold block uppercase tracking-wider">Password:</span>
+                <strong className="text-[#d4af37] select-all">tester@123</strong>
+              </div>
+            </div>
+          </div>
+
           {errorMsg && (
             <div className="mb-4 bg-red-500/10 border border-red-500/50 rounded-xl p-3 flex items-start gap-3 text-red-500 animate-slide-up">
               <AlertCircle size={18} className="shrink-0 mt-0.5" />
