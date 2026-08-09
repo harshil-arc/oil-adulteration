@@ -144,7 +144,7 @@ export default function WorkoutSessionView({ isOpen, onClose, workout, allExerci
         </div>
       ) : (
         /* ── ACTIVE EXERCISE PLAYER VIEW (SCROLLABLE CONTAINER) ───────────── */
-        <div className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-5 space-y-4 max-w-3xl mx-auto w-full pb-28">
+        <div className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-5 space-y-4 max-w-3xl mx-auto w-full pb-44">
 
           {/* Header Exercise Name */}
           <div className="flex justify-between items-start">
@@ -202,28 +202,29 @@ export default function WorkoutSessionView({ isOpen, onClose, workout, allExerci
         </div>
       )}
 
-      {/* ── ALWAYS STICKY FOOTER CONTROLS ─────────────────────────────────── */}
+      {/* ── ALWAYS STICKY FOOTER CONTROLS — LIFTED UP FOR HIGH VISIBILITY ─────────────────────────────────── */}
       {!isFinished && (
-        <div className="shrink-0 p-4 sm:p-5 bg-[#161b22] border-t border-gray-800 z-30 w-full fixed bottom-0 left-0 right-0 shadow-2xl">
-          <div className="max-w-3xl mx-auto w-full flex justify-between items-center gap-4">
+        <div className="shrink-0 px-4 sm:px-6 pt-4 pb-8 sm:pb-10 bg-[#161b22]/98 backdrop-blur-xl border-t border-gray-800 z-[100] w-full fixed bottom-0 left-0 right-0 shadow-[0_-12px_35px_rgba(0,0,0,0.85)]">
+          <div className="max-w-3xl mx-auto w-full flex justify-between items-center gap-3 mb-1 sm:mb-2">
             <button
               onClick={handlePrevious}
               disabled={currentIdx === 0}
-              className="py-3 px-5 rounded-2xl bg-gray-800 border border-gray-700 text-gray-200 disabled:opacity-30 hover:text-white transition-all flex items-center gap-2 font-bold text-xs shrink-0"
+              className="py-3 px-5 sm:px-6 rounded-2xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-100 disabled:opacity-30 hover:text-white transition-all flex items-center gap-2 font-bold text-xs sm:text-sm shrink-0 shadow-md active:scale-95 cursor-pointer disabled:cursor-not-allowed"
             >
               <SkipBack size={18} /> Previous
             </button>
 
             <button
               onClick={handleNext}
-              className="py-3.5 px-6 sm:px-8 rounded-2xl bg-gradient-to-r from-[#0052ff] to-blue-600 text-white font-black text-xs sm:text-sm uppercase tracking-wider flex items-center gap-2 shadow-xl hover:opacity-90 transition-all border border-blue-400/40"
+              className="py-3.5 px-6 sm:px-8 rounded-2xl bg-gradient-to-r from-[#0052ff] to-blue-600 hover:from-blue-600 hover:to-indigo-600 text-white font-black text-xs sm:text-sm uppercase tracking-wider flex items-center gap-2 shadow-xl shadow-blue-600/30 hover:opacity-95 transition-all border border-blue-400/40 active:scale-95 cursor-pointer"
             >
-              <span>{currentIdx < exerciseList.length - 1 ? 'Complete Exercise & Next →' : 'Finish Workout 🎉'}</span>
+              <span>{currentIdx < exerciseList.length - 1 ? 'Complete & Next →' : 'Finish Workout 🎉'}</span>
               <SkipForward size={18} />
             </button>
           </div>
         </div>
       )}
+
 
     </div>
   );

@@ -10,7 +10,7 @@ export default function ExerciseCard({ exercise, onView, onSelect }) {
       className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl p-4 hover:border-[#0052ff] transition-all cursor-pointer flex flex-col justify-between group shadow-sm hover:shadow-md"
     >
       {/* Thumbnail Container */}
-      <div className="w-full h-40 bg-slate-900 rounded-xl overflow-hidden relative flex items-center justify-center mb-3">
+      <div className="w-full h-40 bg-slate-900 rounded-xl overflow-hidden relative flex items-center justify-center mb-3 dark-surface">
         {exercise.imageUrl ? (
           <img
             src={exercise.imageUrl}

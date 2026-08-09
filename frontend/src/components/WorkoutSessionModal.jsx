@@ -114,8 +114,8 @@ export default function WorkoutSessionModal({ isOpen, onClose, workoutPlan, onWo
           <div className="flex items-center gap-2">
             <Dumbbell className="text-[#d4af37]" size={20} />
             <div>
-              <h3 className="text-sm font-black text-white">{workoutPlan.title}</h3>
-              <p className="text-[10px] text-gray-400 font-bold uppercase">{workoutPlan.focus} • {workoutPlan.durationMin} Mins</p>
+              <h3 className="text-sm font-black text-[var(--text-primary)]">{workoutPlan.title}</h3>
+              <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase">{workoutPlan.focus} • {workoutPlan.durationMin} Mins</p>
             </div>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-full bg-gray-800 text-gray-400 hover:text-white">
@@ -141,7 +141,7 @@ export default function WorkoutSessionModal({ isOpen, onClose, workoutPlan, onWo
           ) : (
             <div className="bg-[var(--bg-elevated)] p-6 rounded-3xl border border-[var(--border-color)] space-y-3 relative overflow-hidden">
               <span className="text-xs font-black uppercase tracking-widest text-[#d4af37] block">Current Exercise {currentExIdx + 1} of {totalExercises}</span>
-              <h2 className="text-2xl sm:text-3xl font-black text-white">{currentExName}</h2>
+              <h2 className="text-2xl sm:text-3xl font-black text-[var(--text-primary)]">{currentExName}</h2>
               
               <div className="flex items-center justify-center gap-4 text-xs font-bold pt-1">
                 <span className="bg-emerald-500/10 text-emerald-400 px-3 py-1 rounded-xl border border-emerald-500/30">
@@ -154,7 +154,7 @@ export default function WorkoutSessionModal({ isOpen, onClose, workoutPlan, onWo
 
               {/* Main Timer Display */}
               <div className="pt-2">
-                <span className="text-4xl font-black font-mono text-white">{formatSecs(exerciseTimerSec)}</span>
+                <span className="text-4xl font-black font-mono text-[var(--text-primary)]">{formatSecs(exerciseTimerSec)}</span>
               </div>
             </div>
           )}
@@ -162,16 +162,16 @@ export default function WorkoutSessionModal({ isOpen, onClose, workoutPlan, onWo
           {/* Overall Workout Stats */}
           <div className="grid grid-cols-3 gap-2 text-center text-xs">
             <div className="bg-[var(--bg-elevated)] p-3 rounded-2xl border border-[var(--border-color)]">
-              <span className="text-[9px] text-gray-400 block font-bold uppercase">Elapsed Time</span>
-              <span className="font-mono font-black text-white text-base">{formatSecs(totalElapsedTimeSec)}</span>
+              <span className="text-[9px] text-[var(--text-muted)] block font-bold uppercase">Elapsed Time</span>
+              <span className="font-mono font-black text-[var(--text-primary)] text-base">{formatSecs(totalElapsedTimeSec)}</span>
             </div>
             <div className="bg-[var(--bg-elevated)] p-3 rounded-2xl border border-[var(--border-color)]">
-              <span className="text-[9px] text-gray-400 block font-bold uppercase">Est. Calories</span>
-              <span className="font-mono font-black text-amber-400 text-base">{Math.round((totalElapsedTimeSec / 60) * 7)} kcal</span>
+              <span className="text-[9px] text-[var(--text-muted)] block font-bold uppercase">Est. Calories</span>
+              <span className="font-mono font-black text-amber-500 dark:text-amber-400 text-base">{Math.round((totalElapsedTimeSec / 60) * 7)} kcal</span>
             </div>
             <div className="bg-[var(--bg-elevated)] p-3 rounded-2xl border border-[var(--border-color)]">
-              <span className="text-[9px] text-gray-400 block font-bold uppercase">Completed</span>
-              <span className="font-mono font-black text-emerald-400 text-base">{progressPercent}%</span>
+              <span className="text-[9px] text-[var(--text-muted)] block font-bold uppercase">Completed</span>
+              <span className="font-mono font-black text-emerald-500 dark:text-emerald-400 text-base">{progressPercent}%</span>
             </div>
           </div>
 
@@ -195,7 +195,7 @@ export default function WorkoutSessionModal({ isOpen, onClose, workoutPlan, onWo
 
             <button
               onClick={handleSkip}
-              className="p-3.5 rounded-2xl bg-[var(--bg-elevated)] text-gray-300 hover:text-white border border-[var(--border-color)] flex items-center gap-1 text-xs font-bold"
+              className="p-3.5 rounded-2xl bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] dark:text-gray-300 dark:hover:text-white border border-[var(--border-color)] flex items-center gap-1 text-xs font-bold"
             >
               <SkipForward size={16} /> Skip
             </button>

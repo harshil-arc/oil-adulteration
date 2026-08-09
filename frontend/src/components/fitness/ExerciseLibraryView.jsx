@@ -176,8 +176,8 @@ export default function ExerciseLibraryView({ onSelectExerciseForCustom }) {
       ) : paginatedList.length === 0 ? (
         <div className="p-12 text-center bg-[var(--bg-card)] rounded-3xl border border-[var(--border-color)] space-y-3">
           <span className="text-4xl">🔍</span>
-          <h4 className="text-base font-bold text-white">No exercises found</h4>
-          <p className="text-gray-400 text-xs">Try clearing your filters or typing a different search term.</p>
+          <h4 className="text-base font-bold text-[var(--text-primary)]">No exercises found</h4>
+          <p className="text-[var(--text-muted)] text-xs">Try clearing your filters or typing a different search term.</p>
           <button onClick={handleClearFilters} className="btn-primary py-2 px-4 text-xs">Clear Filters</button>
         </div>
       ) : (
@@ -198,19 +198,19 @@ export default function ExerciseLibraryView({ onSelectExerciseForCustom }) {
           <button
             disabled={currentPage === 1}
             onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-            className="p-2 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-color)] text-gray-300 disabled:opacity-30 hover:text-white"
+            className="p-2 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-color)] text-[var(--text-secondary)] disabled:opacity-30 hover:text-[var(--text-primary)] dark:text-gray-300 dark:hover:text-white transition-colors"
           >
             <ChevronLeft size={18} />
           </button>
 
-          <span className="font-mono text-xs font-bold text-white">
+          <span className="font-mono text-xs font-bold text-[var(--text-primary)] dark:text-white">
             {currentPage} / {totalPages}
           </span>
 
           <button
             disabled={currentPage === totalPages}
             onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-            className="p-2 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-color)] text-gray-300 disabled:opacity-30 hover:text-white"
+            className="p-2 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-color)] text-[var(--text-secondary)] disabled:opacity-30 hover:text-[var(--text-primary)] dark:text-gray-300 dark:hover:text-white transition-colors"
           >
             <ChevronRight size={18} />
           </button>

@@ -5,40 +5,73 @@
    THEME VARIABLES — Light (default) / Dark (.dark)
    ============================================================ */
 :root {
-  --bg-page: #f8fafc; /* Clean light slate background */
-  --bg-card: #ffffff;
-  --bg-elevated: #f1f5f9;
-  --bg-input: #f8fafc;
-  --text-primary: #0f172a; /* Deep Slate / Near Black */
-  --text-secondary: #334155;
-  --text-muted: #64748b;
-  --border-color: #e2e8f0;
-  --border-subtle: #f1f5f9;
-  --accent-color: #d4af37; /* Metallic Gold Accent */
+  /* ── Backgrounds ─────────────────────────────────────── */
+  --bg-page:     #f0f4fa;   /* Soft slate-blue page wash */
+  --bg-card:     #ffffff;
+  --bg-elevated: #eef2f8;   /* Slightly deeper than page */
+  --bg-input:    #f5f8fd;
+
+  /* ── Primary Text — Soft Blue-Gray (NOT harsh black) ─── */
+  --text-primary:   #3d4f6a;   /* Soft navy-blue — readable without being black */
+  --text-secondary: #5d6f88;   /* Muted blue-gray */
+  --text-muted:     #8899b0;   /* Lightest readable gray-blue */
+
+  /* ── Semantic Pastel Text — for colored surfaces ──────── */
+  --text-blue:    #3d6bbf;   /* Soft blue text on light-blue surfaces */
+  --text-purple:  #6b55a8;   /* Muted purple text */
+  --text-green:   #34845f;   /* Muted green text */
+  --text-amber:   #9b6d30;   /* Muted amber/orange text */
+  --text-red:     #b84040;   /* Muted red text */
+
+  /* ── Pastel Surface Backgrounds ──────────────────────── */
+  --surface-blue:   #e8f0ff;
+  --surface-purple: #f0eaff;
+  --surface-green:  #e5f5ed;
+  --surface-amber:  #fff3e0;
+  --surface-red:    #fff0f0;
+
+  /* ── Borders ─────────────────────────────────────────── */
+  --border-color:  #d4dde8;   /* Visible but soft border */
+  --border-subtle: #e8eef5;
+
+  /* ── Accent (Gold) ───────────────────────────────────── */
+  --accent-color: #d4af37;
   --accent-hover: #b89628;
-  --glass-bg: rgba(255, 255, 255, 0.9);
+
+  /* ── Surfaces & Effects ──────────────────────────────── */
+  --glass-bg:   rgba(255, 255, 255, 0.9);
   --glass-border: rgba(212, 175, 55, 0.2);
-  --card-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.03);
-  --hover-bg: rgba(212, 175, 55, 0.06);
+  --card-shadow: 0 4px 12px -2px rgba(61, 79, 106, 0.08), 0 2px 6px -1px rgba(61, 79, 106, 0.04);
+  --hover-bg:   rgba(212, 175, 55, 0.06);
   color-scheme: light;
 }
 
 .dark {
-  --bg-page: #0b0f17; /* Deep Charcoal / Black */
-  --bg-card: #151c28; /* Dark Navy Slate */
+  --bg-page:     #0b0f17;
+  --bg-card:     #151c28;
   --bg-elevated: #1e293b;
-  --bg-input: #0b0f17;
-  --text-primary: #f8fafc;
+  --bg-input:    #0b0f17;
+  --text-primary:   #f8fafc;
   --text-secondary: #94a3b8;
-  --text-muted: #64748b;
-  --border-color: #334155;
-  --border-subtle: #1e293b;
-  --accent-color: #d4af37;
-  --accent-hover: #e5c158;
-  --glass-bg: rgba(21, 28, 40, 0.9);
-  --glass-border: rgba(212, 175, 55, 0.25);
-  --card-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
-  --hover-bg: rgba(212, 175, 55, 0.1);
+  --text-muted:     #64748b;
+  --text-blue:      #60a5fa;
+  --text-purple:    #a78bfa;
+  --text-green:     #34d399;
+  --text-amber:     #fbbf24;
+  --text-red:       #f87171;
+  --surface-blue:   rgba(59, 130, 246, 0.12);
+  --surface-purple: rgba(139, 92, 246, 0.12);
+  --surface-green:  rgba(52, 211, 153, 0.12);
+  --surface-amber:  rgba(251, 191, 36, 0.12);
+  --surface-red:    rgba(248, 113, 113, 0.12);
+  --border-color:   #334155;
+  --border-subtle:  #1e293b;
+  --accent-color:   #d4af37;
+  --accent-hover:   #e5c158;
+  --glass-bg:       rgba(21, 28, 40, 0.9);
+  --glass-border:   rgba(212, 175, 55, 0.25);
+  --card-shadow:    0 8px 24px rgba(0, 0, 0, 0.5);
+  --hover-bg:       rgba(212, 175, 55, 0.1);
   color-scheme: dark;
 }
 
@@ -75,6 +108,9 @@
 html {
   font-family: 'Inter', system-ui, sans-serif;
   -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
+  max-width: 100vw;
+  width: 100%;
 }
 
 body {
@@ -84,24 +120,72 @@ body {
   padding: 0;
   -webkit-font-smoothing: antialiased;
   transition: background-color 0.3s ease, color 0.3s ease;
+  overflow-x: hidden;
+  max-width: 100vw;
+  width: 100%;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
-/* ============================================================
-   AUTOMATIC LIGHT MODE CONTRAST ADAPTATION RULES
-   ============================================================ */
+#root {
+  overflow-x: hidden;
+  max-width: 100vw;
+  width: 100%;
+}
 
-/* Ensure headings inherit text color cleanly */
+p, span, h1, h2, h3, h4, h5, h6, label, a, button, td, th {
+  overflow-wrap: break-word;
+  word-break: break-word;
+  max-width: 100%;
+}
+
+/* Ensure flex children don't overflow parent containers */
+.flex > * {
+  min-width: 0;
+}
+
+img, video, canvas, svg, input, select, textarea {
+  max-width: 100%;
+}
+
+
+/* ============================================================
+   HEADINGS — inherit context color cleanly
+   ============================================================ */
 h1, h2, h3, h4, h5, h6 {
   color: inherit;
 }
 
-/* Ensure forced-white always forces white text on dark cards */
-.forced-white, [data-theme="dark-card"] *, .dark-card * {
-  color: #ffffff;
+/* ============================================================
+   LIGHT-MODE CONTRAST PROTECTION
+   Force `text-white` and hardcoded light-invisible grays back
+   to readable pastel colors when on light card/page surfaces.
+   Only applies when NOT in dark mode AND the element is NOT
+   inside a known-dark container.
+   ============================================================ */
+html:not(.dark) :not(.dark-surface):not([class*="bg-[#0"]):not([class*="bg-[#1"]):not([class*="bg-gray-9"]):not([class*="bg-black"]):not([class*="bg-slate-9"]) > .text-white:not(.forced-white):not(button):not(a) {
+  color: var(--text-primary) !important;
 }
 
-p, span, label, td, th {
-  transition: color 0.3s ease;
+/* Catch-all: on white/light bg-card surfaces specifically */
+html:not(.dark) .card .text-white:not(.forced-white):not(button):not(a),
+html:not(.dark) [class*="bg-[var(--bg-card)]"] .text-white:not(.forced-white):not(button):not(a),
+html:not(.dark) [class*="bg-[var(--bg-elevated)]"] .text-white:not(.forced-white):not(button):not(a),
+html:not(.dark) [class*="bg-[var(--bg-page)]"] .text-white:not(.forced-white):not(button):not(a) {
+  color: var(--text-primary) !important;
+}
+
+/* Fix gray-400/gray-300 text that's invisible on light surfaces */
+html:not(.dark) .card .text-gray-400:not(.forced-white),
+html:not(.dark) .card .text-gray-300:not(.forced-white),
+html:not(.dark) [class*="bg-[var(--bg-elevated)]"] .text-gray-400:not(.forced-white),
+html:not(.dark) [class*="bg-[var(--bg-elevated)]"] .text-gray-300:not(.forced-white) {
+  color: var(--text-muted) !important;
+}
+
+/* Navigation bar is always white in light mode — text should be themed */
+html:not(.dark) nav.fixed .text-white:not(.forced-white) {
+  color: var(--text-primary) !important;
 }
 
 /* ============================================================
@@ -194,23 +278,55 @@ p, span, label, td, th {
 .theme-border    { border-color: var(--border-color); }
 .theme-hover:hover { background-color: var(--hover-bg); }
 
-/* Mandatory white text for dark badges only */
+/* Pastel semantic text helpers */
+.text-soft-body      { color: var(--text-primary); }
+.text-soft-secondary { color: var(--text-secondary); }
+.text-soft-muted     { color: var(--text-muted); }
+.text-soft-blue      { color: var(--text-blue); }
+.text-soft-purple    { color: var(--text-purple); }
+.text-soft-green     { color: var(--text-green); }
+.text-soft-amber     { color: var(--text-amber); }
+.text-soft-red       { color: var(--text-red); }
+
+/* Surface backgrounds */
+.surface-blue   { background-color: var(--surface-blue); }
+.surface-purple { background-color: var(--surface-purple); }
+.surface-green  { background-color: var(--surface-green); }
+.surface-amber  { background-color: var(--surface-amber); }
+.surface-red    { background-color: var(--surface-red); }
+
+/* Dark surface marker — tells the CSS override rules to leave text alone here */
+.dark-surface { /* intentionally empty — used as a selector anchor */ }
+
+/* Mandatory white text override for explicitly dark badges/containers */
 .forced-white { color: #ffffff !important; }
 
-/* Scrollbars */
+/* ============================================================
+   SCROLLBARS
+   ============================================================ */
 ::-webkit-scrollbar       { width: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 9999px; }
 .scrollbar-none { scrollbar-width: none; }
 .scrollbar-none::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
 
-/* Select option contrast & dark container contrast rules */
+/* ============================================================
+   SELECT / OPTION CONTRAST
+   ============================================================ */
 select option {
-  background-color: #161b22 !important;
-  color: #ffffff !important;
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
 }
 
 .dark option {
   background-color: #0b0f17 !important;
   color: #f8fafc !important;
+}
+
+/* Input placeholder soft color in light mode */
+html:not(.dark) ::placeholder {
+  color: var(--text-muted);
+  opacity: 1;
 }

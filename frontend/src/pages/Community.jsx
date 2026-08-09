@@ -124,15 +124,16 @@ export default function Community() {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-lg font-black tracking-tight text-white">
+              <h1 className="text-lg font-black tracking-tight theme-text">
                 Food Safety <span className="text-blue-400">Intelligence</span> Center
               </h1>
               <span className="bg-blue-500/20 text-blue-300 border border-blue-500/40 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Verified Sources
               </span>
             </div>
-            <p className="text-[10px] text-gray-400 font-medium">Latest verified food safety alerts from official authorities</p>
+            <p className="text-[10px] text-[var(--text-muted)] font-medium">Latest verified food safety alerts from official authorities</p>
           </div>
+
         </div>
 
         <div className="flex items-center gap-2">
@@ -190,7 +191,7 @@ export default function Community() {
               placeholder="Search by Product, Brand, Company, Oil, Milk, Ghee, Honey, State..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] text-xs text-white p-3.5 pl-10 pr-9 rounded-2xl focus:border-blue-500 outline-none transition-colors"
+              className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] text-xs text-[var(--text-primary)] p-3.5 pl-10 pr-9 rounded-2xl focus:border-blue-500 outline-none transition-colors"
             />
             {searchQuery && (
               <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white">
@@ -207,8 +208,8 @@ export default function Community() {
                 onClick={() => { setSelectedCategory(cat); setShowBookmarksOnly(false); }}
                 className={`snap-start shrink-0 px-3.5 py-2 rounded-xl text-xs font-bold transition-all border ${
                   selectedCategory === cat && !showBookmarksOnly
-                    ? 'bg-blue-600 text-white font-black border-blue-400 shadow-glow-blue scale-[1.02]'
-                    : 'bg-[var(--bg-card)] text-gray-300 border-[var(--border-color)] hover:border-gray-600'
+                    ? 'bg-blue-600 text-white forced-white font-black border-blue-400 shadow-glow-blue scale-[1.02]'
+                    : 'bg-[var(--bg-card)] text-[var(--text-secondary)] border-[var(--border-color)] hover:border-blue-400 dark:text-gray-300'
                 }`}
               >
                 {cat}
@@ -512,14 +513,14 @@ export default function Community() {
             <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
               <div className="flex items-center gap-2">
                 <Bell size={18} className="text-amber-400" />
-                <h3 className="text-sm font-black text-white">Alert Subscriptions</h3>
+                <h3 className="text-sm font-black theme-text">Alert Subscriptions</h3>
               </div>
-              <button onClick={() => setNotifModalOpen(false)} className="p-1 rounded-full text-gray-400 hover:text-white">
+              <button onClick={() => setNotifModalOpen(false)} className="p-1 rounded-full text-[var(--text-muted)] hover:theme-text">
                 <X size={16} />
               </button>
             </div>
 
-            <p className="text-xs text-gray-300">
+            <p className="text-xs text-[var(--text-muted)]">
               Receive real-time push notifications when verified alerts match your preferences.
             </p>
 
@@ -532,7 +533,7 @@ export default function Community() {
                 { key: 'criticalOnly', label: 'Critical Severity Alerts Only' }
               ].map(item => (
                 <label key={item.key} className="flex items-center justify-between p-3 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-color)] cursor-pointer">
-                  <span className="text-white">{item.label}</span>
+                  <span className="theme-text">{item.label}</span>
                   <input
                     type="checkbox"
                     checked={!!notifPrefs[item.key]}
@@ -542,6 +543,7 @@ export default function Community() {
                 </label>
               ))}
             </div>
+
 
             {savedNotifToast && (
               <div className="bg-emerald-500/20 text-emerald-400 p-2.5 rounded-xl border border-emerald-500/40 text-xs text-center font-bold animate-fade-in">

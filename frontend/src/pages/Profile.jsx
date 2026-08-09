@@ -3,10 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import {
   Bell, Wifi, Moon, Shield, Info, LogOut, Edit3, X, Server,
   Sun, ChevronRight, Settings, Camera, CheckCircle,
-  Phone, MapPin, Calendar, FileText,
+  Phone, MapPin, Calendar, FileText, Download, Smartphone, Package, CheckCircle2, Sparkles,
   Scan, AlertTriangle, BarChart3, Upload,
   ChevronDown, ChevronUp, Target, Mail, User, Check, History as HistoryIcon, Beaker, ShieldCheck
 } from 'lucide-react';
+
 import { useApp } from '../context/AppContext';
 import { useTranslation } from 'react-i18next';
 import { supabase } from '../lib/supabase';
@@ -66,6 +67,43 @@ export default function Profile() {
   const [showSettings, setShowSettings] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [successToast, setSuccessToast] = useState('');
+  const [showInstallGuide, setShowInstallGuide] = useState(false);
+  const [deferredPrompt, setDeferredPrompt] = useState(null);
+
+  // Capture PWA install prompt if available
+  useEffect(() => {
+    const handler = (e) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleDownloadApk = () => {
+    if (deferredPrompt) {
+      try {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then((choice) => {
+          if (choice.outcome === 'accepted') {
+            console.log('User accepted PWA installation');
+          }
+          setDeferredPrompt(null);
+        });
+      } catch (_) {}
+    }
+
+    // Trigger direct file download of food360.apk
+    const link = document.createElement('a');
+    link.href = '/food360.apk';
+    link.download = 'food360.apk';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    setSuccessToast('✓ Food 360 APK download started! Check your downloads.');
+    setTimeout(() => setSuccessToast(''), 4500);
+  };
   
   // Edit Form State
   const [editForm, setEditForm] = useState({
@@ -76,6 +114,7 @@ export default function Profile() {
   });
   const [saving, setSaving] = useState(false);
   const fileRef = useRef(null);
+
 
   // Scan History items for profile history card
   const [scanHistory, setScanHistory] = useState([]);
@@ -282,6 +321,81 @@ export default function Profile() {
             <StatCard icon={Target} label="Avg Confidence" value={statsLoading ? '…' : stats.accuracy != null ? `${stats.accuracy}%` : 'N/A'} color="bg-purple-500/20 text-purple-400" />
           </div>
         </div>
+
+        {/* ── DOWNLOAD APP (APK) CARD ────────────────────────────────────────── */}
+
+        <div className="card p-5 rounded-3xl border-2 border-[#d4af37]/60 bg-gradient-to-br from-[var(--bg-card)] via-[var(--bg-card)] to-[#d4af37]/15 relative overflow-hidden shadow-glow-gold space-y-4">
+          <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-11 h-11 rounded-2xl bg-[#d4af37]/20 border border-[#d4af37]/40 flex items-center justify-center text-[#d4af37] shrink-0 shadow-md">
+                <Smartphone size={22} />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-base font-black text-[var(--text-primary)] leading-tight">Download Food 360 App</h2>
+                  <span className="bg-[#d4af37]/20 text-[#d4af37] border border-[#d4af37]/40 text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+                    APK v1.0.0
+                  </span>
+                </div>
+                <p className="text-[10px] text-[var(--text-muted)] mt-0.5 font-medium">Install native Android application package on your mobile device</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold">
+            <span className="px-2.5 py-1 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-color)] text-[var(--text-secondary)] flex items-center gap-1">
+              <Package size={12} className="text-[#d4af37]" /> Size: 189 KB
+            </span>
+            <span className="px-2.5 py-1 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-color)] text-[var(--text-secondary)] flex items-center gap-1">
+              <Smartphone size={12} className="text-emerald-400" /> Android 5.0+
+            </span>
+            <span className="px-2.5 py-1 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-color)] text-[var(--text-secondary)] flex items-center gap-1">
+              <CheckCircle2 size={12} className="text-blue-400" /> Direct Installer
+            </span>
+          </div>
+
+          <button
+            onClick={handleDownloadApk}
+            className="w-full py-4 px-4 rounded-2xl bg-gradient-to-r from-[#f5c842] to-[#d4af37] text-black font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2.5 shadow-glow-gold hover:brightness-110 active:scale-95 transition-all cursor-pointer"
+          >
+            <Download size={18} strokeWidth={2.5} />
+            Download APK File (food360.apk)
+          </button>
+
+          <div className="bg-[var(--bg-elevated)] p-3.5 rounded-2xl border border-[var(--border-color)] space-y-2">
+            <button
+              onClick={() => setShowInstallGuide(s => !s)}
+              className="w-full flex items-center justify-between text-left text-xs font-bold text-[var(--text-primary)]"
+            >
+              <span className="flex items-center gap-1.5 text-[11px] text-[#d4af37] font-black uppercase tracking-wider">
+                <Sparkles size={13} /> How to Install APK on your Android Phone
+              </span>
+              {showInstallGuide ? <ChevronUp size={14} className="text-[var(--text-muted)]" /> : <ChevronDown size={14} className="text-[var(--text-muted)]" />}
+            </button>
+
+            {showInstallGuide && (
+              <div className="pt-2.5 border-t border-[var(--border-color)] space-y-2.5 text-[11px] text-[var(--text-secondary)] animate-fade-in">
+                <div className="flex items-start gap-2.5">
+                  <span className="w-5 h-5 rounded-full bg-[#d4af37]/20 text-[#d4af37] font-black text-[9px] flex items-center justify-center shrink-0 mt-0.5">1</span>
+                  <p>Tap <strong>Download APK File</strong> button above to save <code className="text-[#d4af37] bg-[var(--bg-card)] px-1 py-0.5 rounded border border-[var(--border-color)]">food360.apk</code>.</p>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <span className="w-5 h-5 rounded-full bg-[#d4af37]/20 text-[#d4af37] font-black text-[9px] flex items-center justify-center shrink-0 mt-0.5">2</span>
+                  <p>Open your phone's notification shade or <strong>Downloads</strong> manager and tap <code className="text-[#d4af37] bg-[var(--bg-card)] px-1 py-0.5 rounded border border-[var(--border-color)]">food360.apk</code>.</p>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <span className="w-5 h-5 rounded-full bg-[#d4af37]/20 text-[#d4af37] font-black text-[9px] flex items-center justify-center shrink-0 mt-0.5">3</span>
+                  <p>If prompted by Android, enable <strong>"Allow installation from unknown sources"</strong> in your browser settings.</p>
+                </div>
+                <div className="flex items-start gap-2.5">
+                  <span className="w-5 h-5 rounded-full bg-[#d4af37]/20 text-[#d4af37] font-black text-[9px] flex items-center justify-center shrink-0 mt-0.5">4</span>
+                  <p>Tap <strong>Install</strong>. When finished, open <strong>Food 360</strong> directly from your home screen!</p>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+
 
         {/* ── PERSONAL DETAILS CARD ─────────────────────────────────────────── */}
         <div className="card p-4 rounded-3xl border border-[var(--border-color)]">

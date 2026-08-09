@@ -98,7 +98,7 @@ export default function FitnessDashboard() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 relative z-10">
           <div className="space-y-1">
             <div className="flex items-center gap-2">
-              <span className="text-[9px] font-black uppercase text-white px-3 py-1 rounded-full bg-[#0052ff] flex items-center gap-1 shadow-md">
+              <span className="text-[9px] font-black uppercase text-white forced-white px-3 py-1 rounded-full bg-[#0052ff] flex items-center gap-1 shadow-md">
                 <Sparkles size={12} /> Personalized Engine
               </span>
               <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/30">
@@ -116,12 +116,12 @@ export default function FitnessDashboard() {
                 <span>Start Smart Motion Capture Coach</span>
               </button>
 
-              <div className="flex items-center gap-1.5 bg-[#161b22]/90 border border-purple-500/40 rounded-2xl px-3 py-1.5">
+              <div className="flex items-center gap-1.5 bg-[#161b22]/90 border border-purple-500/40 rounded-2xl px-3 py-1.5 dark-surface">
                 <span className="text-[10px] uppercase font-black text-purple-300">Exercise:</span>
                 <select
                   value={selectedMotionExercise}
                   onChange={(e) => setSelectedMotionExercise(e.target.value)}
-                  className="bg-transparent text-white font-bold text-xs focus:outline-none cursor-pointer"
+                  className="bg-transparent text-white forced-white font-bold text-xs focus:outline-none cursor-pointer"
                 >
                   <option value="squat" className="bg-[#161b22] text-white">🏋️ Bodyweight Squats (Legs)</option>
                   <option value="toe_touch" className="bg-[#161b22] text-white">🤸 Standing Toe Touch (Flexibility & Core)</option>
@@ -151,7 +151,7 @@ export default function FitnessDashboard() {
         </div>
 
         {/* Educational Copyright License Statement */}
-        <div className="p-3.5 rounded-2xl bg-black/40 border border-gray-800 text-[11px] text-gray-400 flex items-center gap-2">
+        <div className="p-3.5 rounded-2xl bg-black/30 border border-gray-700 text-[11px] text-[var(--text-muted)] dark:text-gray-400 flex items-center gap-2 dark-surface">
           <ShieldCheck size={16} className="text-blue-400 shrink-0" />
           <span>Exercise animations & thumbnails provided by <b>Gym visual dataset</b> for non-commercial educational guidance.</span>
         </div>
@@ -194,7 +194,7 @@ export default function FitnessDashboard() {
                     Today's Prescribed Session
                   </span>
                   <h2 className="text-2xl sm:text-3xl font-black text-[var(--text-primary)]">{todayWorkout.title}</h2>
-                  <p className="text-xs text-[var(--text-secondary)] mt-1">
+                  <p className="text-xs text-[var(--text-secondary)] mt-1 font-medium">
                     ~{todayWorkout.estimatedDurationMinutes} Minutes • {todayWorkout.exercises?.length || 5} Exercises
                   </p>
                 </div>
@@ -209,7 +209,7 @@ export default function FitnessDashboard() {
 
               {/* Today's Exercises Preview Grid */}
               <div className="space-y-2 pt-2">
-                <span className="text-[10px] font-black uppercase text-[var(--text-secondary)] tracking-wider block">
+                <span className="text-[10px] font-black uppercase text-[var(--text-muted)] tracking-wider block">
                   Target Exercises ({todayWorkout.exercises?.length || 0})
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
@@ -220,7 +220,7 @@ export default function FitnessDashboard() {
                       className="bg-[var(--bg-elevated)] p-3.5 rounded-2xl border border-[var(--border-color)] flex items-center justify-between cursor-pointer hover:border-[#0052ff] transition-all"
                     >
                       <div className="space-y-0.5">
-                        <h4 className="font-black text-[var(--text-primary)] text-xs">{capitalize(ex.name)}</h4>
+                        <h4 className="font-black text-purple-400 text-xs">{capitalize(ex.name)}</h4>
                         <p className="text-[10px] text-[var(--text-secondary)]">{capitalize(ex.body_part)} • {capitalize(ex.equipment)}</p>
                       </div>
                       <span className="text-[10px] font-mono font-bold text-[#0052ff] bg-[#0052ff]/10 px-2 py-0.5 rounded border border-[#0052ff]/30">

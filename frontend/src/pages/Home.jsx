@@ -175,20 +175,20 @@ export default function Home() {
           <img src="/food360-logo.jpg" alt="Food 360 Logo" className="w-10 h-10 rounded-xl object-cover border border-[#d4af37]/40 shadow-md" />
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-lg font-black tracking-tight text-white">
+              <h1 className="text-lg font-black tracking-tight theme-text">
                 Food <span className="text-[#d4af37]">360</span>
               </h1>
               <span className="bg-[#d4af37]/20 text-[#d4af37] border border-[#d4af37]/40 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
                 <Award size={10} /> Gold Inspector
               </span>
             </div>
-            <p className="text-[10px] text-gray-400 font-medium">{greeting}, {profile?.name ? profile.name.split(' ')[0] : 'Harshil'} 👋 • {formattedDate}</p>
+            <p className="text-[10px] text-[var(--text-muted)] font-medium">{greeting}, {profile?.name ? profile.name.split(' ')[0] : 'Harshil'} 👋 • {formattedDate}</p>
           </div>
         </div>
 
         <button 
           onClick={() => setShowNotifications(!showNotifications)}
-          className="p-2.5 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-color)] text-gray-400 hover:text-white hover:border-[#d4af37] transition-colors relative"
+          className="p-2.5 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-color)] text-[var(--text-muted)] hover:theme-text hover:border-[#d4af37] transition-colors relative"
         >
           <Bell size={18} />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-amber-500 rounded-full animate-ping" />
@@ -205,16 +205,17 @@ export default function Home() {
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
               <span className="text-[10px] font-black uppercase tracking-widest text-[#d4af37]">Latest Oil Scan</span>
             </div>
-            <span className="text-[10px] font-bold text-gray-400 font-mono">
+            <span className="text-[10px] font-bold text-[var(--text-muted)] font-mono">
               {new Date(latestScan.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </span>
           </div>
 
           <div className="flex items-start justify-between gap-3 mb-4">
             <div>
-              <h2 className="text-xl font-black text-white tracking-tight">{latestScan.oil_type || 'Mustard Oil'}</h2>
-              <p className="text-[11px] text-gray-400 mt-0.5 font-medium">{latestScan.vendor || 'Local Vendor'}</p>
+              <h2 className="text-xl font-black theme-text tracking-tight">{latestScan.oil_type || 'Mustard Oil'}</h2>
+              <p className="text-[11px] text-[var(--text-muted)] mt-0.5 font-medium">{latestScan.vendor || 'Local Vendor'}</p>
             </div>
+
 
             <div className="text-right">
               <div className="text-2xl font-black font-mono text-[#d4af37]">
@@ -422,10 +423,10 @@ export default function Home() {
         {/* ── 5. VIEW FULL ANALYTICS BUTTON ──────────────────────────────────── */}
         <div className="card p-5 rounded-3xl border border-blue-500/30 bg-gradient-to-r from-blue-500/10 to-purple-500/10 flex items-center justify-between gap-4">
           <div>
-            <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+            <h3 className="text-sm font-black theme-text uppercase tracking-wider flex items-center gap-2">
               <BarChart2 size={18} className="text-blue-400" /> Full Analytics
             </h3>
-            <p className="text-[10px] text-gray-400 mt-1">Inspect weekly volume, pie charts & regional purity maps.</p>
+            <p className="text-[10px] text-[var(--text-muted)] mt-1">Inspect weekly volume, pie charts & regional purity maps.</p>
           </div>
 
           <button
@@ -449,7 +450,7 @@ export default function Home() {
                 <BarChart2 className="text-[#d4af37]" size={18} />
                 <h3 className="text-sm font-black theme-text">Food 360 Full Analytics & Intelligence</h3>
               </div>
-              <button onClick={() => setShowFullAnalytics(false)} className="p-1.5 rounded-full bg-gray-800 text-gray-400 hover:text-white">
+              <button onClick={() => setShowFullAnalytics(false)} className="p-1.5 rounded-full bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:theme-text">
                 <X size={16} />
               </button>
             </div>
@@ -464,7 +465,7 @@ export default function Home() {
                     key={range}
                     onClick={() => setChartTimeRange(range)}
                     className={`flex-1 py-2 rounded-xl font-bold uppercase tracking-wider text-[10px] transition-all ${
-                      chartTimeRange === range ? 'bg-[#d4af37] text-black font-black shadow-glow-gold' : 'text-gray-400 hover:text-white'
+                      chartTimeRange === range ? 'bg-[#d4af37] text-black font-black shadow-glow-gold' : 'text-[var(--text-muted)] hover:theme-text'
                     }`}
                   >
                     {range}
@@ -474,7 +475,7 @@ export default function Home() {
 
               {/* Bar Chart */}
               <div className="bg-[var(--bg-elevated)] p-4 rounded-2xl border border-[var(--border-color)] space-y-2">
-                <h4 className="text-xs font-black text-white uppercase tracking-wider">{chartTimeRange} Scan Volume</h4>
+                <h4 className="text-xs font-black theme-text uppercase tracking-wider">{chartTimeRange} Scan Volume</h4>
                 <div className="h-48 w-full pt-2">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={activeChartData}>
@@ -489,7 +490,7 @@ export default function Home() {
 
               {/* Quality Breakdown Pie */}
               <div className="bg-[var(--bg-elevated)] p-4 rounded-2xl border border-[var(--border-color)] space-y-2">
-                <h4 className="text-xs font-black text-white uppercase tracking-wider">Quality Breakdown</h4>
+                <h4 className="text-xs font-black theme-text uppercase tracking-wider">Quality Breakdown</h4>
                 <div className="h-48 w-full flex items-center justify-center">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -533,9 +534,9 @@ export default function Home() {
               <selectedStatModal.icon size={28} />
             </div>
             <div>
-              <h3 className="text-lg font-black text-white">{selectedStatModal.title}</h3>
+              <h3 className="text-lg font-black theme-text">{selectedStatModal.title}</h3>
               <p className="text-3xl font-black font-mono text-[#d4af37] mt-1">{selectedStatModal.value}</p>
-              <p className="text-xs text-gray-400 mt-2">Detailed metric telemetry logged securely in database.</p>
+              <p className="text-xs text-[var(--text-muted)] mt-2">Detailed metric telemetry logged securely in database.</p>
             </div>
             <button
               onClick={() => setSelectedStatModal(null)}
@@ -546,6 +547,7 @@ export default function Home() {
           </div>
         </div>
       )}
+
 
     </div>
   );

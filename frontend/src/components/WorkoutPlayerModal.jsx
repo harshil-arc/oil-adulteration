@@ -107,29 +107,30 @@ export default function WorkoutPlayerModal({ isOpen, onClose, workoutPlan, onWor
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md animate-fade-in overflow-y-auto">
-      <div className="relative w-full max-w-xl bg-[var(--bg-card)] border border-[#d4af37]/40 rounded-3xl shadow-2xl overflow-hidden my-6">
+      <div className="relative w-full max-w-xl bg-[var(--bg-card)] border border-[#d4af37]/40 rounded-3xl shadow-2xl overflow-hidden my-6 max-h-[88vh] flex flex-col">
         
         {/* Top Header */}
-        <div className="flex items-center justify-between p-4 border-b border-[var(--border-color)] bg-[var(--bg-elevated)]">
+        <div className="flex items-center justify-between p-4 border-b border-[var(--border-color)] bg-[var(--bg-elevated)] shrink-0">
           <div className="flex items-center gap-2">
             <Dumbbell className="text-[#d4af37]" size={20} />
             <div>
-              <h3 className="text-sm font-black text-white">{workoutPlan.title}</h3>
-              <p className="text-[10px] text-gray-400 font-bold uppercase">{workoutPlan.focus} • {workoutPlan.durationMin} Mins</p>
+              <h3 className="text-sm font-black theme-text">{workoutPlan.title}</h3>
+              <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase">{workoutPlan.focus} • {workoutPlan.durationMin} Mins</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-full bg-gray-800 text-gray-400 hover:text-white">
+          <button onClick={onClose} className="p-1.5 rounded-full bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:theme-text">
             <X size={18} />
           </button>
         </div>
 
         {/* Progress Bar */}
-        <div className="w-full bg-gray-800 h-2">
+        <div className="w-full bg-gray-800 h-2 shrink-0">
           <div className="bg-gradient-to-r from-emerald-500 via-[#d4af37] to-amber-500 h-full transition-all duration-300" style={{ width: `${progressPercent}%` }} />
         </div>
 
         {/* Content Body */}
-        <div className="p-6 space-y-6 text-center">
+        <div className="p-6 space-y-6 text-center overflow-y-auto custom-scrollbar flex-1 pb-10">
+
 
           {/* Hero Exercise SVG Animation Box */}
           <div className="w-24 h-24 rounded-full bg-[#d4af37]/10 border-2 border-[#d4af37]/40 flex items-center justify-center mx-auto shadow-glow-gold">

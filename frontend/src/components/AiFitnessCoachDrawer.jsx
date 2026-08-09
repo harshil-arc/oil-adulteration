@@ -45,8 +45,8 @@ export default function AiFitnessCoachDrawer({ isOpen, onClose, currentWorkout, 
           <div className="flex items-center gap-2">
             <Bot className="text-[#d4af37]" size={20} />
             <div>
-              <h3 className="text-sm font-black text-white">AI Fitness Coach Assistant</h3>
-              <p className="text-[10px] text-gray-400 font-bold uppercase">Real-Time Adaptive Workout Modifications</p>
+              <h3 className="text-sm font-black text-[var(--text-primary)]">AI Fitness Coach Assistant</h3>
+              <p className="text-[10px] text-[var(--text-muted)] font-bold uppercase">Real-Time Adaptive Workout Modifications</p>
             </div>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-full bg-gray-800 text-gray-400 hover:text-white">
@@ -75,7 +75,7 @@ export default function AiFitnessCoachDrawer({ isOpen, onClose, currentWorkout, 
               className={`p-3.5 rounded-2xl max-w-[85%] ${
                 msg.role === 'user'
                   ? 'bg-[#d4af37] text-black font-extrabold ml-auto'
-                  : 'bg-[var(--bg-elevated)] text-gray-200 border border-[var(--border-color)] mr-auto'
+                  : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] dark:text-gray-200 border border-[var(--border-color)] mr-auto'
               }`}
             >
               {msg.text}
@@ -91,7 +91,7 @@ export default function AiFitnessCoachDrawer({ isOpen, onClose, currentWorkout, 
             onChange={e => setUserPrompt(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleSendPrompt()}
             placeholder="Ask AI Coach (e.g. 'I have back pain')..."
-            className="flex-1 bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded-xl px-3.5 py-2 text-xs text-white outline-none focus:border-[#d4af37]"
+            className="flex-1 bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded-xl px-3.5 py-2 text-xs text-[var(--text-primary)] outline-none focus:border-[#d4af37]"
           />
           <button
             onClick={() => handleSendPrompt()}
