@@ -49,26 +49,26 @@ export default function FitnessAnalyticsView({ profile = {}, workoutLogs = [] })
             <span className="text-[10px] font-black uppercase text-[#d4af37]">BMI Trend Status</span>
             <Activity size={16} className="text-[#d4af37]" />
           </div>
-          <p className="text-2xl font-black text-white font-mono">{profile.bmi || 22.9} <span className="text-xs text-emerald-400 font-normal">Normal</span></p>
-          <p className="text-[10px] text-gray-400">Height: {profile.height}cm • Target: {profile.targetWeight}kg</p>
+          <p className="text-2xl font-black text-[var(--text-primary)] font-mono">{profile.bmi || 22.9} <span className="text-xs text-emerald-500 dark:text-emerald-400 font-normal">Normal</span></p>
+          <p className="text-[10px] text-[var(--text-secondary)]">Height: {profile.height}cm • Target: {profile.targetWeight}kg</p>
         </div>
 
         <div className="card p-5 rounded-3xl border border-blue-500/30 bg-blue-500/10 space-y-1">
           <div className="flex justify-between items-center">
-            <span className="text-[10px] font-black uppercase text-blue-400">Weekly Calorie Burn</span>
-            <Flame size={16} className="text-blue-400" />
+            <span className="text-[10px] font-black uppercase text-blue-500 dark:text-blue-400">Weekly Calorie Burn</span>
+            <Flame size={16} className="text-blue-500 dark:text-blue-400" />
           </div>
-          <p className="text-2xl font-black text-white font-mono">1,890 <span className="text-xs text-gray-400 font-normal">kcal</span></p>
-          <p className="text-[10px] text-gray-400">+12% vs previous week</p>
+          <p className="text-2xl font-black text-[var(--text-primary)] font-mono">1,890 <span className="text-xs text-[var(--text-secondary)] font-normal">kcal</span></p>
+          <p className="text-[10px] text-[var(--text-secondary)]">+12% vs previous week</p>
         </div>
 
         <div className="card p-5 rounded-3xl border border-purple-500/30 bg-purple-500/10 space-y-1">
           <div className="flex justify-between items-center">
-            <span className="text-[10px] font-black uppercase text-purple-400">Personal Records (PRs)</span>
-            <Trophy size={16} className="text-purple-400" />
+            <span className="text-[10px] font-black uppercase text-purple-500 dark:text-purple-400">Personal Records (PRs)</span>
+            <Trophy size={16} className="text-purple-500 dark:text-purple-400" />
           </div>
-          <p className="text-2xl font-black text-white font-mono">8 <span className="text-xs text-gray-400 font-normal">Milestones</span></p>
-          <p className="text-[10px] text-gray-400">Push-Up Max: 35 reps</p>
+          <p className="text-2xl font-black text-[var(--text-primary)] font-mono">8 <span className="text-xs text-[var(--text-secondary)] font-normal">Milestones</span></p>
+          <p className="text-[10px] text-[var(--text-secondary)]">Push-Up Max: 35 reps</p>
         </div>
       </div>
 
@@ -80,9 +80,9 @@ export default function FitnessAnalyticsView({ profile = {}, workoutLogs = [] })
           <div className="flex justify-between items-center">
             <div>
               <span className="text-[10px] font-black uppercase text-[#d4af37] tracking-wider block">Body Composition Progress</span>
-              <h3 className="text-sm font-black text-white">Weight (kg) & BMI Trend</h3>
+              <h3 className="text-sm font-black text-[var(--text-primary)]">Weight (kg) & BMI Trend</h3>
             </div>
-            <TrendingUp size={16} className="text-emerald-400" />
+            <TrendingUp size={16} className="text-emerald-500 dark:text-emerald-400" />
           </div>
 
           <div className="h-56 w-full pt-2">
@@ -102,10 +102,10 @@ export default function FitnessAnalyticsView({ profile = {}, workoutLogs = [] })
         <div className="card p-5 rounded-3xl border border-[var(--border-color)] bg-[var(--bg-card)] space-y-4">
           <div className="flex justify-between items-center">
             <div>
-              <span className="text-[10px] font-black uppercase text-blue-400 tracking-wider block">Metabolic Burn Analysis</span>
-              <h3 className="text-sm font-black text-white">Daily Calorie Expenditure</h3>
+              <span className="text-[10px] font-black uppercase text-blue-500 dark:text-blue-400 tracking-wider block">Metabolic Burn Analysis</span>
+              <h3 className="text-sm font-black text-[var(--text-primary)]">Daily Calorie Expenditure</h3>
             </div>
-            <Flame size={16} className="text-amber-400" />
+            <Flame size={16} className="text-amber-500 dark:text-amber-400" />
           </div>
 
           <div className="h-56 w-full pt-2">
@@ -127,8 +127,8 @@ export default function FitnessAnalyticsView({ profile = {}, workoutLogs = [] })
         
         {/* Muscle Distribution */}
         <div className="card p-5 rounded-3xl border border-[var(--border-color)] bg-[var(--bg-card)] space-y-4">
-          <span className="text-[10px] font-black uppercase text-emerald-400 tracking-wider block">Target Training Distribution</span>
-          <h3 className="text-sm font-black text-white">Muscle Group Split Ratio</h3>
+          <span className="text-[10px] font-black uppercase text-emerald-500 dark:text-emerald-400 tracking-wider block">Target Training Distribution</span>
+          <h3 className="text-sm font-black text-[var(--text-primary)]">Muscle Group Split Ratio</h3>
           
           <div className="flex flex-col sm:flex-row items-center gap-4">
             <div className="h-44 w-44 shrink-0">
@@ -146,11 +146,11 @@ export default function FitnessAnalyticsView({ profile = {}, workoutLogs = [] })
             <div className="space-y-1.5 text-[11px] w-full">
               {muscleDistribution.map(m => (
                 <div key={m.name} className="flex justify-between items-center">
-                  <span className="flex items-center gap-2 text-gray-300">
+                  <span className="flex items-center gap-2 text-[var(--text-secondary)]">
                     <span className="w-2.5 h-2.5 rounded-full" style={{ background: m.color }} />
                     {m.name}
                   </span>
-                  <span className="font-bold text-white">{m.value}%</span>
+                  <span className="font-bold text-[var(--text-primary)]">{m.value}%</span>
                 </div>
               ))}
             </div>
@@ -159,8 +159,8 @@ export default function FitnessAnalyticsView({ profile = {}, workoutLogs = [] })
 
         {/* PR Wall */}
         <div className="card p-5 rounded-3xl border border-[var(--border-color)] bg-[var(--bg-card)] space-y-4">
-          <span className="text-[10px] font-black uppercase text-purple-400 tracking-wider block">Hall of Fame</span>
-          <h3 className="text-sm font-black text-white">Personal Best Milestones (PRs)</h3>
+          <span className="text-[10px] font-black uppercase text-purple-500 dark:text-purple-400 tracking-wider block">Hall of Fame</span>
+          <h3 className="text-sm font-black text-[var(--text-primary)]">Personal Best Milestones (PRs)</h3>
 
           <div className="space-y-2">
             {[
@@ -172,8 +172,8 @@ export default function FitnessAnalyticsView({ profile = {}, workoutLogs = [] })
                 <div className="flex items-center gap-3">
                   <span className="text-xl">{pr.icon}</span>
                   <div>
-                    <h4 className="font-black text-white text-xs">{pr.title}</h4>
-                    <p className="text-[10px] text-gray-400">{pr.date}</p>
+                    <h4 className="font-black text-[var(--text-primary)] text-xs">{pr.title}</h4>
+                    <p className="text-[10px] text-[var(--text-secondary)]">{pr.date}</p>
                   </div>
                 </div>
                 <span className="font-mono font-black text-[#d4af37] text-xs bg-[#d4af37]/10 px-3 py-1 rounded-xl border border-[#d4af37]/30">

@@ -18,14 +18,14 @@ export default function FitnessChallengesView({ gamification = {} }) {
       <div className="card p-6 rounded-3xl border border-amber-500/30 bg-gradient-to-r from-amber-500/10 via-[var(--bg-card)] to-purple-500/10 space-y-2">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <Trophy className="text-amber-400" size={20} />
-            <h3 className="text-xl font-black text-white">AI Quests & Fitness Challenges</h3>
+            <Trophy className="text-amber-500 dark:text-amber-400" size={20} />
+            <h3 className="text-xl font-black text-[var(--text-primary)]">AI Quests & Fitness Challenges</h3>
           </div>
-          <span className="bg-amber-500/20 text-amber-300 border border-amber-500/40 px-3 py-1 rounded-xl font-mono font-bold">
+          <span className="bg-amber-500/20 text-amber-600 dark:text-amber-300 border border-amber-500/40 px-3 py-1 rounded-xl font-mono font-bold">
             💰 {gamification.totalCoins || 120} Coins Available
           </span>
         </div>
-        <p className="text-gray-300 text-xs">
+        <p className="text-[var(--text-secondary)] text-xs">
           Complete daily missions and structured 30-day quests to earn XP bonuses, exclusive badges, and coin rewards.
         </p>
       </div>
@@ -34,7 +34,7 @@ export default function FitnessChallengesView({ gamification = {} }) {
       <div className="card p-6 rounded-3xl border border-[var(--border-color)] bg-[var(--bg-card)] space-y-4">
         <div className="flex justify-between items-center">
           <span className="text-[10px] font-black uppercase text-[#d4af37] tracking-wider block">Today's Daily Missions</span>
-          <span className="text-[10px] font-bold text-gray-400">Resets in 12h</span>
+          <span className="text-[10px] font-bold text-[var(--text-muted)]">Resets in 12h</span>
         </div>
 
         <div className="space-y-2.5">
@@ -48,18 +48,18 @@ export default function FitnessChallengesView({ gamification = {} }) {
             }`}>
               <div className="flex items-center gap-3">
                 <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                  m.done ? 'bg-emerald-500 text-black' : 'bg-gray-800 text-gray-400 border border-gray-700'
+                  m.done ? 'bg-emerald-500 text-black' : 'bg-gray-200 dark:bg-gray-800 text-gray-700 dark:text-gray-400 border border-gray-300 dark:border-gray-700'
                 }`}>
                   {m.done ? '✓' : ''}
                 </div>
                 <div>
-                  <h4 className={`font-black ${m.done ? 'text-emerald-300 line-through' : 'text-white'}`}>{m.title}</h4>
-                  <span className="text-[10px] text-gray-400">{m.xp} • {m.coins}</span>
+                  <h4 className={`font-black ${m.done ? 'text-emerald-600 dark:text-emerald-300 line-through' : 'text-[var(--text-primary)]'}`}>{m.title}</h4>
+                  <span className="text-[10px] text-[var(--text-secondary)]">{m.xp} • {m.coins}</span>
                 </div>
               </div>
 
               <span className={`text-[10px] font-bold px-3 py-1 rounded-xl ${
-                m.done ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' : 'bg-gray-800 text-gray-400'
+                m.done ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40' : 'bg-gray-200 dark:bg-gray-800 text-[var(--text-secondary)]'
               }`}>
                 {m.done ? 'Claimed' : 'In Progress'}
               </span>
@@ -70,7 +70,7 @@ export default function FitnessChallengesView({ gamification = {} }) {
 
       {/* Featured Challenges Cards */}
       <div className="space-y-3">
-        <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider block">Structured Transformation Challenges</span>
+        <span className="text-[10px] font-black uppercase text-[var(--text-secondary)] tracking-wider block">Structured Transformation Challenges</span>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {CHALLENGES_LIST.map(ch => {
@@ -85,21 +85,21 @@ export default function FitnessChallengesView({ gamification = {} }) {
                     </span>
                   </div>
 
-                  <h4 className="text-base font-black text-white">{ch.title}</h4>
-                  <p className="text-gray-400 text-xs leading-relaxed">{ch.desc}</p>
+                  <h4 className="text-base font-black text-[var(--text-primary)]">{ch.title}</h4>
+                  <p className="text-[var(--text-secondary)] text-xs leading-relaxed">{ch.desc}</p>
                 </div>
 
                 <div className="space-y-3 pt-2 border-t border-[var(--border-color)]">
-                  <div className="flex justify-between text-[11px] font-mono text-gray-300">
-                    <span>Reward: <b className="text-amber-400">+{ch.rewardXP} XP</b></span>
-                    <span>Coins: <b className="text-amber-400">+{ch.rewardCoins}</b></span>
+                  <div className="flex justify-between text-[11px] font-mono text-[var(--text-secondary)]">
+                    <span>Reward: <b className="text-amber-600 dark:text-amber-400">+{ch.rewardXP} XP</b></span>
+                    <span>Coins: <b className="text-amber-600 dark:text-amber-400">+{ch.rewardCoins}</b></span>
                   </div>
 
                   <button
                     onClick={() => handleToggleJoin(ch.id)}
                     className={`w-full py-3 rounded-2xl font-black text-xs transition-all ${
                       isJoined 
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40' 
+                        ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/40' 
                         : 'btn-primary shadow-glow-gold'
                     }`}
                   >

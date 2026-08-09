@@ -28,6 +28,7 @@ import {
 import RecipeDetailModal from '../components/RecipeDetailModal';
 import CookingWorkspaceModal from '../components/CookingWorkspaceModal';
 import AiCookingAssistantDrawer from '../components/AiCookingAssistantDrawer';
+import AIMealPlannerPanel from '../components/AIMealPlannerPanel';
 
 export default function Nutrition() {
   const navigate = useNavigate();
@@ -429,6 +430,7 @@ export default function Nutrition() {
         <div className="max-w-6xl mx-auto flex items-center justify-between overflow-x-auto no-scrollbar py-2 gap-2 text-xs">
           {[
             { id: 'planner', label: 'Intelligent Planner', icon: Sparkles },
+            { id: 'ai', label: 'AI Advisor', icon: Bot },
             { id: 'pantry', label: `Smart Pantry (${pantryItems.length})`, icon: Utensils },
             { id: 'weekly', label: '7-Day Meal Plan', icon: Calendar },
             { id: 'intelligence', label: 'Nutrition Intelligence', icon: BarChart2 },
@@ -670,6 +672,15 @@ export default function Nutrition() {
               })}
             </div>
           </div>
+        )}
+
+        {/* ── TAB: AI ADVISOR (HuggingFace) ──────────────────────────────────── */}
+        {activeTab === 'ai' && (
+          <AIMealPlannerPanel
+            healthProfile={healthProfile}
+            pantryItems={pantryItems}
+            scoredRecipes={scoredRecipes}
+          />
         )}
 
         {/* ── TAB 2: SMART PANTRY MANAGEMENT ───────────────────────────────────── */}

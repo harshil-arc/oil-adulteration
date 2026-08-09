@@ -86,7 +86,7 @@ export default function WorkoutSessionView({ isOpen, onClose, workout, allExerci
     <div className="fixed inset-0 z-50 bg-[#0d1117] text-white flex flex-col justify-between overflow-hidden animate-fade-in font-sans">
       
       {/* ── TOP BAR ────────────────────────────────────────────────────────── */}
-      <div className="px-6 py-4 bg-[#161b22]/90 backdrop-blur-md border-b border-gray-800 flex justify-between items-center z-20">
+      <div className="shrink-0 px-6 py-3.5 bg-[#161b22]/95 backdrop-blur-md border-b border-gray-800 flex justify-between items-center z-20">
         <div className="space-y-0.5">
           <span className="text-[10px] font-black uppercase text-[#0052ff] tracking-widest bg-[#0052ff]/10 px-2.5 py-0.5 rounded-full border border-[#0052ff]/30">
             Exercise {currentIdx + 1} of {exerciseList.length}
@@ -107,30 +107,30 @@ export default function WorkoutSessionView({ isOpen, onClose, workout, allExerci
       </div>
 
       {/* Progress Line */}
-      <div className="w-full h-1.5 bg-gray-800 relative z-20">
+      <div className="shrink-0 w-full h-1.5 bg-gray-800 relative z-20">
         <div className="h-full bg-gradient-to-r from-[#0052ff] to-blue-400 transition-all duration-300" style={{ width: `${progressPct}%` }} />
       </div>
 
       {/* ── FINISHED SUMMARY VIEW ─────────────────────────────────────────── */}
       {isFinished ? (
-        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-6 animate-fade-in max-w-md mx-auto my-auto">
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center space-y-6 animate-fade-in max-w-md mx-auto my-auto overflow-y-auto">
           <div className="w-24 h-24 rounded-full bg-emerald-500/20 border-2 border-emerald-500 text-emerald-400 flex items-center justify-center text-5xl shadow-2xl">
             🏆
           </div>
 
           <div className="space-y-2">
             <h1 className="text-3xl font-black text-white">Workout Complete! 🎉</h1>
-            <p className="text-xs text-gray-400">Great job completing your activity session today!</p>
+            <p className="text-xs text-gray-300">Great job completing your activity session today!</p>
           </div>
 
           <div className="grid grid-cols-2 gap-3 w-full text-xs">
             <div className="bg-gray-900 p-4 rounded-2xl border border-gray-800 text-center space-y-1">
-              <span className="text-gray-400 block text-[10px] uppercase font-bold">Exercises Completed</span>
+              <span className="text-gray-300 block text-[10px] uppercase font-bold">Exercises Completed</span>
               <span className="text-2xl font-black text-white font-mono">{exerciseList.length}</span>
             </div>
 
             <div className="bg-gray-900 p-4 rounded-2xl border border-gray-800 text-center space-y-1">
-              <span className="text-gray-400 block text-[10px] uppercase font-bold">Time Active</span>
+              <span className="text-gray-300 block text-[10px] uppercase font-bold">Time Active</span>
               <span className="text-2xl font-black text-[#0052ff] font-mono">{formatTime(elapsedSeconds)}</span>
             </div>
           </div>
@@ -143,8 +143,8 @@ export default function WorkoutSessionView({ isOpen, onClose, workout, allExerci
           </button>
         </div>
       ) : (
-        /* ── ACTIVE EXERCISE PLAYER VIEW ─────────────────────────────────── */
-        <div className="flex-1 flex flex-col justify-between p-4 sm:p-6 overflow-y-auto space-y-4 max-w-3xl mx-auto w-full">
+        /* ── ACTIVE EXERCISE PLAYER VIEW (SCROLLABLE CONTAINER) ───────────── */
+        <div className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-5 space-y-4 max-w-3xl mx-auto w-full">
           
           {/* Header Exercise Name */}
           <div className="flex justify-between items-start">
@@ -158,14 +158,14 @@ export default function WorkoutSessionView({ isOpen, onClose, workout, allExerci
 
             <button
               onClick={handleReplaceCurrent}
-              className="py-1.5 px-3 rounded-xl bg-gray-800 text-gray-200 border border-gray-700 text-xs font-bold hover:text-white flex items-center gap-1"
+              className="py-1.5 px-3 rounded-xl bg-gray-800 text-gray-200 border border-gray-700 text-xs font-bold hover:text-white flex items-center gap-1 shrink-0"
             >
               <RefreshCw size={13} /> Replace
             </button>
           </div>
 
           {/* Large GIF Visual Display */}
-          <div className="w-full flex-1 min-h-[260px] sm:min-h-[320px] rounded-3xl bg-black border border-gray-800 flex items-center justify-center relative shadow-2xl overflow-hidden p-2">
+          <div className="w-full h-56 sm:h-72 rounded-3xl bg-black border border-gray-800 flex items-center justify-center relative shadow-2xl overflow-hidden p-2">
             {currentEx.gifUrl ? (
               <img
                 src={currentEx.gifUrl}
@@ -202,24 +202,26 @@ export default function WorkoutSessionView({ isOpen, onClose, workout, allExerci
         </div>
       )}
 
-      {/* ── FOOTER CONTROLS ──────────────────────────────────────────────── */}
+      {/* ── ALWAYS STICKY FOOTER CONTROLS ─────────────────────────────────── */}
       {!isFinished && (
-        <div className="p-4 sm:p-6 bg-[#161b22] border-t border-gray-800 flex justify-between items-center z-20 max-w-3xl mx-auto w-full">
-          <button
-            onClick={handlePrevious}
-            disabled={currentIdx === 0}
-            className="p-3.5 rounded-2xl bg-gray-800 border border-gray-700 text-gray-300 disabled:opacity-30 hover:text-white transition-all flex items-center gap-2 font-bold text-xs"
-          >
-            <SkipBack size={18} /> Previous
-          </button>
+        <div className="shrink-0 p-4 sm:p-5 bg-[#161b22] border-t border-gray-800 z-30 w-full shadow-2xl">
+          <div className="max-w-3xl mx-auto w-full flex justify-between items-center gap-4">
+            <button
+              onClick={handlePrevious}
+              disabled={currentIdx === 0}
+              className="py-3 px-5 rounded-2xl bg-gray-800 border border-gray-700 text-gray-200 disabled:opacity-30 hover:text-white transition-all flex items-center gap-2 font-bold text-xs shrink-0"
+            >
+              <SkipBack size={18} /> Previous
+            </button>
 
-          <button
-            onClick={handleNext}
-            className="py-3.5 px-8 rounded-2xl bg-[#0052ff] text-white font-black text-xs uppercase tracking-wider flex items-center gap-2 shadow-xl hover:bg-blue-600 transition-all"
-          >
-            <span>{currentIdx < exerciseList.length - 1 ? 'Complete Exercise' : 'Finish Workout 🎉'}</span>
-            <SkipForward size={18} />
-          </button>
+            <button
+              onClick={handleNext}
+              className="py-3.5 px-6 sm:px-8 rounded-2xl bg-gradient-to-r from-[#0052ff] to-blue-600 text-white font-black text-xs sm:text-sm uppercase tracking-wider flex items-center gap-2 shadow-xl hover:opacity-90 transition-all border border-blue-400/40"
+            >
+              <span>{currentIdx < exerciseList.length - 1 ? 'Complete Exercise & Next →' : 'Finish Workout 🎉'}</span>
+              <SkipForward size={18} />
+            </button>
+          </div>
         </div>
       )}
 
