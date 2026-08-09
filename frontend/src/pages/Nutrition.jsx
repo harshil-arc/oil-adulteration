@@ -41,6 +41,18 @@ export default function Nutrition() {
   // Active Tab View: 'planner', 'pantry', 'weekly', 'intelligence', 'shopping'
   const [activeTab, setActiveTab] = useState(initialTab);
   
+  // AI Advisor Filter State
+  const [aiFilterActive, setAiFilterActive] = useState(false);
+  const [aiFilterMealIds, setAiFilterMealIds] = useState([]);
+
+  const handleLoadAiSuggestedMeals = (matchedRecipes = []) => {
+    const ids = matchedRecipes.map(r => r.id || r.name);
+    setAiFilterMealIds(ids);
+    setAiFilterActive(true);
+    setActiveTab('planner');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+  
   // ── 1. USER PROFILE & DYNAMIC PARAMETER STATE ────────────────────────────────
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [healthProfile, setHealthProfile] = useState({
@@ -65,11 +77,16 @@ export default function Nutrition() {
 
   const [tempProfile, setTempProfile] = useState(healthProfile);
 
-  // ── 2. PANTRY & BEHAVIORAL HISTORY STORE ──────────────────────────────────────
-  const [pantryItems, setPantryItems] = useState([
-    'Paneer (Cottage Cheese)', 'Fresh Tomatoes', 'Onions', 'Whole Wheat Atta', 
-    'Cold-Pressed Mustard Oil', 'Sprouted Green Moong', 'Rice', 'Potato', 'Spinach', 'Garlic'
-  ]);
+  const [pantryItems, setPantryItems] = useState(() => {
+    try {
+      const saved = localStorage.getItem('spectra_pantry_items');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return [
+      'Paneer (Cottage Cheese)', 'Fresh Tomatoes', 'Onions', 'Whole Wheat Atta', 
+      'Cold-Pressed Mustard Oil', 'Sprouted Green Moong', 'Rice', 'Potato', 'Spinach', 'Garlic'
+    ];
+  });
   const [newIngredientInput, setNewIngredientInput] = useState('');
 
   // User History for Variety Engine
@@ -98,6 +115,12 @@ export default function Nutrition() {
     { id: 's-4', name: 'Cold-Pressed Mustard Oil', category: 'Oils & Fats', estCost: 180, inPantry: true },
     { id: 's-5', name: 'Quinoa', category: 'Grains & Staples', estCost: 120, inPantry: false }
   ]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('spectra_pantry_items', JSON.stringify(pantryItems));
+    } catch (e) {}
+  }, [pantryItems]);
 
   // Biometrics calculation
   const biometrics = useMemo(() => {
@@ -156,6 +179,9 @@ export default function Nutrition() {
     })
     .filter(r => !r.scoreResult.isAllergenDisqualified)
     .filter(r => {
+      if (aiFilterActive && aiFilterMealIds.length > 0) {
+        return aiFilterMealIds.includes(r.id) || aiFilterMealIds.includes(r.name);
+      }
       if (activeMealType !== 'All' && r.mealType?.toLowerCase() !== activeMealType.toLowerCase()) return false;
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
@@ -462,6 +488,31 @@ export default function Nutrition() {
         {activeTab === 'planner' && (
           <div className="space-y-6">
             
+            {/* AI Suggested Meals Active Banner */}
+            {aiFilterActive && (
+              <div className="bg-gradient-to-r from-amber-500/20 via-yellow-500/20 to-amber-600/20 border border-amber-500/40 rounded-2xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-amber-500 text-black flex items-center justify-center font-extrabold shrink-0">
+                    <Bot size={22} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-amber-300 flex items-center gap-2">
+                      HuggingFace AI Advisor Recommended Meal Set ({scoredRecipes.length} Meals)
+                    </h3>
+                    <p className="text-xs text-gray-300">
+                      Showing real authentic dish photos, macros, step-by-step preparation & care instructions for AI suggested meals.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => { setAiFilterActive(false); setAiFilterMealIds([]); }}
+                  className="px-3.5 py-2 rounded-xl bg-gray-900 border border-amber-500/40 text-amber-300 text-xs font-semibold hover:bg-amber-500/20 transition-all whitespace-nowrap"
+                >
+                  Show All 81+ Database Dishes ↺
+                </button>
+              </div>
+            )}
+            
             {/* Search & Voice Bar */}
             <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl p-4 shadow-md space-y-3">
               <div className="flex items-center gap-3">
@@ -680,6 +731,8 @@ export default function Nutrition() {
             healthProfile={healthProfile}
             pantryItems={pantryItems}
             scoredRecipes={scoredRecipes}
+            onLoadAiSuggestedMeals={handleLoadAiSuggestedMeals}
+            onSelectRecipeDetail={setSelectedRecipeDetail}
           />
         )}
 
