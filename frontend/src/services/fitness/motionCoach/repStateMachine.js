@@ -181,6 +181,148 @@ export class RepStateMachine {
           }
           break;
       }
+    } else if (this.profile.id === 'toe_touch') {
+      const angle = analysis.hipAngle || 180;
+
+      switch (this.state) {
+        case 'WAITING_FOR_STAND':
+        case 'READY':
+          if (angle >= 155) {
+            this.state = 'STANDING';
+            this.hasStoodUp = true;
+            this.lastStateTime = now;
+            event = 'STANDING_BASELINE';
+          } else {
+            cueOverride = '🧍 Stand up fully straight to begin Standing Toe Touch reps';
+          }
+          break;
+
+        case 'STANDING':
+          if (angle >= 155) {
+            this.minDepthAchieved = angle;
+          } else if (angle < 130 && now - this.lastStateTime > 300) {
+            this.state = 'DESCENDING';
+            this.minDepthAchieved = angle;
+            this.lastStateTime = now;
+            event = 'BENDING_STARTED';
+          }
+          break;
+
+        case 'DESCENDING':
+          if (angle < this.minDepthAchieved) {
+            this.minDepthAchieved = angle;
+          }
+
+          if (angle <= (this.profile.thresholds.bottomHipAngle || 85) && now - this.lastStateTime > 300) {
+            this.state = 'BOTTOM';
+            this.lastStateTime = now;
+            event = 'TOE_REACH_ACHIEVED';
+          } else if (angle > 145 && now - this.lastStateTime > 350) {
+            this.state = 'STANDING';
+            this.incompleteReps += 1;
+            this.lastStateTime = now;
+            event = 'INCOMPLETE_REP';
+            cueOverride = '⚠️ Incomplete Rep! Reach lower toward your toes';
+          }
+          break;
+
+        case 'BOTTOM':
+          if (angle > 105 && now - this.lastStateTime > 250) {
+            this.state = 'ASCENDING';
+            this.lastStateTime = now;
+            event = 'RISING_STARTED';
+          }
+          break;
+
+        case 'ASCENDING':
+          if (angle >= 155 && now - this.lastStateTime > 300) {
+            this.validReps += 1;
+            this.state = 'STANDING';
+            this.lastStateTime = now;
+            event = 'VALID_REP_COMPLETED';
+
+            const repRecord = {
+              repNumber: this.validReps,
+              formScore: Math.round(formScore),
+              timestamp: new Date().toLocaleTimeString(),
+              depthAchievedPct: Math.min(100, Math.round(((180 - this.minDepthAchieved) / (180 - (this.profile.thresholds.bottomHipAngle || 85))) * 100))
+            };
+
+            this.repHistory.push(repRecord);
+          }
+          break;
+      }
+    } else if (this.profile.id === 'side_reach') {
+      const tilt = analysis.lateralTiltDeg || 0;
+
+      switch (this.state) {
+        case 'WAITING_FOR_STAND':
+        case 'READY':
+          if (tilt <= 10) {
+            this.state = 'STANDING';
+            this.hasStoodUp = true;
+            this.lastStateTime = now;
+            event = 'STANDING_BASELINE';
+          } else {
+            cueOverride = '🧍 Stand up straight in center position to start Side Reach reps';
+          }
+          break;
+
+        case 'STANDING':
+          if (tilt <= 10) {
+            this.minDepthAchieved = tilt;
+          } else if (tilt > 15 && now - this.lastStateTime > 300) {
+            this.state = 'DESCENDING';
+            this.minDepthAchieved = tilt;
+            this.lastStateTime = now;
+            event = 'SIDE_REACH_STARTED';
+          }
+          break;
+
+        case 'DESCENDING':
+          if (tilt > this.minDepthAchieved) {
+            this.minDepthAchieved = tilt;
+          }
+
+          if (tilt >= (this.profile.thresholds.peakSideTiltMin || 26) && now - this.lastStateTime > 300) {
+            this.state = 'BOTTOM';
+            this.lastStateTime = now;
+            event = 'SIDE_PEAK_REACHED';
+          } else if (tilt < 8 && now - this.lastStateTime > 350) {
+            this.state = 'STANDING';
+            this.incompleteReps += 1;
+            this.lastStateTime = now;
+            event = 'INCOMPLETE_REP';
+            cueOverride = '⚠️ Incomplete Rep! Stretch further to the side';
+          }
+          break;
+
+        case 'BOTTOM':
+          if (tilt < 20 && now - this.lastStateTime > 250) {
+            this.state = 'ASCENDING';
+            this.lastStateTime = now;
+            event = 'RETURNING_CENTER';
+          }
+          break;
+
+        case 'ASCENDING':
+          if (tilt <= 10 && now - this.lastStateTime > 300) {
+            this.validReps += 1;
+            this.state = 'STANDING';
+            this.lastStateTime = now;
+            event = 'VALID_REP_COMPLETED';
+
+            const repRecord = {
+              repNumber: this.validReps,
+              formScore: Math.round(formScore),
+              timestamp: new Date().toLocaleTimeString(),
+              depthAchievedPct: Math.min(100, Math.round((this.minDepthAchieved / (this.profile.thresholds.peakSideTiltMin || 26)) * 100))
+            };
+
+            this.repHistory.push(repRecord);
+          }
+          break;
+      }
     } else {
       // General Fallback for other exercises
       if (kneeAngle >= 165 || elbowAngle >= 155) {

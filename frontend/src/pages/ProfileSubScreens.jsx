@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
 import { supabase } from '../lib/supabase';
 import { useEffect, useState } from 'react';
-import { Download, ChevronLeft, Lock, Fingerprint, EyeOff, Shield, ExternalLink, PlayCircle, BookOpen, AlertCircle, FileText, Trash2, Server, RefreshCw, QrCode } from 'lucide-react';
+import { Download, ChevronLeft, Lock, Fingerprint, EyeOff, Shield, ExternalLink, PlayCircle, BookOpen, AlertCircle, FileText, Trash2, Server, RefreshCw, QrCode, Flame } from 'lucide-react';
 import { getConfig, updateConfig } from '../lib/config';
 import { getSensorData } from '../lib/sensorApi';
 // Reusable Top Nav for Sub Screens
@@ -62,6 +62,18 @@ export function PrivacySecurity() {
     alert(newPin ? "✅ PIN Security Enabled" : "🔓 PIN Security Disabled");
   };
 
+  const handleClearHeatmap = async () => {
+    if (!confirm("Are you sure you want to clear all scan results on the heatmap?")) return;
+    try {
+      localStorage.setItem('heatmap_cleared', 'true');
+      localStorage.setItem('heatmap_cleared_at', Date.now().toString());
+      await supabase.from('analysis_results').delete().neq('id', '00000000-0000-0000-0000-000000000000').catch(() => {});
+      alert("✅ All scan results on the heatmap have been cleared successfully.");
+    } catch (e) {
+      alert("Heatmap scan results reset locally.");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col pb-24 animate-fade-in relative z-20">
       <SubScreenNav title="Privacy & Security" />
@@ -108,12 +120,17 @@ export function PrivacySecurity() {
         </div>
 
         <div className="flex flex-col gap-3">
-          <button onClick={handleExportData} className="flex items-center gap-3 p-4 card border-[#333] text-white bg-[#141414] hover:bg-[#1c1c1c] transition-colors">
+          <button onClick={handleClearHeatmap} className="flex items-center gap-3 p-4 card border-amber-500/30 text-amber-400 bg-amber-500/5 hover:bg-amber-500/10 transition-colors cursor-pointer">
+            <Flame size={18} />
+            <span className="font-bold text-sm">Clear the result on heatmap</span>
+          </button>
+
+          <button onClick={handleExportData} className="flex items-center gap-3 p-4 card border-[#333] text-white bg-[#141414] hover:bg-[#1c1c1c] transition-colors cursor-pointer">
             <Download size={18} className="text-[#d4af37]" />
             <span className="font-bold text-sm">Export My Data (JSON)</span>
           </button>
 
-          <button onClick={handleDeleteData} className="flex items-center gap-3 p-4 card border-red-500/30 text-red-500 bg-red-500/5 hover:bg-red-500/10 transition-colors">
+          <button onClick={handleDeleteData} className="flex items-center gap-3 p-4 card border-red-500/30 text-red-500 bg-red-500/5 hover:bg-red-500/10 transition-colors cursor-pointer">
             <Trash2 size={18} />
             <span className="font-bold text-sm">Delete My Data Record</span>
           </button>

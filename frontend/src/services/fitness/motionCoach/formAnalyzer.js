@@ -169,6 +169,74 @@ export function analyzeFrameForm(landmarks, profile) {
     };
   }
 
+  if (profile.id === 'toe_touch') {
+    const depthPct = Math.max(0, Math.min(100, Math.round(((180 - hipAngle) / (180 - profile.thresholds.bottomHipAngle)) * 100)));
+
+    // Check knee straightness while bending forward
+    if (kneeAngle < profile.thresholds.minKneeAngle) {
+      formScore -= 15;
+      jointStatuses['knee'] = 'YELLOW';
+      if (priority < 2) {
+        feedbackCue = profile.cues.straightKnees;
+        priority = 2;
+      }
+    } else {
+      jointStatuses['knee'] = 'GREEN';
+      jointStatuses['hip'] = 'GREEN';
+    }
+
+    return {
+      isValidPose: true,
+      formScore: Math.max(60, formScore),
+      hipAngle: Math.round(hipAngle),
+      kneeAngle: Math.round(kneeAngle),
+      elbowAngle: Math.round(elbowAngle),
+      depthPct,
+      jointStatuses,
+      feedbackCue
+    };
+  }
+
+  if (profile.id === 'side_reach') {
+    // Calculate lateral trunk lean angle (deviation of shoulder-hip center line from vertical)
+    const midShoulderX = ((lShoulder?.x || 0.5) + (rShoulder?.x || 0.5)) / 2;
+    const midShoulderY = ((lShoulder?.y || 0.3) + (rShoulder?.y || 0.3)) / 2;
+    const midHipX = ((lHip?.x || 0.5) + (rHip?.x || 0.5)) / 2;
+    const midHipY = ((lHip?.y || 0.6) + (rHip?.y || 0.6)) / 2;
+
+    const dx = midShoulderX - midHipX;
+    const dy = midHipY - midShoulderY; // positive upwards
+    const lateralTiltDeg = Math.round(Math.abs(Math.atan2(dx, dy) * 180 / Math.PI));
+
+    // Check shoulder-hip frontal plane alignment (prevent forward twisting)
+    const forwardTwist = Math.abs((lShoulder?.z || 0) - (rShoulder?.z || 0));
+    if (forwardTwist > profile.thresholds.forwardTwistMax) {
+      formScore -= 15;
+      jointStatuses['shoulder'] = 'YELLOW';
+      if (priority < 2) {
+        feedbackCue = profile.cues.keepShouldersInLine;
+        priority = 2;
+      }
+    } else {
+      jointStatuses['shoulder'] = 'GREEN';
+      jointStatuses['hip'] = 'GREEN';
+    }
+
+    const depthPct = Math.max(0, Math.min(100, Math.round((lateralTiltDeg / profile.thresholds.peakSideTiltMin) * 100)));
+
+    return {
+      isValidPose: true,
+      formScore: Math.max(60, formScore),
+      lateralTiltDeg,
+      hipAngle: Math.round(hipAngle),
+      kneeAngle: Math.round(kneeAngle),
+      elbowAngle: Math.round(elbowAngle),
+      depthPct,
+      jointStatuses,
+      feedbackCue
+    };
+  }
+
   // Fallback for curls, press, lunges
   return {
     isValidPose: true,

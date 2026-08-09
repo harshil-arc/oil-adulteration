@@ -437,12 +437,23 @@ const DEMO_HOTSPOT_SHOPS = [
 
   const fetchData = async () => {
     try {
+      const isCleared = localStorage.getItem('heatmap_cleared') === 'true';
+      const clearedAt = parseInt(localStorage.getItem('heatmap_cleared_at') || '0', 10);
+
       const { data: scansData } = await supabase
         .from('analysis_results')
         .select('*')
         .order('timestamp', { ascending: false });
 
-      if (scansData) {
+      if (isCleared) {
+        // Filter out scans older than clearedAt timestamp
+        const freshScans = (scansData || []).filter(s => {
+          const scanTime = new Date(s.timestamp || s.created_at).getTime();
+          return s.is_anonymized_contribution && s.latitude && s.longitude && scanTime > clearedAt;
+        });
+        setScans(freshScans);
+        setShops(compileContributedShops(freshScans));
+      } else if (scansData) {
         const contributed = scansData.filter(s => s.is_anonymized_contribution && s.latitude && s.longitude);
         setScans(contributed);
         

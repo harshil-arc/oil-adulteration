@@ -70,8 +70,8 @@ export default function App() {
                       <Route path="/scan/readings/calibrate" element={<Calibrate />} />
                       <Route path="/scan/readings/select-oil" element={<SelectOil />} />
                       <Route path="/scan/readings/analysis" element={<Analysis />} />
-                      <Route path="/history" element={<Navigate to="/profile" replace />} />
-                      <Route path="/history/raw" element={<Navigate to="/profile" replace />} />
+                      <Route path="/history" element={<History />} />
+                      <Route path="/history/raw" element={<History />} />
                       <Route path="/scan/:id" element={<ScanDetail />} />
                       <Route path="/map" element={<Navigate to="/testing-centres" replace />} />
                       <Route path="/testing-centres" element={<TestingCentres />} />

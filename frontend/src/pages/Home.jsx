@@ -106,20 +106,20 @@ export default function Home() {
 
   // Personal Stats Computation
   const personalStats = useMemo(() => {
-    const total = scans.length > 0 ? scans.length : 14;
+    const total = scans.length;
     const puritySum = scans.reduce((acc, val) => acc + parseFloat(val.purity || 0), 0);
-    const avgPurity = scans.length > 0 ? Math.round(puritySum / scans.length) : 94;
-    const unsafeCount = scans.filter(s => s.quality === 'Unsafe').length;
+    const avgPurity = scans.length > 0 ? Math.round(puritySum / scans.length) : 0;
+    const unsafeCount = scans.filter(s => s.quality === 'Unsafe' || s.adulteration_detected).length;
 
     return [
       { id: 'samples', title: 'Samples Tested', value: `${total}`, unit: 'Scans', icon: Beaker, color: 'text-[#d4af37]', bg: 'bg-[#d4af37]/10' },
       { id: 'purity', title: 'Average Purity', value: `${avgPurity}%`, unit: 'Score', icon: ShieldCheck, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
       { id: 'unsafe', title: 'Unsafe Samples', value: `${unsafeCount}`, unit: 'Found', icon: ShieldAlert, color: 'text-red-400', bg: 'bg-red-500/10' },
-      { id: 'reports', title: 'Reports Submitted', value: `${unsafeCount + 2}`, unit: 'Filed', icon: FileText, color: 'text-amber-400', bg: 'bg-amber-500/10' },
-      { id: 'vendors', title: 'Trusted Vendors', value: '4', unit: 'Verified', icon: Building, color: 'text-blue-400', bg: 'bg-blue-500/10' },
-      { id: 'donations', title: 'Food Donations', value: '6', unit: 'Rescues', icon: Heart, color: 'text-rose-400', bg: 'bg-rose-500/10' },
-      { id: 'score', title: 'Food Safety Score', value: '92', unit: '/ 100', icon: Award, color: 'text-purple-400', bg: 'bg-purple-500/10' },
-      { id: 'complaints', title: 'Complaint Status', value: '2', unit: 'Resolved', icon: CheckCircle2, color: 'text-teal-400', bg: 'bg-teal-500/10' }
+      { id: 'reports', title: 'Reports Submitted', value: `${unsafeCount}`, unit: 'Filed', icon: FileText, color: 'text-amber-400', bg: 'bg-amber-500/10' },
+      { id: 'vendors', title: 'Trusted Vendors', value: '0', unit: 'Verified', icon: Building, color: 'text-blue-400', bg: 'bg-blue-500/10' },
+      { id: 'donations', title: 'Food Donations', value: '0', unit: 'Rescues', icon: Heart, color: 'text-rose-400', bg: 'bg-rose-500/10' },
+      { id: 'score', title: 'Food Safety Score', value: total > 0 ? `${avgPurity}` : '0', unit: '/ 100', icon: Award, color: 'text-purple-400', bg: 'bg-purple-500/10' },
+      { id: 'complaints', title: 'Complaint Status', value: '0', unit: 'Resolved', icon: CheckCircle2, color: 'text-teal-400', bg: 'bg-teal-500/10' }
     ];
   }, [scans]);
 
@@ -419,94 +419,7 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ── 5. AI HEALTH SNAPSHOT ─────────────────────────────────────────── */}
-        <div className="card p-5 rounded-3xl border border-[var(--border-color)] bg-[var(--bg-card)] space-y-4">
-          <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-3">
-            <div className="flex items-center gap-2">
-              <Sparkles size={16} className="text-[#d4af37]" />
-              <h3 className="text-xs font-black uppercase tracking-wider text-white">AI Health Snapshot</h3>
-            </div>
-            <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-              Optimal Safety
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3 text-center">
-            <div className="bg-[var(--bg-elevated)] p-3 rounded-2xl border border-[var(--border-color)]">
-              <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Food Safety Score</span>
-              <p className="text-2xl font-black text-emerald-400 font-mono mt-0.5">92 <span className="text-xs text-gray-500 font-normal">/ 100</span></p>
-            </div>
-            <div className="bg-[var(--bg-elevated)] p-3 rounded-2xl border border-[var(--border-color)]">
-              <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider">Nutrition Score</span>
-              <p className="text-2xl font-black text-blue-400 font-mono mt-0.5">88 <span className="text-xs text-gray-500 font-normal">/ 100</span></p>
-            </div>
-          </div>
-
-          <div className="bg-[#d4af37]/10 p-3.5 rounded-2xl border border-[#d4af37]/30 text-xs text-gray-300 space-y-1">
-            <span className="font-extrabold text-[#d4af37] uppercase tracking-wider text-[10px] block">Today's AI Rationale</span>
-            <p className="leading-relaxed text-[11px] italic">
-              "Your overall oil safety is high (94.2% avg). Continue verifying vendor samples and pair pure oils with protein-rich meals."
-            </p>
-          </div>
-
-          <div className="space-y-1.5 pt-1">
-            <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider text-gray-400">
-              <span>Weekly Scan Goal</span>
-              <span className="text-[#d4af37]">14 / 15 Scans (93%)</span>
-            </div>
-            <div className="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-[#f5c842] to-[#d4af37] rounded-full" style={{ width: '93%' }} />
-            </div>
-          </div>
-        </div>
-
-        {/* ── 6. RECENT ACTIVITY TIMELINE ────────────────────────────────────── */}
-        <div>
-          <div className="flex items-center justify-between mb-2.5 pl-1">
-            <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400">Recent Activity Timeline</h3>
-            <span className="text-[9px] text-gray-400 font-bold">{scans.length > 0 ? scans.length : 3} Items</span>
-          </div>
-
-          <div className="space-y-2">
-            {(scans.length > 0 ? scans.slice(0, 3) : [
-              { id: '1', oil_type: 'Mustard Oil', purity: 94.2, quality: 'Safe', timestamp: new Date().toISOString(), vendor: 'Ahmedabad' },
-              { id: '2', oil_type: 'Groundnut Oil', purity: 96.5, quality: 'Safe', timestamp: new Date(Date.now() - 3600000 * 24).toISOString(), vendor: 'Surat' },
-              { id: '3', oil_type: 'Sunflower Oil', purity: 45.0, quality: 'Unsafe', timestamp: new Date(Date.now() - 3600000 * 48).toISOString(), vendor: 'Vadodara' }
-            ]).map(item => (
-              <div
-                key={item.id}
-                onClick={() => navigate(`/scan/${item.id}`)}
-                className="p-3.5 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] hover:border-[#d4af37]/40 transition-all cursor-pointer flex items-center justify-between group"
-              >
-                <div className="flex items-center gap-3">
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs ${
-                    item.quality === 'Unsafe' ? 'bg-red-500/15 text-red-400' : 'bg-emerald-500/15 text-emerald-400'
-                  }`}>
-                    <Beaker size={16} />
-                  </div>
-                  <div>
-                    <h4 className="text-xs font-bold theme-text">{item.oil_type}</h4>
-                    <p className="text-[9px] text-gray-400">{item.vendor || 'Local Market'} • {new Date(item.timestamp).toLocaleDateString([], { month: 'short', day: 'numeric' })}</p>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <span className="text-sm font-black font-mono theme-text">{parseFloat(item.purity).toFixed(1)}%</span>
-                    <span className={`block text-[8px] font-black uppercase tracking-widest ${
-                      item.quality === 'Unsafe' ? 'text-red-400' : 'text-emerald-400'
-                    }`}>
-                      {item.quality === 'Unsafe' ? 'UNSAFE' : 'PURE'}
-                    </span>
-                  </div>
-                  <ChevronRight size={16} className="text-gray-500 group-hover:translate-x-1 transition-transform" />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ── 7. VIEW FULL ANALYTICS BUTTON ──────────────────────────────────── */}
+        {/* ── 5. VIEW FULL ANALYTICS BUTTON ──────────────────────────────────── */}
         <div className="card p-5 rounded-3xl border border-blue-500/30 bg-gradient-to-r from-blue-500/10 to-purple-500/10 flex items-center justify-between gap-4">
           <div>
             <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
@@ -520,43 +433,6 @@ export default function Home() {
             className="py-2.5 px-4 rounded-xl bg-blue-500 text-black font-black text-xs uppercase tracking-wider shrink-0 hover:bg-blue-400 transition-colors shadow-glow-blue"
           >
             View →
-          </button>
-        </div>
-
-        {/* ── 8. COMMUNITY IMPACT SUMMARY CARD ────────────────────────────────── */}
-        <div className="card p-5 rounded-3xl border border-rose-500/30 bg-[var(--bg-card)] space-y-3">
-          <div className="flex items-center justify-between border-b border-[var(--border-color)] pb-2.5">
-            <div className="flex items-center gap-2">
-              <Heart size={16} className="text-rose-400" />
-              <h3 className="text-xs font-black uppercase tracking-wider text-white">Community Impact</h3>
-            </div>
-            <span className="text-[9px] font-bold text-rose-400">Food Rescue</span>
-          </div>
-
-          <div className="grid grid-cols-4 gap-2 text-center">
-            <div className="bg-[var(--bg-elevated)] p-2 rounded-xl">
-              <span className="text-[8px] text-gray-400 font-bold uppercase block">Donations</span>
-              <span className="text-sm font-black text-rose-400 font-mono">6</span>
-            </div>
-            <div className="bg-[var(--bg-elevated)] p-2 rounded-xl">
-              <span className="text-[8px] text-gray-400 font-bold uppercase block">Reports</span>
-              <span className="text-sm font-black text-amber-400 font-mono">3</span>
-            </div>
-            <div className="bg-[var(--bg-elevated)] p-2 rounded-xl">
-              <span className="text-[8px] text-gray-400 font-bold uppercase block">Vendors</span>
-              <span className="text-sm font-black text-blue-400 font-mono">4</span>
-            </div>
-            <div className="bg-[var(--bg-elevated)] p-2 rounded-xl">
-              <span className="text-[8px] text-gray-400 font-bold uppercase block">Saved</span>
-              <span className="text-sm font-black text-emerald-400 font-mono">120</span>
-            </div>
-          </div>
-
-          <button
-            onClick={() => navigate('/community')}
-            className="w-full py-2.5 px-4 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-color)] text-rose-400 hover:bg-rose-500 hover:text-white font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2"
-          >
-            View Community Portal →
           </button>
         </div>
 

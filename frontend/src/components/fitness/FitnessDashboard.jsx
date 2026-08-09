@@ -124,6 +124,8 @@ export default function FitnessDashboard() {
                   className="bg-transparent text-white font-bold text-xs focus:outline-none cursor-pointer"
                 >
                   <option value="squat" className="bg-[#161b22] text-white">🏋️ Bodyweight Squats (Legs)</option>
+                  <option value="toe_touch" className="bg-[#161b22] text-white">🤸 Standing Toe Touch (Flexibility & Core)</option>
+                  <option value="side_reach" className="bg-[#161b22] text-white">🧘 Standing Side Reach (Obliques & Core)</option>
                   <option value="pushup" className="bg-[#161b22] text-white">💪 Push-Ups (Chest & Arms)</option>
                   <option value="bicep_curl" className="bg-[#161b22] text-white">🏋️‍♂️ Bicep Curls (Biceps)</option>
                   <option value="shoulder_press" className="bg-[#161b22] text-white">🏋️‍♀️ Overhead Shoulder Press (Shoulders)</option>

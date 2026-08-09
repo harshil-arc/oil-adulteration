@@ -110,6 +110,50 @@ export const EXERCISE_FORM_PROFILES = {
       goodForm: 'Balanced lunge with excellent knee depth!',
       incompleteRep: 'INCOMPLETE REP — Step out and drop deeper'
     }
+  },
+
+  toe_touch: {
+    id: 'toe_touch',
+    name: 'Standing Toe Touch',
+    category: 'flexibility',
+    recommendedCameraView: 'Side / 45° View',
+    requiredLandmarks: ['shoulder', 'hip', 'knee', 'ankle', 'wrist'],
+    metrics: ['hipFlexion', 'kneeStraightness', 'reachDistance'],
+    repPhases: ['STANDING', 'BENDING', 'TOE_REACH', 'RISING', 'COMPLETED'],
+    thresholds: {
+      standingHipAngle: 155,
+      bottomHipAngle: 85,
+      minKneeAngle: 145
+    },
+    cues: {
+      reachDeeper: 'Bend forward from your hips & reach closer to your toes',
+      straightKnees: 'Keep your legs straight while reaching down',
+      standUpright: 'Return all the way to a full standing upright position',
+      goodForm: 'Excellent flexibility & controlled standing toe touch!',
+      incompleteRep: 'INCOMPLETE REP — Reach down to toes & return fully upright'
+    }
+  },
+
+  side_reach: {
+    id: 'side_reach',
+    name: 'Standing Side Reach',
+    category: 'flexibility',
+    recommendedCameraView: 'Front View',
+    requiredLandmarks: ['shoulder', 'hip', 'knee', 'wrist'],
+    metrics: ['lateralFlexion', 'shoulderHipAlignment'],
+    repPhases: ['STANDING', 'REACHING_SIDE', 'SIDE_REACH_PEAK', 'RETURNING', 'COMPLETED'],
+    thresholds: {
+      standingTiltMax: 10,
+      peakSideTiltMin: 26,
+      forwardTwistMax: 0.12
+    },
+    cues: {
+      reachFurther: 'Stretch further to the side while keeping posture stable',
+      keepShouldersInLine: 'Keep your shoulders in-line with your hips without twisting forward',
+      returnCenter: 'Return all the way back to center standing position',
+      goodForm: 'Excellent side stretch! Great shoulder-hip alignment',
+      incompleteRep: 'INCOMPLETE REP — Stretch deeper to the side and return to center'
+    }
   }
 };
 
@@ -118,6 +162,8 @@ export const EXERCISE_FORM_PROFILES = {
  */
 export function getExerciseFormProfile(exerciseNameOrId = '') {
   const q = String(exerciseNameOrId).toLowerCase();
+  if (q.includes('side') || q.includes('lateral')) return EXERCISE_FORM_PROFILES.side_reach;
+  if (q.includes('toe') || q.includes('touch') || q.includes('bend')) return EXERCISE_FORM_PROFILES.toe_touch;
   if (q.includes('push')) return EXERCISE_FORM_PROFILES.pushup;
   if (q.includes('curl') || q.includes('bicep')) return EXERCISE_FORM_PROFILES.bicep_curl;
   if (q.includes('press') || q.includes('shoulder')) return EXERCISE_FORM_PROFILES.shoulder_press;

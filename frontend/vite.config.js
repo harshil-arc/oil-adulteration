@@ -19,6 +19,15 @@ if (!fs.existsSync(envPath)) {
 
 export default defineConfig({
   envDir: __dirname,
+  resolve: {
+    alias: {
+      react: resolve(__dirname, 'node_modules/react'),
+      'react-dom': resolve(__dirname, 'node_modules/react-dom')
+    }
+  },
+  optimizeDeps: {
+    include: ['react', 'react-dom', 'html2canvas', 'jspdf']
+  },
   plugins: [
     react(),
     VitePWA({

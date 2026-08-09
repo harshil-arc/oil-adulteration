@@ -1,13 +1,13 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { 
-  ChevronLeft, Plus, Trash2, Calendar, Award, Star, Share2, 
-  Sparkles, Heart, Apple, ShoppingCart, User, AlertCircle, 
-  ChevronRight, RefreshCw, BarChart2, Check, Clock, Droplet, 
+import {
+  ChevronLeft, Plus, Trash2, Award, Star,
+  Sparkles, Heart, Apple, User, AlertCircle,
+  ChevronRight, RefreshCw, Check, Clock, Droplet,
   Flame, ShieldCheck, Stethoscope, Utensils, Zap, Filter, Search,
   X, CheckCircle2, AlertTriangle, BookOpen, ThumbsUp, ThumbsDown,
   Dumbbell, Play, Activity, Moon, Shield, Bot, HelpCircle, ChevronDown, ChevronUp, Edit3, Camera,
-  ShoppingBag, RotateCcw, Mic, MicOff, CheckSquare, Square, Printer, Volume2, VolumeX, Eye
+  RotateCcw, Mic, MicOff, CheckSquare, Square, Printer, Volume2, VolumeX, Eye
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { 
@@ -18,12 +18,10 @@ import {
   ALLERGIES_LIST, 
   INDIAN_RECIPES_DATABASE
 } from '../data/nutritionData';
-import { 
-  scoreRecipe, 
-  parseNaturalLanguageQuery, 
-  SMART_SUBSTITUTIONS,
-  calculateBMI,
-  calculateDailyNutritionTargets
+import {
+  scoreRecipe,
+  parseNaturalLanguageQuery,
+  SMART_SUBSTITUTIONS
 } from '../services/aiRecommendationEngine';
 import RecipeDetailModal from '../components/RecipeDetailModal';
 import CookingWorkspaceModal from '../components/CookingWorkspaceModal';
@@ -38,7 +36,7 @@ export default function Nutrition() {
   const queryParams = new URLSearchParams(location.search);
   const initialTab = queryParams.get('tab') || 'planner';
 
-  // Active Tab View: 'planner', 'pantry', 'weekly', 'intelligence', 'shopping'
+  // Active Tab View: 'planner', 'ai', 'pantry'
   const [activeTab, setActiveTab] = useState(initialTab);
   
   // AI Advisor Filter State
@@ -107,36 +105,11 @@ export default function Nutrition() {
   const [cookingWorkspaceRecipe, setCookingWorkspaceRecipe] = useState(null);
   const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(false);
 
-  // Shopping List State
-  const [shoppingListItems, setShoppingListItems] = useState([
-    { id: 's-1', name: 'Fresh Tomatoes', category: 'Vegetables & Produce', estCost: 40, inPantry: true },
-    { id: 's-2', name: 'Firm Tofu', category: 'Dairy & Protein', estCost: 65, inPantry: false },
-    { id: 's-3', name: 'Organic Jaggery', category: 'Spices & Seasonings', estCost: 50, inPantry: false },
-    { id: 's-4', name: 'Cold-Pressed Mustard Oil', category: 'Oils & Fats', estCost: 180, inPantry: true },
-    { id: 's-5', name: 'Quinoa', category: 'Grains & Staples', estCost: 120, inPantry: false }
-  ]);
-
   useEffect(() => {
     try {
       localStorage.setItem('spectra_pantry_items', JSON.stringify(pantryItems));
     } catch (e) {}
   }, [pantryItems]);
-
-  // Biometrics calculation
-  const biometrics = useMemo(() => {
-    return calculateBMI(healthProfile.weight, healthProfile.height);
-  }, [healthProfile.weight, healthProfile.height]);
-
-  const nutritionTargets = useMemo(() => {
-    return calculateDailyNutritionTargets({
-      age: healthProfile.age,
-      gender: healthProfile.gender,
-      height: healthProfile.height,
-      weight: healthProfile.weight,
-      goal: healthProfile.goal,
-      medicalConditions: healthProfile.medicalConditions
-    });
-  }, [healthProfile]);
 
   // ── 4. DYNAMIC WEIGHTED RECOMMENDATION ENGINE INVOCATION ────────────────────
   const scoredRecipes = useMemo(() => {
@@ -198,33 +171,7 @@ export default function Nutrition() {
     frequentlyViewed, favoriteRecipes, searchQuery, mealTypeFilter, cuisineFilter, dietFilter
   ]);
 
-  // ── 5. 7-DAY WEEKLY PLAN GENERATOR ──────────────────────────────────────────
-  const weeklyMealPlan = useMemo(() => {
-    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-    let idx = 0;
-
-    return days.map(day => {
-      const b = scoredRecipes.find(r => r.mealType === 'Breakfast' && !recentlyCooked.includes(r.id)) || scoredRecipes[idx % scoredRecipes.length];
-      const l = scoredRecipes.find(r => r.mealType === 'Lunch' && r.id !== b?.id) || scoredRecipes[(idx + 1) % scoredRecipes.length];
-      const d = scoredRecipes.find(r => r.mealType === 'Dinner' && r.id !== l?.id) || scoredRecipes[(idx + 2) % scoredRecipes.length];
-      const s = scoredRecipes.find(r => (r.mealType === 'Snack' || r.mealType === 'Breakfast') && r.id !== d?.id) || scoredRecipes[(idx + 3) % scoredRecipes.length];
-
-      idx += 2;
-
-      const totalCals = (b?.macros?.calories || 200) + (l?.macros?.calories || 350) + (d?.macros?.calories || 400) + (s?.macros?.calories || 150);
-      const totalProt = (b?.macros?.protein || 8) + (l?.macros?.protein || 18) + (d?.macros?.protein || 22) + (s?.macros?.protein || 6);
-
-      return {
-        day,
-        breakfast: b,
-        lunch: l,
-        dinner: d,
-        snack: s,
-        totalCals,
-        totalProt
-      };
-    });
-  }, [scoredRecipes, recentlyCooked]);
+  // ── 5. VOICE SEARCH & PANTRY HANDLERS ──────────────────────────────────────
 
   // Voice Search Handler
   const toggleVoiceSearch = () => {
@@ -280,19 +227,6 @@ export default function Nutrition() {
     if (!recentlyCooked.includes(recipeId)) {
       setRecentlyCooked([recipeId, ...recentlyCooked.slice(0, 9)]);
     }
-  };
-
-  const handleAddIngredientsToShoppingList = (ingredientNames = []) => {
-    const newItems = ingredientNames.map(ing => ({
-      id: `s-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
-      name: ing,
-      category: ing.toLowerCase().includes('oil') ? 'Oils & Fats' : (ing.toLowerCase().includes('tofu') || ing.toLowerCase().includes('paneer') ? 'Dairy & Protein' : 'Vegetables & Produce'),
-      estCost: Math.floor(30 + Math.random() * 50),
-      inPantry: false
-    }));
-
-    setShoppingListItems(prev => [...prev, ...newItems]);
-    alert(`🛒 Added ${ingredientNames.length} ingredients to your Smart Shopping List!`);
   };
 
   return (
@@ -457,10 +391,7 @@ export default function Nutrition() {
           {[
             { id: 'planner', label: 'Intelligent Planner', icon: Sparkles },
             { id: 'ai', label: 'AI Advisor', icon: Bot },
-            { id: 'pantry', label: `Smart Pantry (${pantryItems.length})`, icon: Utensils },
-            { id: 'weekly', label: '7-Day Meal Plan', icon: Calendar },
-            { id: 'intelligence', label: 'Nutrition Intelligence', icon: BarChart2 },
-            { id: 'shopping', label: `Shopping List (${shoppingListItems.filter(i=>!i.inPantry).length})`, icon: ShoppingBag }
+            { id: 'pantry', label: `Smart Pantry (${pantryItems.length})`, icon: Utensils }
           ].map(tab => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
@@ -588,7 +519,7 @@ export default function Nutrition() {
 
             {/* Dynamic Results Summary Banner */}
             <div className="flex items-center justify-between text-xs text-gray-400">
-              <span>Showing <strong>{scoredRecipes.length}</strong> dynamically ranked recipes based on your biometrics & active pantry ({pantryItems.length} items)</span>
+              <span>Showing <strong>{scoredRecipes.length}</strong> dynamically ranked recipes based on your active pantry ({pantryItems.length} items)</span>
               <span className="text-amber-400 font-semibold">⚡ Re-ranked in real-time</span>
             </div>
 
@@ -806,139 +737,6 @@ export default function Nutrition() {
           </div>
         )}
 
-        {/* ── TAB 3: 7-DAY WEEKLY MEAL PLAN ────────────────────────────────────── */}
-        {activeTab === 'weekly' && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-lg font-bold text-amber-400 flex items-center gap-2">
-                  <Calendar size={20} /> 7-Day Intelligent Meal Planner
-                </h2>
-                <p className="text-xs text-gray-400">Balanced 7-day schedule avoiding meal repetition & rotating regional cuisines</p>
-              </div>
-
-              <button 
-                onClick={() => setRecentlyCooked([])}
-                className="px-3 py-1.5 rounded-xl bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold flex items-center gap-1.5"
-              >
-                <RefreshCw size={14} /> Regenerate 7-Day Plan
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {weeklyMealPlan.map(dayPlan => (
-                <div key={dayPlan.day} className="bg-[#161b22] border border-gray-800 rounded-2xl p-4 shadow-xl space-y-3">
-                  <div className="flex items-center justify-between border-b border-gray-800 pb-2">
-                    <span className="text-sm font-bold text-amber-400">{dayPlan.day}</span>
-                    <span className="text-xs text-gray-400 font-semibold">
-                      Daily Total: <span className="text-amber-300">{dayPlan.totalCals} kcal</span> • <span className="text-emerald-400">{dayPlan.totalProt}g protein</span>
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
-                    {[
-                      { slot: 'Breakfast', recipe: dayPlan.breakfast },
-                      { slot: 'Lunch', recipe: dayPlan.lunch },
-                      { slot: 'Dinner', recipe: dayPlan.dinner },
-                      { slot: 'Snack', recipe: dayPlan.snack }
-                    ].map(item => (
-                      <div key={item.slot} className="p-3 rounded-xl bg-gray-900 border border-gray-800 space-y-1">
-                        <div className="text-[10px] font-bold text-gray-400 uppercase">{item.slot}</div>
-                        <div className="font-bold text-gray-200 truncate">{item.recipe?.name || 'Healthy Dish'}</div>
-                        <div className="text-[11px] text-amber-400/90">{item.recipe?.macros?.calories || 200} kcal • {item.recipe?.macros?.protein || 10}g protein</div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ── TAB 4: NUTRITION INTELLIGENCE ────────────────────────────────────── */}
-        {activeTab === 'intelligence' && (
-          <div className="space-y-6">
-            <div className="bg-[#161b22] border border-gray-800 rounded-2xl p-5 shadow-xl space-y-4">
-              <h2 className="text-lg font-bold text-amber-400 flex items-center gap-2">
-                <BarChart2 size={20} /> Daily Nutrition Targets & Biometrics Analysis
-              </h2>
-
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
-                <div className="p-3 rounded-xl bg-gray-900 border border-gray-800">
-                  <div className="text-xs text-gray-400">BMI</div>
-                  <div className="text-xl font-bold text-amber-400">{biometrics.bmi}</div>
-                  <div className="text-[10px] text-emerald-400">{biometrics.category}</div>
-                </div>
-
-                <div className="p-3 rounded-xl bg-gray-900 border border-gray-800">
-                  <div className="text-xs text-gray-400">Target Calories</div>
-                  <div className="text-xl font-bold text-amber-400">{nutritionTargets.targetCalories} kcal</div>
-                  <div className="text-[10px] text-gray-400">BMR: {nutritionTargets.bmr}</div>
-                </div>
-
-                <div className="p-3 rounded-xl bg-gray-900 border border-gray-800">
-                  <div className="text-xs text-gray-400">Target Protein</div>
-                  <div className="text-xl font-bold text-emerald-400">{nutritionTargets.targetProtein} g</div>
-                  <div className="text-[10px] text-gray-400">Daily Minimum</div>
-                </div>
-
-                <div className="p-3 rounded-xl bg-gray-900 border border-gray-800">
-                  <div className="text-xs text-gray-400">Water Recommendation</div>
-                  <div className="text-xl font-bold text-sky-400">{nutritionTargets.targetWaterLiters} L</div>
-                  <div className="text-[10px] text-gray-400">Hydration Target</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ── TAB 5: SHOPPING LIST ──────────────────────────────────────────────── */}
-        {activeTab === 'shopping' && (
-          <div className="space-y-6">
-            <div className="bg-[#161b22] border border-gray-800 rounded-2xl p-5 shadow-xl space-y-4">
-              <div className="flex items-center justify-between border-b border-gray-800 pb-3">
-                <div>
-                  <h2 className="text-lg font-bold text-amber-400 flex items-center gap-2">
-                    <ShoppingBag size={20} /> 1-Click Smart Shopping List
-                  </h2>
-                  <p className="text-xs text-gray-400">Categorized list highlighting items you already have vs items to purchase</p>
-                </div>
-
-                <button 
-                  onClick={() => alert('Shopping list copied to clipboard!')}
-                  className="px-3 py-1.5 rounded-xl bg-amber-500 text-black text-xs font-bold hover:bg-amber-400 flex items-center gap-1.5"
-                >
-                  <Share2 size={14} /> Copy List
-                </button>
-              </div>
-
-              <div className="space-y-3 text-xs">
-                {['Vegetables & Produce', 'Dairy & Protein', 'Grains & Staples', 'Oils & Fats', 'Spices & Seasonings'].map(cat => {
-                  const itemsInCat = shoppingListItems.filter(i => i.category === cat);
-                  if (itemsInCat.length === 0) return null;
-
-                  return (
-                    <div key={cat} className="p-3 rounded-xl bg-gray-900 border border-gray-800 space-y-2">
-                      <div className="font-bold text-amber-400 border-b border-gray-800 pb-1">{cat}</div>
-                      <div className="space-y-1">
-                        {itemsInCat.map(item => (
-                          <div key={item.id} className="flex items-center justify-between text-gray-300">
-                            <span className={item.inPantry ? 'line-through text-gray-500' : 'text-gray-200'}>
-                              {item.name}
-                            </span>
-                            <span className="text-gray-400">
-                              {item.inPantry ? '✓ In Pantry' : `₹${item.estCost}`}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Recipe Detail Modal */}
@@ -947,7 +745,6 @@ export default function Nutrition() {
           isOpen={true}
           onClose={() => setSelectedRecipeDetail(null)}
           recipe={selectedRecipeDetail}
-          onAddToShoppingList={handleAddIngredientsToShoppingList}
         />
       )}
 
@@ -959,7 +756,6 @@ export default function Nutrition() {
           recipe={cookingWorkspaceRecipe}
           pantryItems={pantryItems}
           onMarkCooked={handleCooked}
-          onAddToShoppingList={handleAddIngredientsToShoppingList}
           onOpenAiAssistant={() => setIsAiDrawerOpen(true)}
         />
       )}

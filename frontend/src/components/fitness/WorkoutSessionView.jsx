@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Play, Pause, SkipForward, SkipBack, CheckCircle2, RefreshCw, Trophy, Flame, Clock } from 'lucide-react';
+import { X, SkipForward, SkipBack, RefreshCw, Clock } from 'lucide-react';
 import { getExerciseSteps, capitalize } from '../../services/fitness/exerciseService';
 import { getReplacementExercise } from '../../services/fitness/recommendationEngine';
 import { recordCompletedWorkout } from '../../services/fitness/fitnessStorage';
@@ -83,21 +83,21 @@ export default function WorkoutSessionView({ isOpen, onClose, workout, allExerci
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0d1117] text-white flex flex-col justify-between overflow-hidden animate-fade-in font-sans">
-      
+    <div className="fixed inset-0 z-50 bg-[#0d1117] text-[var(--text-primary)] flex flex-col overflow-hidden animate-fade-in font-sans">
+
       {/* ── TOP BAR ────────────────────────────────────────────────────────── */}
       <div className="shrink-0 px-6 py-3.5 bg-[#161b22]/95 backdrop-blur-md border-b border-gray-800 flex justify-between items-center z-20">
         <div className="space-y-0.5">
           <span className="text-[10px] font-black uppercase text-[#0052ff] tracking-widest bg-[#0052ff]/10 px-2.5 py-0.5 rounded-full border border-[#0052ff]/30">
             Exercise {currentIdx + 1} of {exerciseList.length}
           </span>
-          <h2 className="text-base font-black text-white">{workout.title}</h2>
+          <h2 className="text-base font-black text-[var(--text-primary)]">{workout.title}</h2>
         </div>
 
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1.5 bg-black/40 px-3 py-1.5 rounded-xl border border-gray-800 text-xs font-mono">
             <Clock size={14} className="text-[#0052ff]" />
-            <span className="font-bold">{formatTime(elapsedSeconds)}</span>
+            <span className="font-bold text-[var(--text-primary)]">{formatTime(elapsedSeconds)}</span>
           </div>
 
           <button onClick={onClose} className="p-2 rounded-full bg-gray-800 text-gray-400 hover:text-white transition-all">
@@ -119,18 +119,18 @@ export default function WorkoutSessionView({ isOpen, onClose, workout, allExerci
           </div>
 
           <div className="space-y-2">
-            <h1 className="text-3xl font-black text-white">Workout Complete! 🎉</h1>
-            <p className="text-xs text-gray-300">Great job completing your activity session today!</p>
+            <h1 className="text-3xl font-black text-[var(--text-primary)]">Workout Complete! 🎉</h1>
+            <p className="text-xs text-gray-400">Great job completing your activity session today!</p>
           </div>
 
           <div className="grid grid-cols-2 gap-3 w-full text-xs">
             <div className="bg-gray-900 p-4 rounded-2xl border border-gray-800 text-center space-y-1">
-              <span className="text-gray-300 block text-[10px] uppercase font-bold">Exercises Completed</span>
-              <span className="text-2xl font-black text-white font-mono">{exerciseList.length}</span>
+              <span className="text-gray-400 block text-[10px] uppercase font-bold">Exercises Completed</span>
+              <span className="text-2xl font-black text-[var(--text-primary)] font-mono">{exerciseList.length}</span>
             </div>
 
             <div className="bg-gray-900 p-4 rounded-2xl border border-gray-800 text-center space-y-1">
-              <span className="text-gray-300 block text-[10px] uppercase font-bold">Time Active</span>
+              <span className="text-gray-400 block text-[10px] uppercase font-bold">Time Active</span>
               <span className="text-2xl font-black text-[#0052ff] font-mono">{formatTime(elapsedSeconds)}</span>
             </div>
           </div>
@@ -139,21 +139,21 @@ export default function WorkoutSessionView({ isOpen, onClose, workout, allExerci
             onClick={onClose}
             className="w-full py-4 rounded-2xl bg-emerald-500 text-white font-black text-sm uppercase tracking-wider shadow-lg hover:bg-emerald-600 transition-all"
           >
-            DONE & BACK TO DASHBOARD
+            DONE &amp; BACK TO DASHBOARD
           </button>
         </div>
       ) : (
         /* ── ACTIVE EXERCISE PLAYER VIEW (SCROLLABLE CONTAINER) ───────────── */
-        <div className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-5 space-y-4 max-w-3xl mx-auto w-full">
-          
+        <div className="flex-1 overflow-y-auto min-h-0 p-4 sm:p-5 space-y-4 max-w-3xl mx-auto w-full pb-28">
+
           {/* Header Exercise Name */}
           <div className="flex justify-between items-start">
             <div>
               <span className="text-[10px] font-black uppercase text-[#0052ff] tracking-wider block">
                 {capitalize(currentEx.body_part)} • {capitalize(currentEx.equipment)}
               </span>
-              <h1 className="text-2xl sm:text-3xl font-black text-white">{capitalize(currentEx.name)}</h1>
-              <p className="text-xs text-slate-300 mt-0.5">Target: <b className="text-amber-400">{capitalize(currentEx.target)}</b></p>
+              <h1 className="text-2xl sm:text-3xl font-black text-[var(--text-primary)]">{capitalize(currentEx.name)}</h1>
+              <p className="text-xs text-[var(--text-secondary)] mt-0.5">Target: <b className="text-amber-400">{capitalize(currentEx.target)}</b></p>
             </div>
 
             <button
@@ -191,8 +191,8 @@ export default function WorkoutSessionView({ isOpen, onClose, workout, allExerci
 
           {/* Instructions Box */}
           <div className="bg-gray-900 p-4 rounded-2xl border border-gray-800 space-y-2 text-xs">
-            <span className="font-extrabold text-white uppercase text-[10px] tracking-wider block">Instructions</span>
-            <div className="space-y-1.5 text-slate-200">
+            <span className="font-extrabold text-[var(--text-primary)] uppercase text-[10px] tracking-wider block">Instructions</span>
+            <div className="space-y-1.5 text-[var(--text-secondary)]">
               {steps.slice(0, 3).map((st, i) => (
                 <p key={i} className="leading-relaxed text-[11px]">• {st}</p>
               ))}
@@ -204,7 +204,7 @@ export default function WorkoutSessionView({ isOpen, onClose, workout, allExerci
 
       {/* ── ALWAYS STICKY FOOTER CONTROLS ─────────────────────────────────── */}
       {!isFinished && (
-        <div className="shrink-0 p-4 sm:p-5 bg-[#161b22] border-t border-gray-800 z-30 w-full shadow-2xl">
+        <div className="shrink-0 p-4 sm:p-5 bg-[#161b22] border-t border-gray-800 z-30 w-full fixed bottom-0 left-0 right-0 shadow-2xl">
           <div className="max-w-3xl mx-auto w-full flex justify-between items-center gap-4">
             <button
               onClick={handlePrevious}

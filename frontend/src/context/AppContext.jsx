@@ -17,11 +17,13 @@ const defaultSettings = {
 };
 
 const defaultProfile = {
-  name: 'Inspector Admin',
-  email: 'admin@pureoil.gov.in',
+  name: 'Harshil Patel',
+  email: 'harshil@food360.app',
   phone: '+91 98765 43210',
-  badgeId: 'FSSAI-2024-001',
-  role: 'admin',
+  state: 'Gujarat',
+  memberSince: '2024-01-15',
+  avatarUrl: null,
+  avatarColor: '#0052ff',
 };
 
 const AppContext = createContext(null);
@@ -171,19 +173,26 @@ export function AppProvider({ children }) {
     let nextProfile;
     setProfile(prev => {
       nextProfile = { ...prev, ...data };
-      localStorage.setItem(PROFILE_KEY, JSON.stringify(nextProfile));
+      try {
+        localStorage.setItem(PROFILE_KEY, JSON.stringify(nextProfile));
+      } catch (err) {
+        console.warn('Profile localStorage write warning:', err);
+      }
       return nextProfile;
     });
     
     // Sync to Supabase auth metadata if user is logged in
     if (user) {
-      await supabase.auth.updateUser({
-        data: {
-          full_name: nextProfile.name,
-          phone: nextProfile.phone,
-          badgeId: nextProfile.badgeId
-        }
-      });
+      try {
+        await supabase.auth.updateUser({
+          data: {
+            full_name: nextProfile?.name || data.name,
+            phone: nextProfile?.phone || data.phone
+          }
+        });
+      } catch (err) {
+        console.warn('Supabase auth updateUser error:', err);
+      }
     }
   };
 

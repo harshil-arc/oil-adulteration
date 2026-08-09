@@ -1,181 +1,327 @@
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { ShieldCheck, Download, Share2, X, AlertTriangle, Award, CheckCircle2, FileText, Zap } from 'lucide-react';
+import { ShieldCheck, Download, X, Award, CheckCircle2, Zap, Tag, Thermometer, Activity, MapPin, Clock, Printer, FileText, Image as ImageIcon } from 'lucide-react';
+import { saveCertificateToFirebase } from '../lib/firestoreSensorService';
+import html2canvas from 'html2canvas';
+import { jsPDF } from 'jspdf';
 
 export default function CertificateModal({ isOpen, onClose, scanData }) {
   const certRef = useRef(null);
+  const [tokenNumber, setTokenNumber] = useState('');
+  const [isSavedToFirebase, setIsSavedToFirebase] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
+  const [downloadFormat, setDownloadFormat] = useState('');
+
+  useEffect(() => {
+    if (isOpen && scanData) {
+      // Auto-generate Token Number if not present
+      const generatedToken = scanData.tokenNumber || `TK-2026-${Math.floor(100000 + Math.random() * 900000)}`;
+      setTokenNumber(generatedToken);
+
+      const purity = scanData.result?.purityPercentage ?? 92.5;
+      const isPure = purity >= 80;
+
+      const certPayload = {
+        tokenNumber: generatedToken,
+        oilName: scanData.selectedOil?.oilName || 'Mustard Oil',
+        purityPercentage: Number(purity.toFixed(1)),
+        quality: isPure ? 'Safe' : 'Unsafe',
+        reportNo: scanData.reportNo || `STR-2026-${Math.floor(10000 + Math.random() * 90000)}`,
+        deviceId: scanData.deviceId || 'ESP32-SPECTRA-01',
+        temperature: scanData.sensorData?.temp || 28.4,
+        spectralReading: scanData.result?.primaryIndicator || '680nm / 0.42 Abs',
+        timestamp: scanData.timestamp || new Date().toISOString(),
+        location: scanData.location || 'Gujarat Inspection Hub'
+      };
+
+      // Save to Firebase RTDB & Firestore database automatically
+      saveCertificateToFirebase(certPayload).then(() => {
+        setIsSavedToFirebase(true);
+      }).catch(err => {
+        console.warn('Firebase cert auto-save fallback:', err);
+      });
+    }
+  }, [isOpen, scanData]);
 
   if (!isOpen || !scanData) return null;
 
   const {
     selectedOil = { oilName: 'Mustard Oil' },
-    result = { purityPercentage: 92.5, adulterationPercentage: 7.5, confidenceScore: 95.8, tier: 'pure', primaryIndicator: 'Optical Absorption (680nm)' },
+    result = { purityPercentage: 92.5, adulterationPercentage: 7.5, confidenceScore: 95.8, tier: 'pure', primaryIndicator: '680nm / 0.42 Abs' },
     sensorData = { ch610: 420, ch680: 310, ch730: 890, ch810: 950, ch860: 920, ch940: 870, temp: 28.4 },
-    certId = `CERT-${Math.random().toString(36).substring(2, 9).toUpperCase()}`,
     reportNo = `STR-2026-${Math.floor(10000 + Math.random() * 90000)}`,
     deviceId = 'ESP32-SPECTRA-01',
-    timestamp = new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }),
+    timestamp = '9 Aug 2026, 11:55 pm',
+    location = 'Gujarat Inspection Hub'
   } = scanData;
 
-  const isPure = result.purityPercentage >= 80;
-  const statusColor = isPure ? 'text-emerald-400 border-emerald-500/40 bg-emerald-500/10' : 'text-red-400 border-red-500/40 bg-red-500/10';
+  const purityVal = scanData.result?.purityPercentage ?? 92.5;
+  const isPure = purityVal >= 80;
 
-  // PNG / PDF Download trigger
-  const handleDownloadPNG = () => {
-    window.print();
+  const handleDownloadPDF = async () => {
+    if (!certRef.current) return;
+    setIsDownloading(true);
+    setDownloadFormat('pdf');
+    try {
+      const canvas = await html2canvas(certRef.current, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#faf8ff',
+        logging: false
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+      pdf.save(`Certificate_${tokenNumber}.pdf`);
+    } catch (e) {
+      console.error('PDF generation failed, launching print fallback:', e);
+      window.print();
+    } finally {
+      setIsDownloading(false);
+      setDownloadFormat('');
+    }
+  };
+
+  const handleDownloadImage = async () => {
+    if (!certRef.current) return;
+    setIsDownloading(true);
+    setDownloadFormat('png');
+    try {
+      const canvas = await html2canvas(certRef.current, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#faf8ff',
+        logging: false
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.download = `Certificate_${tokenNumber}.png`;
+      link.href = imgData;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (e) {
+      console.error('Image download error:', e);
+    } finally {
+      setIsDownloading(false);
+      setDownloadFormat('');
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in overflow-y-auto">
-      <div className="relative w-full max-w-2xl bg-[var(--bg-card)] border border-[#d4af37]/40 rounded-3xl shadow-2xl overflow-hidden my-8">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/85 backdrop-blur-md animate-fade-in overflow-y-auto">
+      <div className="relative w-full max-w-4xl bg-white border border-gray-300 rounded-2xl shadow-2xl overflow-hidden my-4 sm:my-6">
         
-        {/* Modal Top Actions */}
-        <div className="flex items-center justify-between p-4 border-b border-[var(--border-color)] bg-[var(--bg-elevated)]">
+        {/* Modal Top Action Toolbar */}
+        <div className="flex flex-wrap items-center justify-between p-3 sm:p-4 border-b border-gray-200 bg-gray-900 text-white gap-2">
           <div className="flex items-center gap-2">
-            <Award className="text-[#d4af37]" size={20} />
-            <span className="text-xs font-black uppercase tracking-wider text-[#d4af37]">Digital Purity Certificate</span>
+            <Award className="text-[#004ac6]" size={20} />
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-blue-400 block leading-tight">Digital Purity Certificate</span>
+              <span className="text-[10px] text-gray-400 font-mono">Token: {tokenNumber}</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
+          
+          <div className="flex flex-wrap items-center gap-2">
+            {isSavedToFirebase && (
+              <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-1 rounded-full flex items-center gap-1">
+                <CheckCircle2 size={10} /> Saved to Firebase
+              </span>
+            )}
+
             <button
-              onClick={handleDownloadPNG}
-              className="px-3 py-1.5 rounded-xl bg-[#d4af37] text-black font-black text-xs flex items-center gap-1.5 hover:scale-105 transition-transform shadow-glow-gold"
+              onClick={handleDownloadPDF}
+              disabled={isDownloading}
+              className="px-3.5 py-1.5 rounded-xl bg-[#004ac6] text-white font-bold text-xs flex items-center gap-1.5 hover:bg-blue-700 transition-all shadow-md cursor-pointer disabled:opacity-50"
+              title="Download PDF document"
             >
-              <Download size={14} /> Download Certificate (PNG/PDF)
+              <FileText size={14} /> {isDownloading && downloadFormat === 'pdf' ? 'Creating PDF...' : 'Download PDF'}
             </button>
+
+            <button
+              onClick={handleDownloadImage}
+              disabled={isDownloading}
+              className="px-3 py-1.5 rounded-xl bg-gray-800 border border-gray-700 text-gray-200 font-bold text-xs flex items-center gap-1.5 hover:bg-gray-700 transition-all shadow-md cursor-pointer disabled:opacity-50"
+              title="Download PNG Image"
+            >
+              <ImageIcon size={14} /> {isDownloading && downloadFormat === 'png' ? 'Creating PNG...' : 'Download PNG'}
+            </button>
+
+            <button
+              onClick={() => window.print()}
+              className="p-1.5 rounded-xl bg-gray-800 border border-gray-700 text-gray-300 hover:text-white transition-colors cursor-pointer"
+              title="Print Certificate"
+            >
+              <Printer size={16} />
+            </button>
+
             <button
               onClick={onClose}
-              className="p-1.5 rounded-full bg-gray-800 text-gray-400 hover:text-white transition-colors"
+              className="p-1.5 rounded-full bg-gray-800 text-gray-400 hover:text-white transition-colors cursor-pointer"
             >
               <X size={18} />
             </button>
           </div>
         </div>
 
-        {/* PRINTABLE CERTIFICATE CONTAINER */}
-        <div ref={certRef} className="p-6 sm:p-8 space-y-6 theme-bg text-[var(--text-color)]">
-          
-          {/* Certificate Header Banner */}
-          <div className="border-b-2 border-[#d4af37] pb-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <div className="flex items-center gap-2 mb-1">
-                <span className="w-3 h-3 rounded-full bg-[#d4af37] animate-pulse" />
-                <span className="text-xs font-extrabold uppercase tracking-widest text-[#d4af37]">FOOD 360 NATIONAL NETWORK</span>
-              </div>
-              <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-[var(--text-color)]">
-                Certificate of Spectral Purity
+        {/* PRINTABLE DIGITAL CERTIFICATE TEMPLATE (MATCHING screen.png & code.html) */}
+        <div 
+          ref={certRef} 
+          className="p-6 sm:p-12 bg-[#faf8ff] text-[#131b2e] relative font-sans"
+          style={{
+            backgroundImage: 'radial-gradient(#c3c6d7 1px, transparent 1px)',
+            backgroundSize: '24px 24px'
+          }}
+        >
+          {/* Main White Card Container */}
+          <div className="max-w-3xl mx-auto bg-white border border-[#c3c6d7] shadow-sm relative p-6 sm:p-12 rounded-lg">
+            
+            {/* Watermark / Seal Placeholder */}
+            <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none overflow-hidden">
+              <ShieldCheck size={380} className="text-[#004ac6]" />
+            </div>
+
+            {/* Top Category Label */}
+            <div className="mb-2">
+              <span className="text-xs font-bold uppercase tracking-widest text-[#004ac6]">
+                SPECTRAL OIL ANALYSIS
+              </span>
+            </div>
+
+            {/* Certificate Header */}
+            <div className="text-left mb-8 border-b-2 border-[#131b2e] pb-6 relative z-10">
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-[#131b2e] tracking-tight uppercase mb-1">
+                CERTIFICATE OF SPECTRAL ANALYSIS
               </h1>
-              <p className="text-xs text-gray-400 mt-0.5">Non-Destructive Spectrophotometric Screening Report</p>
-            </div>
-            
-            <div className="text-right bg-[var(--bg-elevated)] p-3 rounded-2xl border border-[var(--border-color)] text-[11px] space-y-0.5 self-stretch sm:self-auto">
-              <p className="font-mono font-bold text-[#d4af37]">{reportNo}</p>
-              <p className="text-gray-400">UUID: {certId}</p>
-              <p className="text-gray-400">Device: <span className="font-mono text-emerald-400">{deviceId}</span></p>
-            </div>
-          </div>
-
-          {/* Certificate Body Meta */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            <div className="bg-[var(--bg-elevated)] p-3 rounded-xl border border-[var(--border-color)]">
-              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">Sample Oil Type</span>
-              <p className="text-sm font-black text-white">{selectedOil.oilName}</p>
-            </div>
-            <div className="bg-[var(--bg-elevated)] p-3 rounded-xl border border-[var(--border-color)]">
-              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">Testing Date & Time</span>
-              <p className="text-xs font-bold text-gray-300">{timestamp}</p>
-            </div>
-            <div className="bg-[var(--bg-elevated)] p-3 rounded-xl border border-[var(--border-color)]">
-              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">Sample Temp</span>
-              <p className="text-sm font-black text-amber-400 font-mono">{sensorData.temp || 28.4}°C</p>
-            </div>
-            <div className="bg-[var(--bg-elevated)] p-3 rounded-xl border border-[var(--border-color)]">
-              <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider block mb-1">AI Model Confidence</span>
-              <p className="text-sm font-black text-purple-400 font-mono">{result.confidenceScore}%</p>
-            </div>
-          </div>
-
-          {/* Purity Result Banner */}
-          <div className={`p-5 rounded-2xl border-2 ${statusColor} flex flex-col sm:flex-row items-center justify-between gap-4`}>
-            <div className="flex items-center gap-4">
-              <div className={`p-3 rounded-2xl ${isPure ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}`}>
-                {isPure ? <ShieldCheck size={32} /> : <AlertTriangle size={32} />}
-              </div>
-              <div>
-                <span className="text-xs font-bold uppercase tracking-widest text-gray-400">Purity Status Verdict</span>
-                <h3 className="text-xl font-black uppercase tracking-wider">
-                  {isPure ? 'PURE & SAFE FOR USE' : 'SUSPECTED ADULTERATED'}
-                </h3>
-                <p className="text-xs opacity-90 mt-0.5">
-                  {isPure ? 'Sample conforms to standard spectral profile limits.' : 'Sample shows significant spectral deviation from baseline.'}
-                </p>
-              </div>
-            </div>
-            
-            <div className="text-center sm:text-right">
-              <span className="text-[10px] text-gray-400 uppercase font-bold">Calculated Purity</span>
-              <p className={`text-4xl font-black font-mono ${isPure ? 'text-emerald-400' : 'text-red-400'}`}>
-                {result.purityPercentage.toFixed(1)}%
+              <p className="font-mono text-xs text-[#434655]">
+                Official Record of Spectral Testing Protocol
               </p>
             </div>
-          </div>
 
-          {/* Spectral Sensor Values Table */}
-          <div className="space-y-2">
-            <h4 className="text-xs font-extrabold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
-              <Zap size={14} className="text-[#d4af37]" /> Calibrated Wavelength Telemetry (Raw Intensity Index)
-            </h4>
-            <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 text-center text-xs">
-              <div className="bg-[var(--bg-elevated)] p-2.5 rounded-xl border border-[var(--border-color)]">
-                <span className="text-[9px] text-gray-400 font-bold block">610 nm</span>
-                <span className="font-mono font-black text-white">{sensorData.ch610 || 420}</span>
+            {/* Overall Status Highlight Box */}
+            <div className="mb-8 bg-[#f2f3ff] border border-[#004ac6] p-6 rounded-md relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+              <div>
+                <p className="text-[11px] font-bold text-[#004ac6] uppercase mb-1">Primary Assessment</p>
+                <h3 className="text-lg sm:text-xl font-extrabold text-[#131b2e] uppercase">OIL PURITY STATUS</h3>
               </div>
-              <div className="bg-[var(--bg-elevated)] p-2.5 rounded-xl border border-[var(--border-color)]">
-                <span className="text-[9px] text-gray-400 font-bold block">680 nm</span>
-                <span className="font-mono font-black text-white">{sensorData.ch680 || 310}</span>
-              </div>
-              <div className="bg-[var(--bg-elevated)] p-2.5 rounded-xl border border-[var(--border-color)]">
-                <span className="text-[9px] text-gray-400 font-bold block">730 nm</span>
-                <span className="font-mono font-black text-white">{sensorData.ch730 || 890}</span>
-              </div>
-              <div className="bg-[var(--bg-elevated)] p-2.5 rounded-xl border border-[var(--border-color)]">
-                <span className="text-[9px] text-gray-400 font-bold block">810 nm</span>
-                <span className="font-mono font-black text-white">{sensorData.ch810 || 950}</span>
-              </div>
-              <div className="bg-[var(--bg-elevated)] p-2.5 rounded-xl border border-[var(--border-color)]">
-                <span className="text-[9px] text-gray-400 font-bold block">860 nm</span>
-                <span className="font-mono font-black text-white">{sensorData.ch860 || 920}</span>
-              </div>
-              <div className="bg-[var(--bg-elevated)] p-2.5 rounded-xl border border-[var(--border-color)]">
-                <span className="text-[9px] text-gray-400 font-bold block">940 nm</span>
-                <span className="font-mono font-black text-white">{sensorData.ch940 || 870}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Verification Badge & QR Code Footer */}
-          <div className="pt-4 border-t border-[var(--border-color)] flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-white rounded-xl shadow-md shrink-0">
-                <QRCodeSVG value={`https://spectratrust.org/verify/${certId}`} size={64} />
-              </div>
-              <div className="text-xs">
-                <span className="font-bold text-emerald-400 flex items-center gap-1">
-                  <CheckCircle2 size={14} /> Cryptographically Sealed
+              <div className="w-full md:w-auto flex-1 md:flex-none border-b-2 border-[#004ac6] border-dashed min-w-[220px] text-center pb-1 font-mono text-lg font-bold">
+                <span className={isPure ? 'text-emerald-700 font-extrabold' : 'text-red-600 font-extrabold'}>
+                  {isPure ? `PURE & SAFE (${purityVal.toFixed(1)}%)` : `ADULTERATED (${purityVal.toFixed(1)}%)`}
                 </span>
-                <p className="text-[10px] text-gray-400 mt-0.5">Scan QR code to verify report authenticity inside app.</p>
               </div>
             </div>
 
-            <div className="text-right space-y-1">
-              <span className="text-xs font-black text-[#d4af37] tracking-wider uppercase">Food 360 AI Platform</span>
-              <p className="text-[10px] text-gray-400 italic">Automated Spectrophotometric Analysis</p>
+            {/* Technical Data Grid */}
+            <div className="mb-8 relative z-10">
+              <h4 className="text-xs font-bold text-[#131b2e] uppercase tracking-wider border-b-2 border-[#131b2e] pb-2 mb-6">
+                Technical Parameters
+              </h4>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6 text-xs">
+                
+                {/* Spectral Reading */}
+                <div className="flex items-end justify-between border-b border-[#c3c6d7] pb-2 px-1">
+                  <span className="text-[#434655] font-medium flex items-center gap-2">
+                    <Activity size={14} className="text-[#004ac6]" /> Spectral Reading
+                  </span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-mono font-bold text-[#131b2e] border-b border-dashed border-[#c3c6d7] text-right inline-block min-w-[100px]">
+                      {result.primaryIndicator || '680nm / 0.42 Abs'}
+                    </span>
+                    <span className="font-mono text-[10px] text-[#434655]">nm/abs</span>
+                  </div>
+                </div>
+
+                {/* Temperature */}
+                <div className="flex items-end justify-between border-b border-[#c3c6d7] pb-2 px-1">
+                  <span className="text-[#434655] font-medium flex items-center gap-2">
+                    <Thermometer size={14} className="text-[#004ac6]" /> Temperature
+                  </span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-mono font-bold text-[#131b2e] border-b border-dashed border-[#c3c6d7] text-right inline-block min-w-[80px]">
+                      {sensorData.temp || 28.4}
+                    </span>
+                    <span className="font-mono text-[10px] text-[#434655]">°C</span>
+                  </div>
+                </div>
+
+                {/* Time */}
+                <div className="flex items-end justify-between border-b border-[#c3c6d7] pb-2 px-1">
+                  <span className="text-[#434655] font-medium flex items-center gap-2">
+                    <Clock size={14} className="text-[#004ac6]" /> Time
+                  </span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-mono font-bold text-[#131b2e] border-b border-dashed border-[#c3c6d7] text-right inline-block min-w-[120px]">
+                      {timestamp}
+                    </span>
+                    <span className="font-mono text-[10px] text-[#434655]">UTC</span>
+                  </div>
+                </div>
+
+                {/* Location */}
+                <div className="flex items-end justify-between border-b border-[#c3c6d7] pb-2 px-1">
+                  <span className="text-[#434655] font-medium flex items-center gap-2">
+                    <MapPin size={14} className="text-[#004ac6]" /> Location
+                  </span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-mono font-bold text-[#131b2e] border-b border-dashed border-[#c3c6d7] text-right inline-block min-w-[130px]">
+                      {location}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Report Token Number */}
+                <div className="flex items-end justify-between border-b border-[#c3c6d7] pb-2 px-1 md:col-span-2">
+                  <span className="text-[#434655] font-medium flex items-center gap-2">
+                    <Tag size={14} className="text-[#004ac6]" /> Report Token Number
+                  </span>
+                  <div className="flex items-baseline gap-2">
+                    <span className="font-mono text-[10px] text-[#434655] mr-1">REF:</span>
+                    <span className="font-mono font-bold text-[#004ac6] border-b border-dashed border-[#004ac6] text-right inline-block min-w-[160px]">
+                      {tokenNumber}
+                    </span>
+                  </div>
+                </div>
+
+              </div>
             </div>
+
+            {/* Official Indian Flag Seal Emblem */}
+            <div className="mt-12 pt-6 border-t border-[#c3c6d7] flex flex-col items-center justify-center relative z-10">
+              <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-gray-300 shadow-md flex flex-col mb-2 relative shrink-0">
+                {/* Saffron */}
+                <div className="h-1/3 w-full bg-[#FF9933]" />
+                {/* White with Ashoka Chakra */}
+                <div className="h-1/3 w-full bg-white flex items-center justify-center relative">
+                  <svg viewBox="0 0 24 24" className="w-4 h-4 text-[#000080] fill-none stroke-current stroke-[1.5]">
+                    <circle cx="12" cy="12" r="5" />
+                    <line x1="12" y1="7" x2="12" y2="17" />
+                    <line x1="7" y1="12" x2="17" y2="12" />
+                    <line x1="8.46" y1="8.46" x2="15.54" y2="15.54" />
+                    <line x1="8.46" y1="15.54" x2="15.54" y2="8.46" />
+                  </svg>
+                </div>
+                {/* India Green */}
+                <div className="h-1/3 w-full bg-[#138808]" />
+              </div>
+              <div className="text-center font-mono text-[10px] text-[#434655]">
+                <p className="font-bold text-[#131b2e]">Digital Seal Authentication</p>
+                <p>Verification Token: <span className="font-bold text-[#004ac6]">{tokenNumber}</span></p>
+              </div>
+            </div>
+
           </div>
 
-          {/* Legal Screening Disclaimer */}
-          <div className="bg-gray-900/60 p-3 rounded-xl border border-gray-800 text-[10px] text-gray-400 text-center leading-relaxed">
-            <p className="font-bold text-gray-300">Official Disclaimer:</p>
-            <p>"Generated by Food 360 AI Food Safety Platform. For preliminary screening purposes. Not an official government laboratory certificate."</p>
+          {/* Footer Bar */}
+          <div className="max-w-3xl mx-auto mt-6 pt-4 border-t-2 border-[#131b2e] flex flex-col sm:flex-row justify-center sm:justify-between items-center text-[11px] text-[#434655] font-mono gap-2">
+            <div className="flex items-center gap-4 mx-auto">
+              <span>Verification Token: {tokenNumber}</span>
+              <span>•</span>
+              <span>Digital Seal Authentication</span>
+            </div>
           </div>
 
         </div>

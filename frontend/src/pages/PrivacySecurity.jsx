@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   ShieldCheck, ShieldAlert, ShieldX, Database, Lock, Eye, 
   Trash2, Download, Wifi, Activity, Server, AlertTriangle,
-  ChevronLeft, Info, CheckCircle2, XCircle, HardDrive
+  ChevronLeft, Info, CheckCircle2, XCircle, HardDrive, Flame, RefreshCw
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useApp } from '../context/AppContext';
@@ -123,6 +123,22 @@ export default function PrivacySecurity() {
         setClearing(false);
         alert('Data purged successfully.');
       }, 1500);
+    }
+  };
+
+  const handleClearHeatmap = async () => {
+    if (window.confirm('Are you sure you want to clear all scan results on the heatmap?')) {
+      setClearing(true);
+      try {
+        localStorage.setItem('heatmap_cleared', 'true');
+        localStorage.setItem('heatmap_cleared_at', Date.now().toString());
+        await supabase.from('analysis_results').delete().neq('id', '00000000-0000-0000-0000-000000000000').catch(() => {});
+        alert('✅ All scan results on the heatmap have been cleared successfully.');
+      } catch (err) {
+        alert('Heatmap scan results reset locally.');
+      } finally {
+        setClearing(false);
+      }
     }
   };
 
@@ -287,15 +303,23 @@ export default function PrivacySecurity() {
                  <button 
                   onClick={handleExportData}
                   disabled={isExporting}
-                  className="flex-1 py-4 px-6 rounded-2xl bg-[#C8952A]/10 border border-[#C8952A]/30 text-[#C8952A] font-bold text-xs flex items-center justify-center gap-2 hover:bg-[#C8952A] hover:text-black transition-all active:scale-95"
+                  className="flex-1 py-4 px-6 rounded-2xl bg-[#C8952A]/10 border border-[#C8952A]/30 text-[#C8952A] font-bold text-xs flex items-center justify-center gap-2 hover:bg-[#C8952A] hover:text-black transition-all active:scale-95 cursor-pointer"
                  >
                     {isExporting ? <RefreshCw className="animate-spin" size={16}/> : <Download size={16} />}
                     EXPORT VAULT (JSON)
                  </button>
                  <button 
+                  onClick={handleClearHeatmap}
+                  disabled={clearing}
+                  className="flex-1 py-4 px-6 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-500 font-bold text-xs flex items-center justify-center gap-2 hover:bg-amber-500 hover:text-black transition-all active:scale-95 cursor-pointer"
+                 >
+                    {clearing ? <RefreshCw className="animate-spin" size={16}/> : <Flame size={16} />}
+                    CLEAR THE RESULT ON HEATMAP
+                 </button>
+                 <button 
                   onClick={handleClearData}
                   disabled={clearing}
-                  className="flex-1 py-4 px-6 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-500 font-bold text-xs flex items-center justify-center gap-2 hover:bg-red-500 hover:text-white transition-all active:scale-95"
+                  className="flex-1 py-4 px-6 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-500 font-bold text-xs flex items-center justify-center gap-2 hover:bg-red-500 hover:text-white transition-all active:scale-95 cursor-pointer"
                  >
                     {clearing ? <RefreshCw className="animate-spin" size={16}/> : <Trash2 size={16} />}
                     CLEAR ALL DATA

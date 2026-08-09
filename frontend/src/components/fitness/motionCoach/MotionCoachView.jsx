@@ -34,6 +34,8 @@ export default function MotionCoachView({ isOpen, onClose, workoutPlan, initialE
 
   const availableExercises = [
     { id: 'squat', name: 'Bodyweight Squats', sets: 3, reps: 12, category: 'Legs & Glutes', view: 'Side 45° View' },
+    { id: 'toe_touch', name: 'Standing Toe Touch', sets: 3, reps: 10, category: 'Core & Hamstrings', view: 'Side 45° View' },
+    { id: 'side_reach', name: 'Standing Side Reach', sets: 3, reps: 10, category: 'Obliques & Core', view: 'Front View' },
     { id: 'pushup', name: 'Push-Ups', sets: 3, reps: 10, category: 'Chest & Arms', view: 'Side View' },
     { id: 'bicep_curl', name: 'Bicep Curls', sets: 3, reps: 15, category: 'Biceps & Forearms', view: 'Front View' },
     { id: 'shoulder_press', name: 'Overhead Shoulder Press', sets: 3, reps: 12, category: 'Shoulders & Triceps', view: 'Front View' },

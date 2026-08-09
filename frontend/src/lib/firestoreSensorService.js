@@ -165,3 +165,51 @@ export async function fetchLatestCloudReading() {
 
   return null;
 }
+
+/**
+ * Saves generated certificate with token number to Firebase RTDB & Firestore REST API
+ */
+export async function saveCertificateToFirebase(certData) {
+  const firebaseRtdbCertUrl = "https://oil-adulteration-default-rtdb.firebaseio.com/certificates.json";
+  try {
+    const res = await fetch(firebaseRtdbCertUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        ...certData,
+        saved_at: new Date().toISOString()
+      })
+    });
+    if (res.ok) {
+      const data = await res.json();
+      console.log('[FirebaseCertService] Certificate saved to Firebase RTDB:', data);
+    }
+  } catch (err) {
+    console.warn('[FirebaseCertService] Firebase RTDB save error:', err);
+  }
+
+  // Also post to Firestore REST certificates collection
+  try {
+    const FIRESTORE_PROJECT_ID = "oil-adulteration";
+    const FIRESTORE_API_KEY    = "AIzaSyAhu9pa7EIlmZD-u68xxDeMXz483G98bS0";
+    const firestoreUrl = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents/certificates?key=${FIRESTORE_API_KEY}`;
+    await fetch(firestoreUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fields: {
+          tokenNumber: { stringValue: String(certData.tokenNumber || '') },
+          oilName: { stringValue: String(certData.oilName || '') },
+          purityPercentage: { doubleValue: Number(certData.purityPercentage || 0) },
+          quality: { stringValue: String(certData.quality || '') },
+          reportNo: { stringValue: String(certData.reportNo || '') },
+          deviceId: { stringValue: String(certData.deviceId || '') },
+          timestamp: { stringValue: new Date().toISOString() }
+        }
+      })
+    });
+    console.log('[FirebaseCertService] Certificate saved to Firestore.');
+  } catch (fsErr) {
+    console.warn('[FirebaseCertService] Firestore save error:', fsErr);
+  }
+}
