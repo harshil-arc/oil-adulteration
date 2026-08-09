@@ -61,7 +61,7 @@ export default function CustomWorkoutBuilder({ isOpen, onClose, allExercises, on
 
         {/* Workout Name Input */}
         <div className="space-y-1.5">
-          <label className="text-[10px] font-extrabold uppercase text-gray-400">Workout Title</label>
+          <label className="text-[10px] font-extrabold uppercase text-slate-300">Workout Title</label>
           <input
             type="text"
             value={title}
@@ -84,7 +84,7 @@ export default function CustomWorkoutBuilder({ isOpen, onClose, allExercises, on
           </div>
 
           {selectedExercises.length === 0 ? (
-            <div className="p-8 text-center bg-[#0d1117] rounded-2xl border border-dashed border-gray-800 text-gray-400 text-xs">
+            <div className="p-8 text-center bg-[#0d1117] rounded-2xl border border-dashed border-gray-800 text-slate-300 text-xs">
               No exercises added yet. Click "Add Exercises" to pick from the 1,324 dataset.
             </div>
           ) : (
@@ -97,11 +97,11 @@ export default function CustomWorkoutBuilder({ isOpen, onClose, allExercises, on
                     </span>
                     <div>
                       <h5 className="font-bold text-white text-xs">{capitalize(ex.name)}</h5>
-                      <span className="text-[10px] text-gray-400">{capitalize(ex.body_part)} • {capitalize(ex.equipment)}</span>
+                      <span className="text-[10px] text-slate-300">{capitalize(ex.body_part)} • {capitalize(ex.equipment)}</span>
                     </div>
                   </div>
 
-                  <button onClick={() => handleRemoveExercise(ex.id)} className="p-1.5 text-gray-500 hover:text-red-400">
+                  <button onClick={() => handleRemoveExercise(ex.id)} className="p-1.5 text-gray-400 hover:text-red-400">
                     <Trash2 size={16} />
                   </button>
                 </div>

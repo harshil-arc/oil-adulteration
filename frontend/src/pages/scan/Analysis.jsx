@@ -230,7 +230,7 @@ export default function Analysis() {
 
   // Modal triggers
   const [certModalOpen, setCertModalOpen] = useState(false);
-  const [complaintModalOpen, setComplaintModalOpen] = useState(false);
+
   const [devSettingsOpen, setDevSettingsOpen] = useState(false);
 
   // Settings & Sync

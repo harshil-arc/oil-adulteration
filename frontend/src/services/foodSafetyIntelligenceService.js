@@ -11,22 +11,93 @@ const NOTIF_PREFS_KEY = 'spectratrust_food_intelligence_notif_prefs_v1';
 const CACHE_KEY = 'spectratrust_food_intelligence_alerts_cache_v1';
 
 /**
+ * Fetch live food recall alerts directly from US FDA / OpenFDA Enforcement API
+ */
+export async function fetchLiveOpenFdaRecalls() {
+  try {
+    const res = await fetch('https://api.fda.gov/food/enforcement.json?limit=10');
+    if (!res.ok) return [];
+    const data = await res.json();
+    const results = data?.results || [];
+
+    const liveItems = results.map((item, idx) => {
+      const year = item.report_date ? item.report_date.slice(0, 4) : '2026';
+      const month = item.report_date ? item.report_date.slice(4, 6) : '08';
+      const day = item.report_date ? item.report_date.slice(6, 8) : '01';
+      const pubDate = `${year}-${month}-${day}`;
+
+      let severity = 'High';
+      if (item.classification?.includes('Class I')) severity = 'Critical';
+      else if (item.classification?.includes('Class III')) severity = 'Medium';
+
+      return {
+        id: `openfda-live-${item.event_id || idx}-${idx}`,
+        title: `OpenFDA Real-Time Recall: ${item.recalling_firm || 'Official Producer'} - ${item.product_description?.slice(0, 65) || 'Food Item'}...`,
+        category: 'Food Recalls',
+        authority: 'US FDA / OpenFDA Enforcement Registry',
+        sourceName: 'US FDA Enforcement Directives (api.fda.gov)',
+        sourceUrl: `https://www.fda.gov/safety/recalls-market-withdrawals-safety-alerts`,
+        publicationDate: pubDate,
+        productName: item.product_description?.slice(0, 80) || 'Packaged Food Product',
+        brand: item.recalling_firm || 'Imported Brand',
+        company: item.recalling_firm || 'Food Processing Corp',
+        oilType: 'Processed Food / Edible Items',
+        batchInfo: item.code_info?.slice(0, 60) || 'Lot / Code Info On Package',
+        testingLab: 'FDA Central Microbial & Quality Testing Laboratory',
+        labParameterTested: 'Pathogen / Chemical / MRL Regulatory Standard',
+        detectedLevel: item.reason_for_recall?.slice(0, 90) || 'Non-compliance with food safety purity standards',
+        legalAction: `FDA ${item.classification || 'Recall Notice'} - Status: ${item.status || 'Active Enforcement'}`,
+        affectedStates: [item.state || 'Nationwide', 'International Distribution'],
+        severity: severity,
+        sourceBadge: 'Live OpenFDA API',
+        thumbnailImage: 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=600&q=80',
+        description: item.product_description || 'Enforcement directive issued following quality control evaluation.',
+        reason: item.reason_for_recall || 'Product recalled due to regulatory non-compliance.',
+        recommendedAction: 'Inspect household inventory. Discontinue usage and return to vendor if batch code matches.',
+        tags: ['OpenFDA Live', 'Real-Time Recall', 'Food Safety Alert'],
+        isFeatured: false
+      };
+    });
+
+    if (liveItems.length > 0) {
+      // Merge live items with static verified dataset to update local cache
+      const combined = [...liveItems, ...VERIFIED_INTELLIGENCE_ALERTS];
+      // Deduplicate by ID
+      const uniqueMap = new Map();
+      combined.forEach(it => uniqueMap.set(it.id, it));
+      const uniqueList = Array.from(uniqueMap.values());
+      localStorage.setItem(CACHE_KEY, JSON.stringify(uniqueList));
+      return uniqueList;
+    }
+
+    return [];
+  } catch (err) {
+    console.warn('[Food Intelligence] OpenFDA fetch error:', err);
+    return [];
+  }
+}
+
+/**
  * Fetch verified alerts with category, search query, state & severity filtering
  */
-export function fetchVerifiedAlerts({ category = 'All', searchQuery = '', stateFilter = 'All', severityFilter = 'All' } = {}) {
+export function fetchVerifiedAlerts({ category = 'All', searchQuery = '', stateFilter = 'All', severityFilter = 'All', customList = null } = {}) {
   let list = [];
 
-  // Try cached alerts or fallback to primary verified dataset
-  try {
-    const cached = localStorage.getItem(CACHE_KEY);
-    if (cached) {
-      list = JSON.parse(cached);
-    } else {
+  if (customList && Array.isArray(customList) && customList.length > 0) {
+    list = [...customList];
+  } else {
+    // Try cached alerts or fallback to primary verified dataset
+    try {
+      const cached = localStorage.getItem(CACHE_KEY);
+      if (cached) {
+        list = JSON.parse(cached);
+      } else {
+        list = [...VERIFIED_INTELLIGENCE_ALERTS];
+        localStorage.setItem(CACHE_KEY, JSON.stringify(list));
+      }
+    } catch (e) {
       list = [...VERIFIED_INTELLIGENCE_ALERTS];
-      localStorage.setItem(CACHE_KEY, JSON.stringify(list));
     }
-  } catch (e) {
-    list = [...VERIFIED_INTELLIGENCE_ALERTS];
   }
 
   // Ensure dataset items are populated

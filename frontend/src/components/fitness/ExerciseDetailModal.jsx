@@ -79,22 +79,22 @@ export default function ExerciseDetailModal({ isOpen, onClose, exercise, onSwap,
           {/* Targeted Muscle & Equipment Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
             <div className="bg-gray-900 p-3 rounded-2xl border border-gray-800 space-y-0.5">
-              <span className="text-[10px] text-gray-500 font-bold uppercase block">Body Part</span>
+              <span className="text-[10px] text-slate-300 font-extrabold uppercase block">Body Part</span>
               <span className="font-extrabold text-white">{capitalize(exercise.body_part)}</span>
             </div>
 
             <div className="bg-gray-900 p-3 rounded-2xl border border-gray-800 space-y-0.5">
-              <span className="text-[10px] text-gray-500 font-bold uppercase block">Target Muscle</span>
-              <span className="font-extrabold text-[#0052ff]">{capitalize(exercise.target)}</span>
+              <span className="text-[10px] text-slate-300 font-extrabold uppercase block">Target Muscle</span>
+              <span className="font-extrabold text-blue-400">{capitalize(exercise.target)}</span>
             </div>
 
             <div className="bg-gray-900 p-3 rounded-2xl border border-gray-800 space-y-0.5">
-              <span className="text-[10px] text-gray-500 font-bold uppercase block">Equipment</span>
+              <span className="text-[10px] text-slate-300 font-extrabold uppercase block">Equipment</span>
               <span className="font-extrabold text-amber-400">{capitalize(exercise.equipment)}</span>
             </div>
 
             <div className="bg-gray-900 p-3 rounded-2xl border border-gray-800 space-y-0.5">
-              <span className="text-[10px] text-gray-500 font-bold uppercase block">Secondary</span>
+              <span className="text-[10px] text-slate-300 font-extrabold uppercase block">Secondary</span>
               <span className="font-extrabold text-emerald-400 truncate block">
                 {exercise.secondary_muscles?.map(capitalize).join(', ') || 'Core'}
               </span>
@@ -109,7 +109,7 @@ export default function ExerciseDetailModal({ isOpen, onClose, exercise, onSwap,
 
             <div className="space-y-2">
               {steps.map((stepText, idx) => (
-                <div key={idx} className="flex gap-3 bg-gray-900 p-3.5 rounded-2xl border border-gray-800 text-gray-300">
+                <div key={idx} className="flex gap-3 bg-gray-900 p-3.5 rounded-2xl border border-gray-800 text-gray-200">
                   <span className="w-6 h-6 rounded-full bg-[#0052ff] text-white font-black flex items-center justify-center text-xs shrink-0">
                     {idx + 1}
                   </span>

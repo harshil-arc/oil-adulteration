@@ -153,12 +153,12 @@ export default function WorkoutSessionView({ isOpen, onClose, workout, allExerci
                 {capitalize(currentEx.body_part)} • {capitalize(currentEx.equipment)}
               </span>
               <h1 className="text-2xl sm:text-3xl font-black text-white">{capitalize(currentEx.name)}</h1>
-              <p className="text-xs text-gray-400 mt-0.5">Target: <b className="text-amber-400">{capitalize(currentEx.target)}</b></p>
+              <p className="text-xs text-slate-300 mt-0.5">Target: <b className="text-amber-400">{capitalize(currentEx.target)}</b></p>
             </div>
 
             <button
               onClick={handleReplaceCurrent}
-              className="py-1.5 px-3 rounded-xl bg-gray-800 text-gray-300 border border-gray-700 text-xs font-bold hover:text-white flex items-center gap-1"
+              className="py-1.5 px-3 rounded-xl bg-gray-800 text-gray-200 border border-gray-700 text-xs font-bold hover:text-white flex items-center gap-1"
             >
               <RefreshCw size={13} /> Replace
             </button>
@@ -184,7 +184,7 @@ export default function WorkoutSessionView({ isOpen, onClose, workout, allExerci
               />
             )}
 
-            <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-md px-3 py-1 rounded-xl text-[10px] text-gray-400 border border-gray-800">
+            <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-md px-3 py-1 rounded-xl text-[10px] text-slate-300 border border-gray-800">
               {currentEx.attribution || '© Gym visual'}
             </div>
           </div>
@@ -192,7 +192,7 @@ export default function WorkoutSessionView({ isOpen, onClose, workout, allExerci
           {/* Instructions Box */}
           <div className="bg-gray-900 p-4 rounded-2xl border border-gray-800 space-y-2 text-xs">
             <span className="font-extrabold text-white uppercase text-[10px] tracking-wider block">Instructions</span>
-            <div className="space-y-1.5 text-gray-300">
+            <div className="space-y-1.5 text-slate-200">
               {steps.slice(0, 3).map((st, i) => (
                 <p key={i} className="leading-relaxed text-[11px]">• {st}</p>
               ))}

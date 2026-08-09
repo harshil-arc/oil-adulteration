@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { 
   Play, Dumbbell, Calendar, Activity, Settings, Plus, 
-  Sparkles, CheckCircle2, ChevronRight, RefreshCw, BarChart2, ShieldCheck, Search 
+  Sparkles, CheckCircle2, ChevronRight, RefreshCw, BarChart2, ShieldCheck, Search, Camera 
 } from 'lucide-react';
 import { loadExercises, filterExercises, capitalize } from '../../services/fitness/exerciseService';
 import { 
@@ -16,6 +16,7 @@ import WorkoutSessionView from './WorkoutSessionView';
 import CustomWorkoutBuilder from './CustomWorkoutBuilder';
 import FitnessProgressView from './FitnessProgressView';
 import ExerciseCard from './ExerciseCard';
+import MotionCoachView from './motionCoach/MotionCoachView';
 
 export default function FitnessDashboard() {
   const [allExercises, setAllExercises] = useState([]);
@@ -34,6 +35,8 @@ export default function FitnessDashboard() {
   // Modals state
   const [setupModalOpen, setSetupModalOpen] = useState(false);
   const [sessionOpen, setSessionOpen] = useState(false);
+  const [motionCoachOpen, setMotionCoachOpen] = useState(false);
+  const [selectedMotionExercise, setSelectedMotionExercise] = useState('squat');
   const [customBuilderOpen, setCustomBuilderOpen] = useState(false);
   const [activeSessionWorkout, setActiveSessionWorkout] = useState(null);
   const [inspectExercise, setInspectExercise] = useState(null);
@@ -103,17 +106,43 @@ export default function FitnessDashboard() {
               </span>
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-black text-white">
+            {/* Smart Motion Capture Coach Button & Exercise Dropdown */}
+            <div className="pt-1.5 pb-1 flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => setMotionCoachOpen(true)}
+                className="py-2.5 px-4 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 text-white font-black text-xs hover:opacity-90 flex items-center gap-2 shadow-lg shadow-indigo-500/25 transition-all border border-purple-400/30"
+              >
+                <Camera size={16} className="text-purple-200" />
+                <span>Start Smart Motion Capture Coach</span>
+              </button>
+
+              <div className="flex items-center gap-1.5 bg-[#161b22]/90 border border-purple-500/40 rounded-2xl px-3 py-1.5">
+                <span className="text-[10px] uppercase font-black text-purple-300">Exercise:</span>
+                <select
+                  value={selectedMotionExercise}
+                  onChange={(e) => setSelectedMotionExercise(e.target.value)}
+                  className="bg-transparent text-white font-bold text-xs focus:outline-none cursor-pointer"
+                >
+                  <option value="squat" className="bg-[#161b22] text-white">🏋️ Bodyweight Squats (Legs)</option>
+                  <option value="pushup" className="bg-[#161b22] text-white">💪 Push-Ups (Chest & Arms)</option>
+                  <option value="bicep_curl" className="bg-[#161b22] text-white">🏋️‍♂️ Bicep Curls (Biceps)</option>
+                  <option value="shoulder_press" className="bg-[#161b22] text-white">🏋️‍♀️ Overhead Shoulder Press (Shoulders)</option>
+                  <option value="lunge" className="bg-[#161b22] text-white">🦵 Bodyweight Lunges (Quads)</option>
+                </select>
+              </div>
+            </div>
+
+            <h1 className="text-2xl sm:text-3xl font-black text-[var(--text-primary)]">
               SpectraTrust Fitness Coach
             </h1>
-            <p className="text-gray-300 text-xs">
-              Setup: <b className="text-[#0052ff]">{preferences.experience}</b> • Goal: <b className="text-white">{preferences.mainGoal}</b> • Equipment: <b className="text-amber-400">{preferences.equipment.map(capitalize).join(', ')}</b>
+            <p className="text-[var(--text-secondary)] text-xs">
+              Setup: <b className="text-[#0052ff]">{preferences.experience}</b> • Goal: <b className="text-[var(--text-primary)]">{preferences.mainGoal}</b> • Equipment: <b className="text-amber-500 dark:text-amber-400">{preferences.equipment.map(capitalize).join(', ')}</b>
             </p>
           </div>
 
           <button
             onClick={() => setSetupModalOpen(true)}
-            className="py-2.5 px-4 rounded-2xl bg-[var(--bg-elevated)] border border-[#0052ff]/40 text-white font-bold hover:border-[#0052ff] flex items-center gap-2 transition-all shadow-md shrink-0 text-xs"
+            className="py-2.5 px-4 rounded-2xl bg-[var(--bg-elevated)] border border-[#0052ff]/40 text-[var(--text-primary)] font-bold hover:border-[#0052ff] flex items-center gap-2 transition-all shadow-md shrink-0 text-xs"
           >
             <Settings size={15} className="text-[#0052ff]" /> Recalibrate Setup
           </button>
@@ -141,7 +170,7 @@ export default function FitnessDashboard() {
               key={t.id}
               onClick={() => setActiveTab(t.id)}
               className={`pb-3 transition-all border-b-2 whitespace-nowrap flex items-center gap-2 ${
-                isActive ? 'border-[#0052ff] text-[#0052ff]' : 'border-transparent text-gray-400 hover:text-white'
+                isActive ? 'border-[#0052ff] text-[#0052ff]' : 'border-transparent text-[var(--text-secondary)] hover:text-[#0052ff]'
               }`}
             >
               <Icon size={16} /> {t.label}
@@ -162,8 +191,8 @@ export default function FitnessDashboard() {
                   <span className="text-[10px] font-black uppercase text-[#0052ff] tracking-widest block mb-1">
                     Today's Prescribed Session
                   </span>
-                  <h2 className="text-2xl sm:text-3xl font-black text-white">{todayWorkout.title}</h2>
-                  <p className="text-xs text-gray-400 mt-1">
+                  <h2 className="text-2xl sm:text-3xl font-black text-[var(--text-primary)]">{todayWorkout.title}</h2>
+                  <p className="text-xs text-[var(--text-secondary)] mt-1">
                     ~{todayWorkout.estimatedDurationMinutes} Minutes • {todayWorkout.exercises?.length || 5} Exercises
                   </p>
                 </div>
@@ -178,7 +207,7 @@ export default function FitnessDashboard() {
 
               {/* Today's Exercises Preview Grid */}
               <div className="space-y-2 pt-2">
-                <span className="text-[10px] font-black uppercase text-gray-400 tracking-wider block">
+                <span className="text-[10px] font-black uppercase text-[var(--text-secondary)] tracking-wider block">
                   Target Exercises ({todayWorkout.exercises?.length || 0})
                 </span>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
@@ -189,8 +218,8 @@ export default function FitnessDashboard() {
                       className="bg-[var(--bg-elevated)] p-3.5 rounded-2xl border border-[var(--border-color)] flex items-center justify-between cursor-pointer hover:border-[#0052ff] transition-all"
                     >
                       <div className="space-y-0.5">
-                        <h4 className="font-black text-white text-xs">{capitalize(ex.name)}</h4>
-                        <p className="text-[10px] text-gray-400">{capitalize(ex.body_part)} • {capitalize(ex.equipment)}</p>
+                        <h4 className="font-black text-[var(--text-primary)] text-xs">{capitalize(ex.name)}</h4>
+                        <p className="text-[10px] text-[var(--text-secondary)]">{capitalize(ex.body_part)} • {capitalize(ex.equipment)}</p>
                       </div>
                       <span className="text-[10px] font-mono font-bold text-[#0052ff] bg-[#0052ff]/10 px-2 py-0.5 rounded border border-[#0052ff]/30">
                         {capitalize(ex.target)}
@@ -206,7 +235,7 @@ export default function FitnessDashboard() {
           {workoutPlan && workoutPlan.days && (
             <div className="space-y-4">
               <div className="flex justify-between items-center">
-                <h3 className="text-base font-black text-white">My Weekly Plan Schedule</h3>
+                <h3 className="text-base font-black text-[var(--text-primary)]">My Weekly Plan Schedule</h3>
                 <button onClick={() => setSetupModalOpen(true)} className="text-[#0052ff] font-bold text-xs hover:underline">
                   Regenerate Plan
                 </button>
@@ -221,8 +250,8 @@ export default function FitnessDashboard() {
                       selectedDayIdx === idx
                         ? 'bg-[#0052ff] text-white border-[#0052ff] font-black shadow-lg'
                         : item.isRestDay
-                          ? 'bg-gray-900 text-gray-500 border-gray-800'
-                          : 'bg-[var(--bg-elevated)] text-gray-300 border-[var(--border-color)] hover:border-gray-600'
+                          ? 'bg-slate-200 dark:bg-gray-900 text-slate-500 dark:text-gray-400 border-slate-300 dark:border-gray-800'
+                          : 'bg-[var(--bg-elevated)] text-[var(--text-primary)] border-[var(--border-color)] hover:border-gray-600'
                     }`}
                   >
                     <span className="text-[10px] uppercase font-bold block">{item.dayName.slice(0, 3)}</span>
@@ -239,7 +268,7 @@ export default function FitnessDashboard() {
                       <span className="text-[10px] font-black text-[#0052ff] uppercase tracking-wider block">
                         {workoutPlan.days[selectedDayIdx].dayName} Target
                       </span>
-                      <h4 className="text-lg font-black text-white">{workoutPlan.days[selectedDayIdx].title}</h4>
+                      <h4 className="text-lg font-black text-[var(--text-primary)]">{workoutPlan.days[selectedDayIdx].title}</h4>
                     </div>
 
                     {!workoutPlan.days[selectedDayIdx].isRestDay && (
@@ -259,7 +288,7 @@ export default function FitnessDashboard() {
           {/* RECOMMENDED EXERCISES FOR YOU */}
           {recommendedExercises.length > 0 && (
             <div className="space-y-4">
-              <h3 className="text-base font-black text-white">Recommended for Your Equipment & Goal</h3>
+              <h3 className="text-base font-black text-[var(--text-primary)]">Recommended for Your Equipment & Goal</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 {recommendedExercises.slice(0, 4).map(ex => (
                   <ExerciseCard
@@ -289,8 +318,8 @@ export default function FitnessDashboard() {
         <div className="space-y-6 animate-fade-in">
           <div className="flex justify-between items-center">
             <div>
-              <h3 className="text-xl font-black text-white">My Custom Workouts</h3>
-              <p className="text-xs text-gray-400">Build your own routines picking from 1,324 dataset exercises.</p>
+              <h3 className="text-xl font-black text-[var(--text-primary)]">My Custom Workouts</h3>
+              <p className="text-xs text-[var(--text-secondary)]">Build your own routines picking from 1,324 dataset exercises.</p>
             </div>
 
             <button
@@ -304,8 +333,8 @@ export default function FitnessDashboard() {
           {customWorkouts.length === 0 ? (
             <div className="p-12 text-center bg-[var(--bg-card)] rounded-3xl border border-[var(--border-color)] space-y-3">
               <span className="text-4xl">🛠️</span>
-              <h4 className="text-base font-bold text-white">No custom workouts created yet</h4>
-              <p className="text-gray-400 text-xs">Create your own tailored routines with exercises from the dataset!</p>
+              <h4 className="text-base font-bold text-[var(--text-primary)]">No custom workouts created yet</h4>
+              <p className="text-[var(--text-secondary)] text-xs">Create your own tailored routines with exercises from the dataset!</p>
               <button onClick={() => setCustomBuilderOpen(true)} className="btn-primary py-2 px-4 text-xs">
                 Create Workout Now
               </button>
@@ -315,7 +344,7 @@ export default function FitnessDashboard() {
               {customWorkouts.map(cw => (
                 <div key={cw.id} className="p-5 rounded-3xl bg-[var(--bg-card)] border border-[var(--border-color)] space-y-3">
                   <div className="flex justify-between items-start">
-                    <h4 className="font-extrabold text-white text-base">{cw.title}</h4>
+                    <h4 className="font-extrabold text-[var(--text-primary)] text-base">{cw.title}</h4>
                     <span className="text-xs font-mono text-[#0052ff] font-bold bg-[#0052ff]/10 px-2 py-0.5 rounded border border-[#0052ff]/30">
                       {cw.exerciseIds?.length || 0} Exercises
                     </span>
@@ -370,6 +399,13 @@ export default function FitnessDashboard() {
         onClose={() => setCustomBuilderOpen(false)}
         allExercises={allExercises}
         onWorkoutCreated={() => setCustomWorkouts(loadCustomWorkouts())}
+      />
+
+      <MotionCoachView
+        isOpen={motionCoachOpen}
+        onClose={() => setMotionCoachOpen(false)}
+        workoutPlan={workoutPlan}
+        initialExerciseId={selectedMotionExercise}
       />
 
     </div>

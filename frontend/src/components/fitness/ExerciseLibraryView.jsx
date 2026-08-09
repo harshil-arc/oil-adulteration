@@ -72,7 +72,7 @@ export default function ExerciseLibraryView({ onSelectExerciseForCustom }) {
           <span className="text-[10px] font-black uppercase text-[#0052ff] tracking-wider block mb-0.5">
             Official Dataset ({allExercises.length} Exercises)
           </span>
-          <h3 className="text-xl font-black text-white">1,324 Exercise Knowledge Base</h3>
+          <h3 className="text-xl font-black text-[var(--text-primary)]">1,324 Exercise Knowledge Base</h3>
         </div>
 
         <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -83,10 +83,10 @@ export default function ExerciseLibraryView({ onSelectExerciseForCustom }) {
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="Search exercise, muscle, equipment..."
-              className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded-2xl py-2.5 pl-10 pr-4 text-xs text-white outline-none focus:border-[#0052ff]"
+              className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] rounded-2xl py-2.5 pl-10 pr-4 text-xs text-[var(--text-primary)] outline-none focus:border-[#0052ff]"
             />
             {searchQuery && (
-              <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white">
+              <button onClick={() => setSearchQuery('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#0052ff]">
                 <X size={14} />
               </button>
             )}
@@ -97,7 +97,7 @@ export default function ExerciseLibraryView({ onSelectExerciseForCustom }) {
             className={`py-2.5 px-4 rounded-2xl font-bold border flex items-center gap-2 transition-all ${
               selectedBodyPart !== 'All' || selectedEquipment !== 'All' || selectedTarget !== 'All'
                 ? 'bg-[#0052ff] text-white border-[#0052ff]'
-                : 'bg-[var(--bg-elevated)] text-gray-300 border-[var(--border-color)] hover:border-gray-600'
+                : 'bg-[var(--bg-elevated)] text-[var(--text-primary)] border-[var(--border-color)] hover:border-gray-600'
             }`}
           >
             <Filter size={16} />
@@ -110,7 +110,7 @@ export default function ExerciseLibraryView({ onSelectExerciseForCustom }) {
       {filterDrawerOpen && (
         <div className="bg-[var(--bg-card)] p-5 rounded-3xl border border-[#0052ff]/40 space-y-4 animate-fade-in">
           <div className="flex justify-between items-center border-b border-[var(--border-color)] pb-3">
-            <span className="font-extrabold text-white text-xs">Dataset Filters</span>
+            <span className="font-extrabold text-[var(--text-primary)] text-xs">Dataset Filters</span>
             <button onClick={handleClearFilters} className="text-[#0052ff] font-bold hover:underline text-xs">
               Clear All Filters
             </button>
@@ -119,42 +119,42 @@ export default function ExerciseLibraryView({ onSelectExerciseForCustom }) {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             {/* Body Part */}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-extrabold uppercase text-gray-400">Body Part</label>
+              <label className="text-[10px] font-extrabold uppercase text-[var(--text-secondary)]">Body Part</label>
               <select
                 value={selectedBodyPart}
                 onChange={e => setSelectedBodyPart(e.target.value)}
-                className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] text-white text-xs rounded-xl p-2.5 outline-none focus:border-[#0052ff]"
+                className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] text-[var(--text-primary)] text-xs rounded-xl p-2.5 outline-none focus:border-[#0052ff]"
               >
                 {metadata.bodyParts.map(bp => (
-                  <option key={bp} value={bp}>{bp}</option>
+                  <option key={bp} value={bp} className="bg-[#161b22] text-white">{bp}</option>
                 ))}
               </select>
             </div>
 
             {/* Equipment */}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-extrabold uppercase text-gray-400">Equipment</label>
+              <label className="text-[10px] font-extrabold uppercase text-[var(--text-secondary)]">Equipment</label>
               <select
                 value={selectedEquipment}
                 onChange={e => setSelectedEquipment(e.target.value)}
-                className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] text-white text-xs rounded-xl p-2.5 outline-none focus:border-[#0052ff]"
+                className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] text-[var(--text-primary)] text-xs rounded-xl p-2.5 outline-none focus:border-[#0052ff]"
               >
                 {metadata.equipment.map(eq => (
-                  <option key={eq} value={eq}>{eq}</option>
+                  <option key={eq} value={eq} className="bg-[#161b22] text-white">{eq}</option>
                 ))}
               </select>
             </div>
 
             {/* Target Muscle */}
             <div className="space-y-1.5">
-              <label className="text-[10px] font-extrabold uppercase text-gray-400">Target Muscle</label>
+              <label className="text-[10px] font-extrabold uppercase text-[var(--text-secondary)]">Target Muscle</label>
               <select
                 value={selectedTarget}
                 onChange={e => setSelectedTarget(e.target.value)}
-                className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] text-white text-xs rounded-xl p-2.5 outline-none focus:border-[#0052ff]"
+                className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] text-[var(--text-primary)] text-xs rounded-xl p-2.5 outline-none focus:border-[#0052ff]"
               >
                 {metadata.targetMuscles.map(tm => (
-                  <option key={tm} value={tm}>{tm}</option>
+                  <option key={tm} value={tm} className="bg-[#161b22] text-white">{tm}</option>
                 ))}
               </select>
             </div>
@@ -163,7 +163,7 @@ export default function ExerciseLibraryView({ onSelectExerciseForCustom }) {
       )}
 
       {/* ── RESULTS & GRID ───────────────────────────────────────────────── */}
-      <div className="flex justify-between items-center text-xs text-gray-400 px-1">
+      <div className="flex justify-between items-center text-xs text-[var(--text-secondary)] px-1">
         <span>Showing {filteredList.length} matching exercises</span>
         <span>Page {currentPage} of {totalPages}</span>
       </div>

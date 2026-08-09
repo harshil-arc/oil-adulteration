@@ -33,15 +33,15 @@ export default function ExerciseCard({ exercise, onView, onSelect }) {
 
       {/* Info Content */}
       <div className="space-y-1.5 flex-1">
-        <h4 className="font-extrabold text-white text-sm line-clamp-1 group-hover:text-[#0052ff] transition-colors">
+        <h4 className="font-extrabold text-[var(--text-primary)] text-sm line-clamp-1 group-hover:text-[#0052ff] transition-colors">
           {capitalize(exercise.name)}
         </h4>
 
-        <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-gray-400">
-          <span className="bg-blue-500/10 text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded font-bold">
+        <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-[var(--text-secondary)]">
+          <span className="bg-blue-500/10 text-blue-500 dark:text-blue-400 border border-blue-500/20 px-2 py-0.5 rounded font-bold">
             {capitalize(exercise.body_part)}
           </span>
-          <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded font-bold">
+          <span className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded font-bold">
             Target: {capitalize(exercise.target)}
           </span>
         </div>
@@ -49,7 +49,7 @@ export default function ExerciseCard({ exercise, onView, onSelect }) {
 
       {/* Footer Action */}
       <div className="pt-3 border-t border-[var(--border-color)] flex items-center justify-between mt-3 text-xs">
-        <span className="text-[10px] text-gray-500 truncate max-w-[140px]">
+        <span className="text-[10px] text-[var(--text-muted)] truncate max-w-[140px]">
           {exercise.attribution || '© Gym visual'}
         </span>
 

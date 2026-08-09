@@ -25,7 +25,7 @@ import TestingCentres from './pages/TestingCentres';
 import ReportPage from './pages/Report';
 import { AppProvider } from './context/AppContext';
 
-import { ReportsList, DeveloperTools } from './pages/ProfileSubScreens';
+import { DeveloperTools } from './pages/ProfileSubScreens';
 import PrivacySecurity from './pages/PrivacySecurity';
 import AboutDashboard from './pages/AboutDashboard';
 import LearningCenter from './pages/LearningCenter';
@@ -84,7 +84,7 @@ export default function App() {
                       <Route path="/privacy-security" element={<PrivacySecurity />} />
                       <Route path="/about" element={<AboutDashboard />} />
                       <Route path="/learning" element={<LearningCenter />} />
-                      <Route path="/reports" element={<ReportsList />} />
+
                       <Route path="/developer" element={<DeveloperTools />} />
                       <Route path="/developer/qr" element={<QRGenerator />} />
                     </Routes>

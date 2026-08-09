@@ -46,7 +46,7 @@ export default function Home() {
   // Modals
   const [showNotifications, setShowNotifications] = useState(false);
   const [showFullAnalytics, setShowFullAnalytics] = useState(false);
-  const [showComplaintModal, setShowComplaintModal] = useState(false);
+
   const [selectedStatModal, setSelectedStatModal] = useState(null);
 
   // Time Range Filter inside Full Analytics Modal

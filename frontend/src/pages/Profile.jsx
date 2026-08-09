@@ -254,7 +254,7 @@ export default function Profile() {
             </div>
 
             <div
-              onClick={() => navigate('/reports')}
+              onClick={() => navigate('/report')}
               className="card p-4 rounded-2xl border border-amber-500/30 hover:border-amber-400 transition-all cursor-pointer group flex flex-col justify-between h-28"
             >
               <div className="flex justify-between items-center">
@@ -265,8 +265,8 @@ export default function Profile() {
               </div>
               <div className="flex items-center justify-between">
                 <div>
-                  <h4 className="text-xs font-black text-white uppercase">Reports Submitted</h4>
-                  <p className="text-[9px] text-gray-400">FSSAI Notices</p>
+                  <h4 className="text-xs font-black text-white uppercase">Report Adulteration</h4>
+                  <p className="text-[9px] text-gray-400">FSSAI Official Portal</p>
                 </div>
                 <ChevronRight size={16} className="text-gray-500 group-hover:translate-x-1 transition-transform" />
               </div>
