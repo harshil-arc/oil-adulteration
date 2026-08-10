@@ -34,9 +34,9 @@ export default function Nutrition() {
   const { profile } = useApp();
 
   const queryParams = new URLSearchParams(location.search);
-  const initialTab = queryParams.get('tab') || 'planner';
+  const initialTab = queryParams.get('tab') || 'ai';
 
-  // Active Tab View: 'planner', 'ai', 'pantry'
+  // Active Tab View: 'ai', 'planner', 'pantry'
   const [activeTab, setActiveTab] = useState(initialTab);
   
   // AI Advisor Filter State
@@ -389,8 +389,8 @@ export default function Nutrition() {
       <div className="bg-[var(--bg-card)] border-b border-[var(--border-color)] sticky top-[57px] z-30 px-4 shadow-xs">
         <div className="max-w-6xl mx-auto flex items-center justify-between overflow-x-auto no-scrollbar py-2 gap-2 text-xs">
           {[
-            { id: 'planner', label: 'Intelligent Planner', icon: Sparkles },
             { id: 'ai', label: 'AI Advisor', icon: Bot },
+            { id: 'planner', label: 'Intelligent Planner', icon: Sparkles },
             { id: 'pantry', label: `Smart Pantry (${pantryItems.length})`, icon: Utensils }
           ].map(tab => {
             const Icon = tab.icon;
@@ -399,13 +399,13 @@ export default function Nutrition() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-4 py-2.5 rounded-xl font-bold whitespace-nowrap transition-all ${
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl font-bold text-[11px] whitespace-nowrap transition-all cursor-pointer ${
                   isActive 
                     ? 'bg-gradient-to-r from-amber-500 to-yellow-600 text-black shadow-lg shadow-amber-500/20' 
                     : 'bg-[var(--bg-elevated)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] border border-[var(--border-color)]'
                 }`}
               >
-                <Icon size={16} />
+                <Icon size={14} />
                 <span>{tab.label}</span>
               </button>
             );

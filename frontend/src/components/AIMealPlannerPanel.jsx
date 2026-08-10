@@ -369,38 +369,38 @@ ${!getHFToken() ? '⚠️ Please add your free HuggingFace API token to get star
   return (
     <div className="space-y-4">
       {/* Top Banner Header */}
-      <div className="bg-gradient-to-r from-[#0d1117] to-[#161b22] border border-amber-500/30 rounded-2xl p-4 shadow-lg">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-yellow-600 flex items-center justify-center shadow-lg shadow-amber-500/30 text-black">
+      <div className="bg-gradient-to-r from-[#0d1117] to-[#161b22] border border-amber-500/30 rounded-2xl p-4 shadow-lg dark-surface">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-yellow-600 flex items-center justify-center shadow-lg shadow-amber-500/30 text-black shrink-0">
               <Bot size={22} />
             </div>
-            <div>
-              <h2 className="text-sm font-bold text-white flex items-center gap-2">
-                SpectraTrust AI Advisor & Meal Planner
-                <span className="bg-emerald-500/20 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
+            <div className="min-w-0 flex-1">
+              <h2 className="text-sm font-bold text-white flex flex-wrap items-center gap-1.5 leading-snug">
+                <span>SpectraTrust AI Advisor & Meal Planner</span>
+                <span className="bg-emerald-500/20 text-emerald-400 text-[9px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30 shrink-0">
                   Persistent Storage
                 </span>
               </h2>
-              <p className="text-[11px] text-gray-400">Context-Aware AI Guidance • HuggingFace API Powered</p>
+              <p className="text-[10px] sm:text-[11px] text-gray-400 truncate">Context-Aware AI Guidance • HuggingFace API Powered</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
             {hfToken ? (
-              <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-full">
+              <div className="flex items-center gap-1.5 bg-emerald-500/10 border border-emerald-500/30 px-2.5 py-1 rounded-full shrink-0">
                 <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-[11px] text-emerald-400 font-semibold">AI Active</span>
+                <span className="text-[10px] sm:text-[11px] text-emerald-400 font-semibold">AI Active</span>
               </div>
             ) : (
-              <div className="flex items-center gap-1.5 bg-red-500/10 border border-red-500/30 px-2.5 py-1 rounded-full">
+              <div className="flex items-center gap-1.5 bg-red-500/10 border border-red-500/30 px-2.5 py-1 rounded-full shrink-0">
                 <div className="w-1.5 h-1.5 rounded-full bg-red-400" />
-                <span className="text-[11px] text-red-400 font-semibold">No Token</span>
+                <span className="text-[10px] sm:text-[11px] text-red-400 font-semibold">No Token</span>
               </div>
             )}
             <button
               onClick={() => setShowTokenModal(true)}
-              className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 transition-all"
+              className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 transition-all cursor-pointer"
               title="API Key Settings"
             >
               <Key size={14} />
@@ -412,13 +412,13 @@ ${!getHFToken() ? '⚠️ Please add your free HuggingFace API token to get star
       {/* ⚡ HuggingFace API Token Quota Tracker */}
       {hfToken && (
         <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-2xl p-4 shadow-md space-y-2.5">
-          <div className="flex items-center justify-between text-xs">
-            <span className="font-bold text-[var(--text-primary)] flex items-center gap-1.5">
-              <Zap size={14} className="text-amber-400 fill-amber-400" />
-              HuggingFace API Token Free Quota Remaining
+          <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between text-xs">
+            <span className="font-bold text-[var(--text-primary)] flex items-center gap-1.5 min-w-0">
+              <Zap size={14} className="text-amber-400 fill-amber-400 shrink-0" />
+              <span className="truncate">HuggingFace API Free Quota</span>
             </span>
-            <span className="font-bold text-amber-400">
-              {Math.max(0, dailyTokenLimit - tokenUsage).toLocaleString()} / {dailyTokenLimit.toLocaleString()} tokens left
+            <span className="font-bold text-amber-500 dark:text-amber-400">
+              {Math.max(0, dailyTokenLimit - tokenUsage).toLocaleString()} / {dailyTokenLimit.toLocaleString()} left
             </span>
           </div>
 
@@ -448,24 +448,24 @@ ${!getHFToken() ? '⚠️ Please add your free HuggingFace API token to get star
       )}
 
       {/* Main Mode Navigation Bar */}
-      <div className="flex gap-1.5 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-1 text-xs">
+      <div className="flex gap-1 bg-[var(--bg-card)] border border-[var(--border-color)] rounded-xl p-1 text-xs">
         {[
-          { id: 'chat', label: 'AI Chat Bot', icon: MessageSquare },
-          { id: 'mealplan', label: 'AI Meal Planner', icon: Calendar },
+          { id: 'chat', label: 'AI Advisor Chat', icon: MessageSquare },
+          { id: 'mealplan', label: 'Meal Planner', icon: Calendar },
           { id: 'pantry', label: 'Pantry Ideas', icon: Utensils },
-          { id: 'history', label: `Saved History (${planHistory.length})`, icon: History },
+          { id: 'history', label: `History (${planHistory.length})`, icon: History },
         ].map(({ id, label, icon: Icon }) => (
           <button
             key={id}
             onClick={() => setActiveMode(id)}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg font-bold transition-all ${
+            className={`flex-1 flex flex-col sm:flex-row items-center justify-center gap-1 py-2 px-1.5 rounded-lg font-bold transition-all min-w-0 cursor-pointer ${
               activeMode === id
                 ? 'bg-gradient-to-r from-amber-500 to-yellow-600 text-black shadow-md shadow-amber-500/20'
                 : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-elevated)]'
             }`}
           >
-            <Icon size={14} />
-            <span className="hidden sm:inline">{label}</span>
+            <Icon size={14} className="shrink-0" />
+            <span className="text-[9px] sm:text-[11px] font-bold truncate max-w-full text-center">{label}</span>
           </button>
         ))}
       </div>
@@ -566,7 +566,7 @@ ${!getHFToken() ? '⚠️ Please add your free HuggingFace API token to get star
               <button
                 onClick={() => handleGenerateMealPlan('standard')}
                 disabled={isPlanGenerating || !hfToken}
-                className="w-full sm:w-auto px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 text-black font-extrabold text-xs hover:from-amber-400 transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-1.5 whitespace-nowrap"
+                className="w-full sm:w-auto px-3 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-600 text-black font-black text-[10px] sm:text-xs hover:from-amber-400 transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 {isPlanGenerating && currentPlanMode === 'standard' ? (
                   <><Loader2 size={14} className="animate-spin" /> Generating...</>
@@ -578,7 +578,7 @@ ${!getHFToken() ? '⚠️ Please add your free HuggingFace API token to get star
               <button
                 onClick={() => handleGenerateMealPlan('pantry')}
                 disabled={isPlanGenerating || !hfToken || pantryItems.length === 0}
-                className="w-full sm:w-auto px-3.5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-black font-extrabold text-xs hover:from-emerald-400 transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-1.5 whitespace-nowrap disabled:opacity-50"
+                className="w-full sm:w-auto px-3 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 text-black font-black text-[10px] sm:text-xs hover:from-emerald-400 transition-all shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
                 title={`Generate meal plan matching your ${pantryItems.length} active pantry ingredients`}
               >
                 {isPlanGenerating && currentPlanMode === 'pantry' ? (

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, SkipForward, SkipBack, RefreshCw, Clock } from 'lucide-react';
+import { X, SkipForward, SkipBack, RefreshCw, Clock, Play, Pause } from 'lucide-react';
 import { getExerciseSteps, capitalize } from '../../services/fitness/exerciseService';
 import { getReplacementExercise } from '../../services/fitness/recommendationEngine';
 import { recordCompletedWorkout } from '../../services/fitness/fitnessStorage';
@@ -9,6 +9,7 @@ export default function WorkoutSessionView({ isOpen, onClose, workout, allExerci
   const [exerciseList, setExerciseList] = useState([]);
   const [isFinished, setIsFinished] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
 
   useEffect(() => {
     if (isOpen && workout && workout.exercises) {
@@ -16,19 +17,20 @@ export default function WorkoutSessionView({ isOpen, onClose, workout, allExerci
       setCurrentIdx(0);
       setIsFinished(false);
       setElapsedSeconds(0);
+      setIsPaused(false);
     }
   }, [isOpen, workout]);
 
   // Workout Duration Timer
   useEffect(() => {
     let interval = null;
-    if (isOpen && !isFinished) {
+    if (isOpen && !isFinished && !isPaused) {
       interval = setInterval(() => {
         setElapsedSeconds(prev => prev + 1);
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [isOpen, isFinished]);
+  }, [isOpen, isFinished, isPaused]);
 
   if (!isOpen || !workout || exerciseList.length === 0) return null;
 
@@ -83,7 +85,7 @@ export default function WorkoutSessionView({ isOpen, onClose, workout, allExerci
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#0d1117] text-[var(--text-primary)] flex flex-col overflow-hidden animate-fade-in font-sans">
+    <div className="fixed inset-0 z-[150] bg-[#0d1117] text-[var(--text-primary)] flex flex-col overflow-hidden animate-fade-in font-sans">
 
       {/* ── TOP BAR ────────────────────────────────────────────────────────── */}
       <div className="shrink-0 px-6 py-3.5 bg-[#161b22]/95 backdrop-blur-md border-b border-gray-800 flex justify-between items-center z-20">
@@ -95,9 +97,24 @@ export default function WorkoutSessionView({ isOpen, onClose, workout, allExerci
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-1.5 bg-black/40 px-3 py-1.5 rounded-xl border border-gray-800 text-xs font-mono">
-            <Clock size={14} className="text-[#0052ff]" />
-            <span className="font-bold text-[var(--text-primary)]">{formatTime(elapsedSeconds)}</span>
+          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-mono transition-all ${
+            isPaused 
+              ? 'bg-amber-500/10 border-amber-500/40 text-amber-500 animate-pulse' 
+              : 'bg-black/40 border-gray-800 text-[var(--text-primary)]'
+          }`}>
+            <Clock size={14} className={isPaused ? 'text-amber-500' : 'text-[#0052ff]'} />
+            <span className="font-bold">{formatTime(elapsedSeconds)}</span>
+            <button 
+              onClick={() => setIsPaused(!isPaused)} 
+              className={`ml-1.5 p-1 rounded transition-colors ${
+                isPaused 
+                  ? 'hover:bg-amber-500/20 text-amber-400' 
+                  : 'hover:bg-gray-800 text-gray-400 hover:text-white'
+              }`}
+              title={isPaused ? "Resume Workout" : "Pause Workout"}
+            >
+              {isPaused ? <Play size={12} fill="currentColor" /> : <Pause size={12} fill="currentColor" />}
+            </button>
           </div>
 
           <button onClick={onClose} className="p-2 rounded-full bg-gray-800 text-gray-400 hover:text-white transition-all">
@@ -170,7 +187,7 @@ export default function WorkoutSessionView({ isOpen, onClose, workout, allExerci
               <img
                 src={currentEx.gifUrl}
                 alt={currentEx.name}
-                className="w-full h-full object-contain"
+                className={`w-full h-full object-contain transition-all duration-300 ${isPaused ? 'filter blur-sm opacity-40 scale-95' : ''}`}
                 onError={(e) => {
                   e.target.onerror = null;
                   e.target.src = currentEx.imageUrl || 'https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/images/0001-2gPfomN.jpg';
@@ -180,8 +197,21 @@ export default function WorkoutSessionView({ isOpen, onClose, workout, allExerci
               <img
                 src={currentEx.imageUrl || 'https://raw.githubusercontent.com/hasaneyldrm/exercises-dataset/main/images/0001-2gPfomN.jpg'}
                 alt={currentEx.name}
-                className="w-full h-full object-contain"
+                className={`w-full h-full object-contain transition-all duration-300 ${isPaused ? 'filter blur-sm opacity-40 scale-95' : ''}`}
               />
+            )}
+
+            {isPaused && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm transition-all z-30">
+                <button
+                  onClick={() => setIsPaused(false)}
+                  className="w-16 h-16 rounded-full bg-[#0052ff] hover:bg-blue-600 text-white flex items-center justify-center shadow-lg transition-transform hover:scale-110 active:scale-95 cursor-pointer"
+                  title="Resume Session"
+                >
+                  <Play size={28} fill="currentColor" className="ml-1" />
+                </button>
+                <span className="text-white text-xs font-black uppercase tracking-widest mt-3 animate-pulse">Session Paused</span>
+              </div>
             )}
 
             <div className="absolute bottom-2 left-2 bg-black/70 backdrop-blur-md px-3 py-1 rounded-xl text-[10px] text-slate-300 border border-gray-800">
