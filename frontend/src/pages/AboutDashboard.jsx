@@ -112,7 +112,7 @@ export default function AboutDashboard() {
     setDiagSteps([]);
 
     const steps = [
-      { msg: 'Pinging Supabase Cloud Hub...', status: 'loading' },
+      { msg: 'Pinging Secure Cloud Hub...', status: 'loading' },
       { msg: 'Verifying REST API Endpoints...', status: 'pending' },
       { msg: 'Scanning for local hardware beacon...', status: 'pending' },
     ];
@@ -223,13 +223,13 @@ export default function AboutDashboard() {
 
         {/* 7. TECH STACK SECTION */}
         <div className="mb-4">
-           <h3 className="text-[10px] font-black uppercase tracking-[0.3em] theme-text opacity-50 mb-3 px-1">Hardware & Infra Stack</h3>
+           <h3 className="text-[10px] font-black uppercase tracking-[0.3em] theme-text opacity-50 mb-3 px-1">Hardware & System Architecture</h3>
            <div className="grid grid-cols-3 gap-2">
               <div className="card bg-[var(--bg-elevated)] p-4 flex flex-col items-center gap-2 text-center border-0 shadow-sm">
                  <div className="w-10 h-10 rounded-full bg-blue-500/10 text-blue-500 flex items-center justify-center">
                     <Cpu size={20} />
                  </div>
-                 <span className="text-[9px] font-bold theme-text uppercase tracking-tighter leading-tight">ESP32-S3 Core</span>
+                 <span className="text-[9px] font-bold theme-text uppercase tracking-tighter leading-tight">Processing Unit</span>
               </div>
               <div className="card bg-[var(--bg-elevated)] p-4 flex flex-col items-center gap-2 text-center border-0 shadow-sm">
                  <div className="w-10 h-10 rounded-full bg-amber-500/10 text-amber-500 flex items-center justify-center">
@@ -241,7 +241,7 @@ export default function AboutDashboard() {
                  <div className="w-10 h-10 rounded-full bg-green-500/10 text-green-500 flex items-center justify-center">
                     <HardDrive size={20} />
                  </div>
-                 <span className="text-[9px] font-bold theme-text uppercase tracking-tighter leading-tight">Supabase DB</span>
+                 <span className="text-[9px] font-bold theme-text uppercase tracking-tighter leading-tight">Cloud Registry</span>
               </div>
            </div>
         </div>
