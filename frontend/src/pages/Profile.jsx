@@ -5,11 +5,12 @@ import {
   Sun, ChevronRight, Settings, Camera, CheckCircle,
   Phone, MapPin, Calendar, FileText, Download, Smartphone, Package, CheckCircle2, Sparkles,
   Scan, AlertTriangle, BarChart3, Upload,
-  ChevronDown, ChevronUp, Target, Mail, User, Check, History as HistoryIcon, Beaker, ShieldCheck
+  ChevronDown, ChevronUp, Target, Mail, User, Check, History as HistoryIcon, Beaker, ShieldCheck, Globe, Languages
 } from 'lucide-react';
 
 import { useApp } from '../context/AppContext';
 import { useTranslation } from 'react-i18next';
+import { SUPPORTED_LANGUAGES } from '../i18n';
 import { supabase } from '../lib/supabase';
 
 const STATES = [
@@ -65,6 +66,7 @@ export default function Profile() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showLogout, setShowLogout] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showLanguageModal, setShowLanguageModal] = useState(false);
   const [showAvatarPicker, setShowAvatarPicker] = useState(false);
   const [successToast, setSuccessToast] = useState('');
   const [showInstallGuide, setShowInstallGuide] = useState(false);
@@ -512,20 +514,64 @@ export default function Profile() {
           </div>
         </div>
 
+        {/* ── NATIVE LANGUAGE CARD ────────────────────────────────────────── */}
+        <div className="card p-4 rounded-3xl border border-[#0052ff]/30 bg-gradient-to-r from-[#0052ff]/10 via-purple-500/5 to-transparent flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-[#0052ff]/15 flex items-center justify-center text-[#0052ff] shrink-0">
+              <Globe size={20} />
+            </div>
+            <div>
+              <p className="text-xs font-black uppercase tracking-wider text-[var(--text-primary)]">
+                {t('profile.native_language', 'Native Language')} / मातृभाषा
+              </p>
+              <p className="text-[10px] text-[var(--text-muted)] mt-0.5">
+                {t('profile.choose_language_desc', 'Choose your primary preferred language')}
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => setShowLanguageModal(true)}
+            className="px-3.5 py-2 rounded-xl bg-[#0052ff] text-white text-xs font-bold shadow-md hover:bg-blue-600 active:scale-95 transition-all flex items-center gap-1.5 shrink-0"
+          >
+            <span>{SUPPORTED_LANGUAGES.find(l => l.code === (settings.language || 'en'))?.flag || '🌐'}</span>
+            <span className="font-black">
+              {SUPPORTED_LANGUAGES.find(l => l.code === (settings.language || 'en'))?.nativeName || 'English'}
+            </span>
+            <ChevronRight size={14} />
+          </button>
+        </div>
+
         {/* ── PREFERENCES & SETTINGS ────────────────────────────────────────── */}
         <div className="card p-4 rounded-3xl border border-[var(--border-color)]">
           <button className="w-full flex items-center justify-between text-left" onClick={() => setShowSettings(s => !s)}>
             <p className="text-[10px] font-black uppercase tracking-widest text-[var(--text-muted)] flex items-center gap-2">
-              <Settings size={12} /> Preferences & Settings
+              <Settings size={12} /> {t('profile.settings', 'Preferences & Settings')}
             </p>
             {showSettings ? <ChevronUp size={14} className="text-[var(--text-muted)]" /> : <ChevronDown size={14} className="text-[var(--text-muted)]" />}
           </button>
 
           {showSettings && (
             <div className="mt-4 space-y-3 animate-fade-in">
+              {/* Language Selector row */}
+              <div 
+                className="flex items-center justify-between p-3.5 bg-[var(--bg-elevated)] rounded-2xl border border-[var(--border-color)] cursor-pointer hover:border-[#0052ff]/40 transition-colors"
+                onClick={() => setShowLanguageModal(true)}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Globe size={15} className="text-[#0052ff]" />
+                  <span className="text-xs font-bold text-[var(--text-primary)]">{t('profile.language', 'Language')} / भाषा</span>
+                </div>
+                <div className="flex items-center gap-1.5 text-xs font-bold text-[#0052ff]">
+                  <span>{SUPPORTED_LANGUAGES.find(l => l.code === (settings.language || 'en'))?.flag}</span>
+                  <span>{SUPPORTED_LANGUAGES.find(l => l.code === (settings.language || 'en'))?.nativeName}</span>
+                  <ChevronRight size={14} className="text-[var(--text-muted)]" />
+                </div>
+              </div>
+
               {/* Theme */}
               <div>
-                <label className="text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)] block mb-2">Theme Mode</label>
+                <label className="text-[10px] font-black uppercase tracking-wider text-[var(--text-muted)] block mb-2">{t('profile.theme_mode', 'Theme Mode')}</label>
                 <div className="grid grid-cols-3 gap-2 bg-[var(--bg-elevated)] p-1 rounded-2xl border border-[var(--border-color)]">
                   {[{ mode: 'light', label: 'Light', Icon: Sun }, { mode: 'dark', label: 'Dark', Icon: Moon }, { mode: 'system', label: 'System', Icon: Server }].map(item => (
                     <button key={item.mode} onClick={() => updateSetting('themeMode', item.mode)}
@@ -539,7 +585,7 @@ export default function Profile() {
               <div className="flex items-center justify-between p-3.5 bg-[var(--bg-elevated)] rounded-2xl border border-[var(--border-color)]">
                 <div className="flex items-center gap-2.5">
                   <Bell size={15} className="text-[#0052ff]" />
-                  <span className="text-xs font-bold text-[var(--text-primary)]">Notifications</span>
+                  <span className="text-xs font-bold text-[var(--text-primary)]">{t('profile.notifications', 'Notifications')}</span>
                 </div>
                 <input type="checkbox" checked={settings.notifications} onChange={() => updateSetting('notifications', !settings.notifications)} className="w-5 h-5 accent-[#0052ff] rounded cursor-pointer" />
               </div>
@@ -548,7 +594,7 @@ export default function Profile() {
               <div className="flex items-center justify-between p-3.5 bg-[var(--bg-elevated)] rounded-2xl border border-[var(--border-color)] cursor-pointer" onClick={() => {}}>
                 <div className="flex items-center gap-2.5">
                   <Wifi size={15} className="text-blue-500" />
-                  <span className="text-xs font-bold text-[var(--text-primary)]">Scanner Protocol</span>
+                  <span className="text-xs font-bold text-[var(--text-primary)]">{t('profile.hw_connection', 'Scanner Protocol')}</span>
                 </div>
                 <span className="font-mono font-bold text-xs text-[#0052ff]">{settings.connectionMethod}</span>
               </div>
@@ -728,6 +774,79 @@ export default function Profile() {
             <div className="flex gap-3 text-xs pt-2">
               <button onClick={() => setShowLogout(false)} className="flex-1 py-3 rounded-xl font-bold bg-[var(--bg-elevated)] text-[var(--text-secondary)] border border-[var(--border-color)]">Cancel</button>
               <button onClick={handleSignOut} className="flex-1 py-3 bg-red-500 text-white rounded-xl font-black shadow-lg shadow-red-500/20">Yes, Sign Out</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── NATIVE LANGUAGE SELECTION MODAL ───────────────────────────────────── */}
+      {showLanguageModal && (
+        <div className="fixed inset-0 bg-black/80 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4 animate-fade-in backdrop-blur-md" onClick={() => setShowLanguageModal(false)}>
+          <div className="w-full max-w-lg bg-[var(--bg-card)] border border-[var(--border-color)] rounded-t-[2.5rem] sm:rounded-3xl p-6 shadow-2xl animate-slide-up space-y-4 max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center border-b border-[var(--border-color)] pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-[#0052ff]/15 flex items-center justify-center text-[#0052ff]">
+                  <Globe size={18} />
+                </div>
+                <div>
+                  <h2 className="text-base font-black text-[var(--text-primary)]">{t('profile.select_language', 'Select Native Language')}</h2>
+                  <p className="text-[10px] text-[var(--text-muted)] font-bold">मातृभाषा चुनें (Regional Languages)</p>
+                </div>
+              </div>
+              <button onClick={() => setShowLanguageModal(false)} className="p-2 bg-[var(--bg-elevated)] rounded-full text-[var(--text-muted)] hover:text-[var(--text-primary)]"><X size={18} /></button>
+            </div>
+
+            <p className="text-[11px] text-[var(--text-muted)] font-medium">
+              {t('profile.choose_language_desc', 'Choose your native language for instant app translation:')}
+            </p>
+
+            <div className="space-y-2.5 pt-1">
+              {SUPPORTED_LANGUAGES.map((lang) => {
+                const isSelected = (settings.language || 'en') === lang.code;
+                return (
+                  <button
+                    key={lang.code}
+                    onClick={() => {
+                      updateSetting('language', lang.code);
+                      setSuccessToast(`✓ Language set to ${lang.nativeName} (${lang.name})`);
+                      setTimeout(() => setSuccessToast(''), 3000);
+                      setShowLanguageModal(false);
+                    }}
+                    className={`w-full p-4 rounded-2xl border transition-all flex items-center justify-between text-left ${
+                      isSelected
+                        ? 'bg-[#0052ff]/10 border-[#0052ff] text-[#0052ff] shadow-md'
+                        : 'bg-[var(--bg-elevated)] border-[var(--border-color)] text-[var(--text-primary)] hover:border-[#0052ff]/40'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <span className="text-2xl">{lang.flag}</span>
+                      <div>
+                        <p className="text-base font-black leading-tight tracking-wide">{lang.nativeName}</p>
+                        <p className="text-[11px] text-[var(--text-muted)] font-medium">{lang.name}</p>
+                      </div>
+                    </div>
+
+                    {isSelected ? (
+                      <div className="w-7 h-7 rounded-full bg-[#0052ff] text-white flex items-center justify-center shadow">
+                        <Check size={16} />
+                      </div>
+                    ) : (
+                      <span className="text-xs text-[var(--text-muted)] font-bold px-3 py-1 bg-[var(--bg-card)] rounded-xl border border-[var(--border-color)]">
+                        {t('common.select', 'Select')}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="pt-2">
+              <button
+                onClick={() => setShowLanguageModal(false)}
+                className="w-full py-3.5 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-color)] text-[var(--text-secondary)] font-bold text-xs uppercase tracking-wider"
+              >
+                {t('profile.close', 'Close')}
+              </button>
             </div>
           </div>
         </div>

@@ -1,14 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getDevices, getNetworkInfo } from '../lib/api';
-import { useTranslation } from 'react-i18next';
+import { useApp } from '../context/AppContext';
+import { SUPPORTED_LANGUAGES } from '../i18n';
 import { 
   Globe, Check, Copy, Radio, RefreshCw, ChevronLeft, 
-  Bell, Ruler, HelpCircle, MessageCircle, BookOpen, ChevronRight 
+  Bell, Ruler, HelpCircle, MessageCircle, BookOpen, ChevronRight, X
 } from 'lucide-react';
 
 export default function SettingsPage() {
-  const [notificationsOn, setNotificationsOn] = useState(true);
+  const { settings, updateSetting } = useApp();
+  const [notificationsOn, setNotificationsOn] = useState(settings?.notifications ?? true);
+  const [showLangModal, setShowLangModal] = useState(false);
   const navigate = useNavigate();
   const { t } = useTranslation();
   const [device, setDevice] = useState(null);
@@ -173,19 +176,42 @@ export default function SettingsPage() {
       <section>
         <div className="flex items-center gap-2 mb-3">
           <div className="w-1 h-5 bg-brand-600 rounded-full" />
-          <h2 className="font-bold text-gray-700 text-sm uppercase tracking-wide">User Preferences</h2>
+          <h2 className="font-bold text-gray-700 text-sm uppercase tracking-wide">{t('settings.preferences', 'User Preferences')}</h2>
         </div>
         <div className="card flex flex-col divide-y divide-gray-50">
+          {/* Native Language selector */}
+          <div 
+            onClick={() => setShowLangModal(true)}
+            className="flex items-center gap-4 py-3.5 cursor-pointer hover:bg-gray-50 px-1 rounded-xl transition-colors"
+          >
+            <div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center flex-shrink-0 text-blue-600">
+              <Globe size={16} />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-gray-800 text-sm">{t('profile.native_language', 'Native Language')} / मातृभाषा</p>
+              <p className="text-xs text-gray-400">{t('profile.choose_language_desc', 'Change preferred regional language')}</p>
+            </div>
+            <div className="flex items-center gap-1.5 bg-blue-50 text-blue-700 font-bold text-xs px-2.5 py-1 rounded-lg border border-blue-100">
+              <span>{SUPPORTED_LANGUAGES.find(l => l.code === (settings?.language || 'en'))?.flag}</span>
+              <span>{SUPPORTED_LANGUAGES.find(l => l.code === (settings?.language || 'en'))?.nativeName}</span>
+              <ChevronRight size={14} className="text-blue-400" />
+            </div>
+          </div>
+
           <div className="flex items-center gap-4 py-3">
             <div className="w-9 h-9 bg-gray-100 rounded-xl flex items-center justify-center flex-shrink-0">
               <Bell size={16} className="text-gray-500" />
             </div>
             <div className="flex-1">
-              <p className="font-semibold text-gray-800 text-sm">Push Notifications</p>
+              <p className="font-semibold text-gray-800 text-sm">{t('profile.notifications', 'Push Notifications')}</p>
               <p className="text-xs text-gray-400">Alerts for unusual detection results</p>
             </div>
             <button
-              onClick={() => setNotificationsOn(p => !p)}
+              onClick={() => {
+                const next = !notificationsOn;
+                setNotificationsOn(next);
+                updateSetting('notifications', next);
+              }}
               className={`relative w-12 h-6 rounded-full transition-colors duration-300 ${notificationsOn ? 'bg-brand-500' : 'bg-gray-200'}`}
             >
               <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-300 ${notificationsOn ? 'translate-x-6' : ''}`} />
@@ -203,6 +229,45 @@ export default function SettingsPage() {
           </div>
         </div>
       </section>
+
+      {/* Language Modal in Settings */}
+      {showLangModal && (
+        <div className="fixed inset-0 bg-black/70 z-[200] flex items-center justify-center p-4 backdrop-blur-sm" onClick={() => setShowLangModal(false)}>
+          <div className="w-full max-w-md bg-white rounded-3xl p-6 shadow-2xl space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex justify-between items-center border-b border-gray-100 pb-3">
+              <div className="flex items-center gap-2">
+                <Globe size={20} className="text-blue-600" />
+                <h3 className="font-black text-gray-900 text-base">{t('profile.select_language', 'Select Native Language')}</h3>
+              </div>
+              <button onClick={() => setShowLangModal(false)} className="p-1 rounded-full text-gray-400 hover:bg-gray-100"><X size={18} /></button>
+            </div>
+            <div className="space-y-2">
+              {SUPPORTED_LANGUAGES.map(lang => {
+                const isSel = (settings?.language || 'en') === lang.code;
+                return (
+                  <button
+                    key={lang.code}
+                    onClick={() => {
+                      updateSetting('language', lang.code);
+                      setShowLangModal(false);
+                    }}
+                    className={`w-full p-3.5 rounded-2xl border flex items-center justify-between transition-all ${isSel ? 'bg-blue-50 border-blue-500 text-blue-700 font-bold' : 'border-gray-100 hover:bg-gray-50 text-gray-800'}`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">{lang.flag}</span>
+                      <div className="text-left">
+                        <p className="font-bold text-sm leading-none">{lang.nativeName}</p>
+                        <p className="text-xs text-gray-400 mt-1">{lang.name}</p>
+                      </div>
+                    </div>
+                    {isSel && <Check size={18} className="text-blue-600" />}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Help */}
       <section>

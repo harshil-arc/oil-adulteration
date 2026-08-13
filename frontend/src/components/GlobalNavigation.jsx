@@ -5,28 +5,30 @@ import {
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { useTranslation } from 'react-i18next';
 
 export default function GlobalNavigation() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useTranslation();
   const { isMenuOpen, setMenuOpen, logout, profile } = useApp();
   
   const role = profile?.role || 'citizen';
 
   const menuItems = [
-    { id: 'home', label: 'Dashboard', desc: 'System Overview & Analytics', icon: Home, path: '/home', roles: ['citizen', 'vendor', 'inspector', 'laboratory', 'ngo', 'senior_officer', 'admin'] },
-    { id: 'scan', label: 'Oil Analysis', desc: 'Real-time Adulteration Check', icon: ScanLine, path: '/scan', roles: ['citizen', 'inspector', 'admin'] },
-    { id: 'physical-oil-testing', label: 'Physical Oil Testing', desc: 'Zero-Device Kitchen Lab & Rapid Screening', icon: FlaskConical, path: '/physical-oil-testing', roles: ['citizen', 'vendor', 'inspector', 'laboratory', 'ngo', 'senior_officer', 'admin'] },
-    { id: 'hotspots', label: 'Safety Hotspots', desc: 'Interactive Adulteration Map', icon: MapIcon, path: '/hotspots', roles: ['citizen', 'inspector', 'senior_officer', 'admin'] },
-    { id: 'community', label: 'Safety Intelligence', desc: 'Complaints, Recalls & Labs', icon: Users, path: '/community', roles: ['citizen', 'vendor', 'inspector', 'laboratory', 'ngo', 'senior_officer', 'admin'] },
-    { id: 'disaster', label: 'Disaster & Emergency', desc: 'Live GDACS Alerts & Emergency', icon: Zap, path: '/disaster?tab=disaster', roles: ['citizen', 'ngo', 'volunteer', 'inspector', 'senior_officer', 'admin'] },
-    { id: 'relief', label: 'Food Relief & Donations', desc: 'Surplus Food & NGO Logistics', icon: Heart, path: '/disaster?tab=relief', roles: ['citizen', 'ngo', 'volunteer', 'admin'] },
-    { id: 'oilwise', label: 'OilWise', desc: 'Edible Oil Health & Quantity Advisor', icon: Droplet, path: '/oilwise', roles: ['citizen', 'admin'] },
-    { id: 'fitness', label: 'AI Fitness Coach', desc: 'Adaptive Workouts & Burn Engine', icon: Dumbbell, path: '/fitness', roles: ['citizen', 'admin'] },
-    { id: 'learning', label: 'Learning Center', desc: 'Documentation & Guides', icon: BookOpen, path: '/learning', roles: ['citizen', 'vendor', 'inspector', 'admin'] },
-    { id: 'reports', label: 'System Reports', desc: 'Regulatory Logs & Analytics', icon: FileText, path: '/reports', roles: ['inspector', 'senior_officer', 'admin'] },
-    { id: 'profile', label: 'Profile Settings', desc: 'Identity & Accreditation', icon: User, path: '/profile', roles: ['citizen', 'vendor', 'inspector', 'laboratory', 'ngo', 'senior_officer', 'admin'] },
-    { id: 'about', label: 'About System', desc: 'Software Version & Compliance', icon: Info, path: '/about', roles: ['citizen', 'vendor', 'inspector', 'laboratory', 'ngo', 'senior_officer', 'admin'] },
+    { id: 'home', translationKey: 'nav.dashboard', label: 'Dashboard', desc: 'System Overview & Analytics', icon: Home, path: '/home', roles: ['citizen', 'vendor', 'inspector', 'laboratory', 'ngo', 'senior_officer', 'admin'] },
+    { id: 'scan', translationKey: 'nav.oil_analysis', label: 'Oil Analysis', desc: 'Real-time Adulteration Check', icon: ScanLine, path: '/scan', roles: ['citizen', 'inspector', 'admin'] },
+    { id: 'physical-oil-testing', translationKey: 'nav.physical_testing', label: 'Physical Oil Testing', desc: 'Zero-Device Kitchen Lab & Rapid Screening', icon: FlaskConical, path: '/physical-oil-testing', roles: ['citizen', 'vendor', 'inspector', 'laboratory', 'ngo', 'senior_officer', 'admin'] },
+    { id: 'hotspots', translationKey: 'nav.safety_hotspots', label: 'Safety Hotspots', desc: 'Interactive Adulteration Map', icon: MapIcon, path: '/hotspots', roles: ['citizen', 'inspector', 'senior_officer', 'admin'] },
+    { id: 'community', translationKey: 'nav.community', label: 'Safety Intelligence', desc: 'Complaints, Recalls & Labs', icon: Users, path: '/community', roles: ['citizen', 'vendor', 'inspector', 'laboratory', 'ngo', 'senior_officer', 'admin'] },
+    { id: 'disaster', translationKey: 'nav.disaster', label: 'Disaster & Emergency', desc: 'Live GDACS Alerts & Emergency', icon: Zap, path: '/disaster?tab=disaster', roles: ['citizen', 'ngo', 'volunteer', 'inspector', 'senior_officer', 'admin'] },
+    { id: 'relief', translationKey: 'nav.relief', label: 'Food Relief & Donations', desc: 'Surplus Food & NGO Logistics', icon: Heart, path: '/disaster?tab=relief', roles: ['citizen', 'ngo', 'volunteer', 'admin'] },
+    { id: 'oilwise', translationKey: 'nav.oilwise', label: 'OilWise', desc: 'Edible Oil Health & Quantity Advisor', icon: Droplet, path: '/oilwise', roles: ['citizen', 'admin'] },
+    { id: 'fitness', translationKey: 'nav.fitness', label: 'AI Fitness Coach', desc: 'Adaptive Workouts & Burn Engine', icon: Dumbbell, path: '/fitness', roles: ['citizen', 'admin'] },
+    { id: 'learning', translationKey: 'nav.learning', label: 'Learning Center', desc: 'Documentation & Guides', icon: BookOpen, path: '/learning', roles: ['citizen', 'vendor', 'inspector', 'admin'] },
+    { id: 'reports', translationKey: 'nav.reports', label: 'System Reports', desc: 'Regulatory Logs & Analytics', icon: FileText, path: '/reports', roles: ['inspector', 'senior_officer', 'admin'] },
+    { id: 'profile', translationKey: 'nav.profile_settings', label: 'Profile Settings', desc: 'Identity & Accreditation', icon: User, path: '/profile', roles: ['citizen', 'vendor', 'inspector', 'laboratory', 'ngo', 'senior_officer', 'admin'] },
+    { id: 'about', translationKey: 'nav.about', label: 'About System', desc: 'Software Version & Compliance', icon: Info, path: '/about', roles: ['citizen', 'vendor', 'inspector', 'laboratory', 'ngo', 'senior_officer', 'admin'] },
   ];
 
   const filteredMenuItems = menuItems.filter(item => item.roles.includes(role));
@@ -77,7 +79,7 @@ export default function GlobalNavigation() {
                        </div>
                        <div className="text-left">
                           <p className={`text-[11px] font-black uppercase tracking-wider ${isActive ? 'text-[#d4af37] font-extrabold' : 'theme-text'}`}>
-                             {item.label}
+                             {t(item.translationKey, item.label)}
                           </p>
                           <p className="text-[9px] text-[var(--text-muted)] font-medium leading-none mt-1">
                              {item.desc}
