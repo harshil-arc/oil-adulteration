@@ -123,8 +123,6 @@ body {
   overflow-x: hidden;
   max-width: 100vw;
   width: 100%;
-  overflow-wrap: break-word;
-  word-break: break-word;
 }
 
 #root {
@@ -133,15 +131,8 @@ body {
   width: 100%;
 }
 
-p, span, h1, h2, h3, h4, h5, h6, label, a, button, td, th {
+p, h1, h2, h3, h4, h5, h6 {
   overflow-wrap: break-word;
-  word-break: break-word;
-  max-width: 100%;
-}
-
-/* Ensure flex children don't overflow parent containers */
-.flex > * {
-  min-width: 0;
 }
 
 img, video, canvas, svg, input, select, textarea {

@@ -13,6 +13,7 @@ const shopRoutes = require('./routes/shopRoutes');
 
 const messRoutes = require('./routes/messRoutes'); // Legacy
 const platformRoutes = require('./routes/platformRoutes');
+const nourishRoutes = require('./routes/nourishRoutes');
 const offlineRoutes = require('./routes/offlineRoutes');
 const mealPlannerRoutes = require('./routes/mealPlannerRoutes');
 const mealPlannerService = require('./services/mealPlannerService');
@@ -186,6 +187,106 @@ app.use('/api/shops', shopRoutes);
 
 app.use('/api/mess', messRoutes); // Legacy
 app.use('/api/platform', platformRoutes);
+app.use('/api', nourishRoutes);
+
+app.post('/api/recommend-oils', async (req, res) => {
+  try {
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      return res.status(500).json({ error: 'GEMINI_API_KEY is not configured on the server.' });
+    }
+
+    const { conditions, cookingHabits, age, weight, activityLevel, customNotes } = req.body;
+
+    const prompt = `
+You are an expert clinical nutritionist, lipidologist, and edible oil health specialist.
+Analyze the following patient/user health profile and provide a scientific, highly structured edible oil recommendation plan.
+
+USER HEALTH PROFILE:
+- Health Conditions: ${conditions && conditions.length > 0 ? conditions.join(", ") : "General Wellness / Maintenance"}
+- Primary Cooking Habits: ${cookingHabits && cookingHabits.length > 0 ? cookingHabits.join(", ") : "Standard home cooking"}
+- Age: ${age || "Adult"}
+- Weight: ${weight ? weight + ' kg' : 'Unspecified'}
+- Activity Level: ${activityLevel || 'Moderate'}
+- Additional Medical/Doctor Notes: ${customNotes || 'None'}
+
+Please provide a JSON response adhering strictly to the following format:
+{
+  "summary": "A 2-3 sentence clinical summary explaining why specific oil choices and fat limits matter for these exact conditions.",
+  "dailyTotalOilQuantity": {
+    "teaspoons": "3 - 4 tsp / day",
+    "milliliters": "15 - 20 ml / day",
+    "explanation": "Detailed explanation of how this daily limit was calculated based on calorie intake and health conditions."
+  },
+  "recommendedOils": [
+    {
+      "name": "Oil Name (e.g. Extra Virgin Olive Oil)",
+      "primaryReason": "Specific metabolic benefit for user's condition",
+      "recommendedQuantity": "1-2 tsp/day",
+      "bestCookingMethods": ["Salad Drizzle", "Low Heat Sauté"],
+      "keyNutrients": "High Oleic Acid (MUFA), Polyphenols",
+      "tip": "Practical cooking or storage tip"
+    }
+  ],
+  "oilsToAvoid": [
+    {
+      "name": "Oil Name (e.g. Vanaspati / Hydrogenated Oil)",
+      "healthRisk": "Detailed scientific reason why this worsens user's condition",
+      "alternativeSwap": "Healthy alternative to use instead"
+    }
+  ],
+  "oilRotationPlan": {
+    "primaryOil": "Oil for daily main cooking",
+    "secondaryOil": "Oil for finishing, salad, or raw drizzle",
+    "rotationStrategy": "How to rotate every 1-2 months for fatty acid balance (Omega 3/6/9 balance)"
+  },
+  "clinicalAdvice": [
+    "Practical nutrition tip 1",
+    "Practical nutrition tip 2",
+    "Practical nutrition tip 3"
+  ]
+}
+`;
+
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
+    const apiResponse = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: {
+          responseMimeType: 'application/json',
+          temperature: 0.2
+        }
+      })
+    });
+
+    if (!apiResponse.ok) {
+      const errText = await apiResponse.text();
+      throw new Error(`Gemini API returned status ${apiResponse.status}: ${errText}`);
+    }
+
+    const resJson = await apiResponse.json();
+    let text = '';
+    if (resJson.candidates && resJson.candidates[0] && resJson.candidates[0].content && resJson.candidates[0].content.parts && resJson.candidates[0].content.parts[0]) {
+      text = resJson.candidates[0].content.parts[0].text;
+    } else {
+      throw new Error('Invalid response structure from Gemini API');
+    }
+
+    const parsedData = JSON.parse(text.trim());
+    res.json({ success: true, data: parsedData });
+  } catch (err) {
+    console.error('Error generating oil recommendations:', err);
+    res.status(500).json({
+      error: 'Failed to generate AI health analysis.',
+      details: err.message || String(err)
+    });
+  }
+});
+
 app.use('/api/meal-planner', mealPlannerRoutes);
 app.use('/api/recipes', mealPlannerRoutes);
 app.use('/api/', offlineRoutes);

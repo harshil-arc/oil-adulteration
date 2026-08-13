@@ -13,9 +13,10 @@ const navItems = [
 export default function Layout({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
+  const isOilWise = location.pathname.startsWith('/oilwise');
 
   return (
-    <div className="min-h-screen flex flex-col w-full max-w-md mx-auto relative theme-bg theme-text transition-colors duration-300 overflow-x-hidden">
+    <div className={`min-h-screen flex flex-col w-full ${isOilWise ? 'max-w-6xl' : 'max-w-md'} mx-auto relative theme-bg theme-text transition-colors duration-300 overflow-x-hidden`}>
       <GlobalNavigation />
       {/* Page content */}
       <main className="flex-1 w-full overflow-y-auto overflow-x-hidden pb-24 animate-fade-in relative">

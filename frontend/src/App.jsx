@@ -16,11 +16,12 @@ import Calibrate from './pages/scan/Calibrate';
 import History from './pages/History';
 import Hotspots from './pages/Hotspots';
 import Community from './pages/Community';
-import FoodReliefNetwork from './pages/FoodReliefNetwork';
+import NourishRelief from './pages/NourishRelief';
 import DisasterDashboard from './pages/DisasterDashboard';
 import Profile from './pages/Profile';
-import Nutrition from './pages/Nutrition';
+import OilWise from './pages/OilWise';
 import FitnessPage from './pages/FitnessPage';
+import PhysicalOilTesting from './pages/PhysicalOilTesting';
 import TestingCentres from './pages/TestingCentres';
 import ReportPage from './pages/Report';
 import { AppProvider } from './context/AppContext';
@@ -34,6 +35,8 @@ import ScanDetail from './pages/ScanDetail';
 import AuthLock from './components/AuthLock';
 import ProtectedRoute from './components/ProtectedRoute';
 import { OfflineProvider } from './context/OfflineContext';
+import AdminProtectedRoute from './components/AdminProtectedRoute';
+import AdminPortal from './pages/admin/AdminPortal';
 import './index.css';
 
 export default function App() {
@@ -45,6 +48,22 @@ export default function App() {
             {/* Fullscreen No-Layout Routes */}
             <Route path="/onboarding" element={<SplashOnboarding />} />
             <Route path="/login" element={<Login />} />
+            
+            {/* Admin Portal Route */}
+            <Route path="/admin/*" element={
+              <AdminProtectedRoute>
+                <AdminPortal />
+              </AdminProtectedRoute>
+            } />
+
+            {/* NourishRelief — fullscreen outside Layout */}
+            <Route path="/food-donation" element={
+              <ProtectedRoute>
+                <AuthLock>
+                  <NourishRelief />
+                </AuthLock>
+              </ProtectedRoute>
+            } />
             
             {/* Main App Routes (with Bottom Nav Layout) */}
             <Route path="/*" element={
@@ -60,7 +79,7 @@ export default function App() {
                       <Route path="/relief-network" element={<DisasterDashboard />} />
                       <Route path="/disaster" element={<DisasterDashboard />} />
                       <Route path="/disasters" element={<DisasterDashboard />} />
-                      <Route path="/food-donation" element={<DisasterDashboard />} />
+                      <Route path="/food-donation" element={<Navigate to="/food-donation" replace />} />
                       <Route path="/donations" element={<DisasterDashboard />} />
                       <Route path="/scan" element={<QRLanding />} />
                       <Route path="/scan/bluetooth" element={<BluetoothScan />} />
@@ -78,8 +97,11 @@ export default function App() {
                       <Route path="/report" element={<ReportPage />} />
                       <Route path="/hotspots" element={<Hotspots />} />
                       <Route path="/profile" element={<Profile />} />
-                      <Route path="/nutrition" element={<Nutrition />} />
+                      <Route path="/nutrition" element={<Navigate to="/oilwise" replace />} />
+                      <Route path="/oilwise" element={<OilWise />} />
                       <Route path="/fitness" element={<FitnessPage />} />
+                      <Route path="/physical-oil-testing" element={<PhysicalOilTesting />} />
+                      <Route path="/physical-testing" element={<PhysicalOilTesting />} />
                       <Route path="/privacy" element={<PrivacySecurity />} />
                       <Route path="/privacy-security" element={<PrivacySecurity />} />
                       <Route path="/about" element={<AboutDashboard />} />

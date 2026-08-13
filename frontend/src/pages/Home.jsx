@@ -6,7 +6,7 @@ import {
   Sparkles, Flame, X, User, Shield, Info, BookOpen, Clock,
   Plus, Calendar, Compass, Share2, Printer, ArrowRight, Award, HelpCircle, FileText,
   Apple, ChevronRight, Utensils, CheckCircle2, ShoppingCart, Heart, BarChart2,
-  Building, Check, Filter, Search, Eye, Zap, Download, ScanLine, Activity, Layers, Dumbbell
+  Building, Check, Filter, Search, Eye, Zap, Download, ScanLine, Activity, Layers, Dumbbell, Droplet, FlaskConical
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import { supabase } from '../lib/supabase';
@@ -250,23 +250,23 @@ export default function Home() {
           <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2.5 pl-1">Quick Actions</h3>
           <div className="grid grid-cols-2 gap-3">
             
-            {/* FEATURED: AI FITNESS COACH PLATFORM BUTTON */}
+            {/* FEATURED: PHYSICAL OIL TESTING PLATFORM BUTTON */}
             <button
-              onClick={() => navigate('/fitness')}
-              className="p-4 rounded-2xl bg-gradient-to-br from-[var(--bg-card)] via-[var(--bg-card)] to-amber-950/30 border border-[#d4af37]/50 hover:border-[#d4af37] text-left transition-all group flex flex-col justify-between h-24 col-span-2 shadow-glow-gold relative overflow-hidden"
+              onClick={() => navigate('/physical-oil-testing')}
+              className="p-4 rounded-2xl bg-gradient-to-br from-[var(--bg-card)] via-[var(--bg-card)] to-amber-950/30 border border-[#d4af37]/50 hover:border-[#d4af37] text-left transition-all group flex flex-col justify-between h-24 col-span-2 shadow-glow-gold relative overflow-hidden cursor-pointer"
             >
               <div className="flex items-center justify-between">
                 <div className="w-9 h-9 rounded-xl bg-[#d4af37]/20 text-[#d4af37] flex items-center justify-center group-hover:scale-110 transition-transform border border-[#d4af37]/40 shadow-glow-gold">
-                  <Dumbbell size={18} />
+                  <FlaskConical size={18} />
                 </div>
                 <span className="text-[9px] font-black uppercase tracking-widest bg-[#d4af37]/20 text-[#d4af37] px-2.5 py-0.5 rounded-full border border-[#d4af37]/40 flex items-center gap-1">
-                  <Sparkles size={10} /> Professional AI Fitness System
+                  <Sparkles size={10} /> Zero-Device Kitchen Lab
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-black text-[#d4af37] uppercase tracking-wider">AI Fitness Coach</p>
-                  <p className="text-[9px] text-gray-300">Dynamic Workouts, Audio Player, Progressive Overload & Anatomy</p>
+                  <p className="text-xs font-black text-[#d4af37] uppercase tracking-wider">Physical Oil Testing</p>
+                  <p className="text-[9px] text-gray-300">Rapid Home Screening, Interactive Lab, FSSAI DART Protocols & AI Chemist</p>
                 </div>
                 <ChevronRight size={16} className="text-[#d4af37] group-hover:translate-x-1 transition-transform" />
               </div>
@@ -334,15 +334,15 @@ export default function Home() {
             </button>
 
             <button
-              onClick={() => navigate('/nutrition')}
+              onClick={() => navigate('/oilwise')}
               className="p-4 rounded-2xl bg-[var(--bg-card)] border border-blue-500/30 hover:border-blue-400 text-left transition-all group flex flex-col justify-between h-24"
             >
               <div className="w-9 h-9 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Apple size={18} />
+                <Droplet size={18} />
               </div>
               <div>
-                <p className="text-xs font-black theme-text uppercase tracking-wider">AI Meal Planner</p>
-                <p className="text-[9px] text-gray-400">Recipes & Nutrition</p>
+                <p className="text-xs font-black theme-text uppercase tracking-wider">OilWise Advisor</p>
+                <p className="text-[9px] text-gray-400">Health Oil Recommender</p>
               </div>
             </button>
 
@@ -360,7 +360,7 @@ export default function Home() {
             </button>
 
             <button
-              onClick={() => navigate('/disaster?tab=relief')}
+              onClick={() => navigate('/food-donation')}
               className="p-4 rounded-2xl bg-[var(--bg-card)] border border-rose-500/30 hover:border-rose-400 text-left transition-all group flex flex-col justify-between h-24"
             >
               <div className="w-9 h-9 rounded-xl bg-rose-500/15 text-rose-400 flex items-center justify-center group-hover:scale-110 transition-transform">

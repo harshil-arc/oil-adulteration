@@ -17,7 +17,7 @@ export default function Login() {
   const redirectUrl = fromPath + fromSearch;
   
   const [activeTab, setActiveTab] = useState('login'); // 'login', 'signup', or 'reset'
-  const [selectedRole, setSelectedRole] = useState('citizen'); // Dropdown role
+  const [selectedRole, setSelectedRole] = useState('user'); // Dropdown role
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -42,7 +42,27 @@ export default function Login() {
   const [ngoRegNumber, setNgoRegNumber] = useState('');
 
   useEffect(() => {
-    if (session) navigate(redirectUrl);
+    if (session) {
+      const checkAdmin = async () => {
+        try {
+          const { data: dbProfile } = await supabase
+            .from('users')
+            .select('*')
+            .eq('uid', session.user.id)
+            .single();
+          if (dbProfile?.role === 'admin') {
+            navigate('/admin', { replace: true });
+          } else {
+            const dest = redirectUrl === '/login' ? '/home' : redirectUrl;
+            navigate(dest, { replace: true });
+          }
+        } catch (err) {
+          const dest = redirectUrl === '/login' ? '/home' : redirectUrl;
+          navigate(dest, { replace: true });
+        }
+      };
+      checkAdmin();
+    }
   }, [session, navigate, redirectUrl]);
 
   const getFriendlyErrorMessage = (error) => {
@@ -100,33 +120,66 @@ export default function Login() {
     } else {
       const uid = data?.user?.id;
       if (uid) {
-        // Fetch user profile from database to confirm their role matching the portal dropdown
-        const { data: dbProfile } = await supabase.from('users').eq('uid', uid).single();
-        const userRole = dbProfile?.role || selectedRole || 'citizen';
+        // Fetch user profile from Firestore to confirm role
+        const { data: dbProfile } = await supabase
+          .from('users')
+          .select('*')
+          .eq('uid', uid)
+          .single();
 
-        if (dbProfile && dbProfile.role && dbProfile.role !== selectedRole) {
-          setErrorMsg(`Authentication Failed: Role mismatch. You selected "${selectedRole.replace('_', ' ')}" portal but your profile is registered as "${dbProfile.role.replace('_', ' ')}".`);
-          await supabase.auth.signOut();
-          setIsLoading(false);
-          return;
+        let userRole = dbProfile?.role || null;
+
+        if (selectedRole === 'admin') {
+          if (!userRole) {
+            // No Firestore profile yet — auto-create admin profile on first login
+            const adminProfileData = {
+              uid,
+              email: data.user.email,
+              name: data.user.displayName || data.user.email.split('@')[0],
+              role: 'admin',
+              verification_status: 'approved',
+              created_at: new Date().toISOString()
+            };
+            await supabase.from('users').insert(adminProfileData);
+            userRole = 'admin';
+          } else if (userRole !== 'admin') {
+            setErrorMsg('Access Denied: This account does not have administrator privileges. Please use User Login instead.');
+            await supabase.auth.signOut();
+            setIsLoading(false);
+            return;
+          }
+        } else {
+          if (userRole === 'admin') {
+            setErrorMsg('Access Denied: Administrator accounts must use Admin Login.');
+            await supabase.auth.signOut();
+            setIsLoading(false);
+            return;
+          }
         }
 
-        // Sync context role state and cache it
+        // Sync context profile
         await updateProfile({
-          name: dbProfile?.name || 'Demo Tester',
+          name: dbProfile?.name || data.user.displayName || data.user.email.split('@')[0],
           email: data.user.email,
-          role: userRole
+          role: userRole || 'citizen'
         });
 
         // Audit log
-        await supabase.from('audit_logs').insert({
-          action: 'PORTAL_LOGIN',
-          user_uid: uid,
-          role: userRole,
-          details: `User logged in securely via portal: ${selectedRole}`
-        });
+        try {
+          await supabase.from('audit_logs').insert({
+            action: 'PORTAL_LOGIN',
+            user_uid: uid,
+            role: userRole,
+            details: `Logged in via ${selectedRole} portal`
+          });
+        } catch (_) {}
+
+        if (selectedRole === 'admin') {
+          navigate('/admin', { replace: true });
+          return;
+        }
       }
-      navigate(redirectUrl);
+      navigate(redirectUrl === '/login' ? '/home' : redirectUrl, { replace: true });
     }
   };
 
@@ -260,13 +313,13 @@ export default function Login() {
         {activeTab !== 'reset' && selectedRole !== 'admin' && (
           <div className="flex w-full border-b border-[var(--border-color)] mb-6 relative">
             <button 
-              onClick={() => setActiveTab('login')}
+              onClick={() => { setActiveTab('login'); setSelectedRole('user'); setErrorMsg(''); setSuccessMsg(''); }}
               className={`flex-1 pb-3 text-xs font-bold tracking-widest uppercase transition-colors ${activeTab === 'login' ? 'text-[#d4af37]' : 'text-gray-500 hover:text-gray-400'}`}
             >
               Sign In
             </button>
             <button 
-              onClick={() => setActiveTab('signup')}
+              onClick={() => { setActiveTab('signup'); setSelectedRole('citizen'); setErrorMsg(''); setSuccessMsg(''); }}
               className={`flex-1 pb-3 text-xs font-bold tracking-widest uppercase transition-colors ${activeTab === 'signup' ? 'text-[#d4af37]' : 'text-gray-500 hover:text-gray-400'}`}
             >
               Request Access
@@ -295,7 +348,7 @@ export default function Login() {
                   setActiveTab('login');
                   setIdentifier('tester@gmail.com');
                   setPassword('tester@123');
-                  setSelectedRole('citizen');
+                  setSelectedRole('user');
                   setErrorMsg('');
                   setSuccessMsg('');
                 }}
@@ -331,11 +384,25 @@ export default function Login() {
           )}
 
           {/* SIGN-IN & ACCESS FORMS */}
-          {activeTab !== 'reset' && (
+          {activeTab === 'login' && (
             <div className="mb-4">
               <label className="text-[9px] text-gray-400 font-bold uppercase tracking-wider block mb-1">Select Login Role Profile</label>
               <select
                 value={selectedRole}
+                onChange={(e) => setSelectedRole(e.target.value)}
+                className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] text-white text-xs rounded-xl py-3 px-3.5 outline-none focus:border-[#d4af37] transition-all"
+              >
+                <option value="user">User Login</option>
+                <option value="admin">Admin Login</option>
+              </select>
+            </div>
+          )}
+
+          {activeTab === 'signup' && (
+            <div className="mb-4">
+              <label className="text-[9px] text-gray-400 font-bold uppercase tracking-wider block mb-1">Select Onboarding Role Profile</label>
+              <select
+                value={selectedRole === 'user' || selectedRole === 'admin' ? 'citizen' : selectedRole}
                 onChange={(e) => setSelectedRole(e.target.value)}
                 className="w-full bg-[var(--bg-input)] border border-[var(--border-color)] text-white text-xs rounded-xl py-3 px-3.5 outline-none focus:border-[#d4af37] transition-all"
               >
@@ -346,7 +413,6 @@ export default function Login() {
                 <option value="head_inspector">Head Inspector</option>
                 <option value="laboratory">Laboratory</option>
                 <option value="ngo">NGO</option>
-                <option value="admin">Administrator</option>
               </select>
             </div>
           )}
