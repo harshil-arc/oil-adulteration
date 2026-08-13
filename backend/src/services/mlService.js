@@ -98,70 +98,29 @@ async function predictMustardOilML(sensorReadings) {
   pureDist = Math.sqrt(pureDist);
   adultDist = Math.sqrt(adultDist);
 
-  // 3. Extract 3-Class Prediction from ExtraTrees ML Model
-  const classLabel = pyResult.prediction || pyResult.class_label || (pyResult.oil_present ? "PURE" : "NO_OIL");
-  const confidenceScore = Math.round(pyResult.confidence_score || (pyResult.confidence ? (typeof pyResult.confidence === 'number' ? pyResult.confidence * 100 : parseFloat(pyResult.confidence)) : 95));
+  // 3. Extract Deterministic Calibration Prediction from Python Predictor
+  const classLabel = pyResult.prediction || pyResult.class_label || (pyResult.result === 'PURE OIL' ? 'PURE' : pyResult.result === 'NO OIL PRESENT' ? 'NO_OIL' : 'ADULTERATED');
   
-  let status = pyResult.status || "Pure Mustard Oil";
-  let tier = pyResult.tier || "pure";
-  let purityPercentage = pyResult.purity_percentage != null ? pyResult.purity_percentage : (classLabel === 'PURE' ? 98 : classLabel === 'NO_OIL' ? 0 : 45);
-  let adulterationPercentage = pyResult.adulteration_percentage != null ? pyResult.adulteration_percentage : (classLabel === 'PURE' ? 2 : classLabel === 'NO_OIL' ? 0 : 55);
-
-  if (classLabel === 'UNCERTAIN' || !pyResult.is_certain) {
-    status = "Uncertain prediction. Please scan again.";
-    tier = "moderate";
-  } else if (classLabel === 'NO_OIL') {
-    status = "No Oil Present";
-    tier = "no_oil";
-    purityPercentage = 0;
-    adulterationPercentage = 0;
-  } else if (classLabel === 'PURE') {
-    status = "Pure Mustard Oil";
-    tier = "pure";
-  } else if (classLabel === 'ADULTERATED') {
-    status = "Adulterated Mustard Oil";
-    tier = "heavy";
-  }
+  let status = pyResult.status || (classLabel === 'PURE' ? 'Pure Oil' : classLabel === 'NO_OIL' ? 'No Oil Present' : 'Adulterated Oil');
+  let tier = pyResult.tier || (classLabel === 'PURE' ? 'pure' : classLabel === 'NO_OIL' ? 'no_oil' : 'heavy');
+  let led_color = pyResult.led_color || (classLabel === 'PURE' ? 'green' : classLabel === 'NO_OIL' ? 'gray' : 'red');
 
   return {
     usingMlModel: true,
     isMlModel: true,
     modelPath: MODEL_DIR,
-    modelType: 'ExtraTrees 3-Class Classifier (Mustard Oil)',
-    modelVersion: 'D:\\oilmodel (3-Class ExtraTrees v2.0)',
+    modelType: 'Deterministic Wavelength Calibration Engine',
+    modelVersion: 'D:\\oilmodel (Deterministic v3.0)',
     oil_type: 'Mustard Oil',
-    purityPercentage,
-    adulterationPercentage,
-    confidenceScore,
+    result: pyResult.result || (classLabel === 'PURE' ? 'PURE OIL' : classLabel === 'NO_OIL' ? 'NO OIL PRESENT' : 'ADULTERATED'),
+    grade: pyResult.grade || 'Deterministic Calibration',
     status,
     tier,
-    primaryIndicator: `ML ExtraTrees 3-Class Model (D:\\oilmodel) — ${classLabel} (${confidenceScore}%)`,
+    led_color,
+    primaryIndicator: `Deterministic Calibration Engine — ${pyResult.result || status}`,
     rawMlOutput: pyResult,
-    deviationDetails: {
-      pure_match: {
-        label: 'ML Spectral Distance to Pure Mustard',
-        value: Number(pureDist.toFixed(4)),
-        unit: 'dist',
-        rangeMin: 0,
-        rangeMax: 0.5,
-        inRange: pureDist < adultDist
-      },
-      adult_match: {
-        label: 'ML Spectral Distance to Adulterated Mustard',
-        value: Number(adultDist.toFixed(4)),
-        unit: 'dist',
-        rangeMin: 0,
-        rangeMax: 0.5,
-        inRange: adultDist <= pureDist
-      }
-    },
-    distances: {
-      pure: pureDist.toFixed(4),
-      adulterated: adultDist.toFixed(4)
-    },
-    matched_with: classLabel === 'NO_OIL' ? 'no_oil' : (pureDist <= adultDist ? 'pure' : 'adulterated'),
     temperature: temp,
-    scanId: `ML-MUSTARD-${Math.floor(100000 + Math.random() * 900000)}`
+    scanId: `DET-MUSTARD-${Math.floor(100000 + Math.random() * 900000)}`
   };
 }
 

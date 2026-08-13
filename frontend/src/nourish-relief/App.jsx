@@ -1,5 +1,6 @@
 import { jsx, jsxs } from "react/jsx-runtime";
 import { useState, useEffect, useRef } from "react";
+import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
 import { Header } from "./components/Header";
 import { DonorPortal } from "./components/DonorPortal";
 import { AdminDashboard } from "./components/AdminDashboard";
@@ -7,69 +8,79 @@ import { PushNotificationToast } from "./components/PushNotificationToast";
 import { PhotoProofModal } from "./components/PhotoProofModal";
 import { playNotificationSound } from "./lib/sound";
 import { INITIAL_DONATIONS, INITIAL_NOTIFICATIONS } from "./data/mockDonations";
-import { supabase } from "../lib/supabase";
+import { db, supabase } from "../lib/supabase";
 
 function App({ forcedRole }) {
   const [currentRole, setCurrentRole] = useState(forcedRole || "admin");
 
-  // Initialize donations from LocalStorage -> fallback to INITIAL_DONATIONS
-  const [donations, setDonations] = useState(() => {
-    try {
-      const saved = localStorage.getItem("nourish_donations");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-      }
-    } catch (e) {
-      console.warn("Error reading local donations:", e);
-    }
-    return INITIAL_DONATIONS;
-  });
-
-  // Initialize notifications from LocalStorage -> fallback to INITIAL_NOTIFICATIONS
-  const [notifications, setNotifications] = useState(() => {
-    try {
-      const saved = localStorage.getItem("nourish_notifications");
-      if (saved) {
-        const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) return parsed;
-      }
-    } catch (e) {
-      console.warn("Error reading local notifications:", e);
-    }
-    return INITIAL_NOTIFICATIONS;
-  });
-
+  // State for food donations
+  const [donations, setDonations] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const [activeToastNotif, setActiveToastNotif] = useState(null);
   const [selectedProofDonation, setSelectedProofDonation] = useState(null);
   const [isConnected, setIsConnected] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const broadcastChannelRef = useRef(null);
+  const initialSyncDone = useRef(false);
 
-  // Sync state to LocalStorage
+  // 1. Subscribe to Firestore 'food_donations' in REAL-TIME
   useEffect(() => {
+    let unsubscribeFirestore = null;
+
     try {
-      localStorage.setItem("nourish_donations", JSON.stringify(donations));
-    } catch (e) {}
-  }, [donations]);
+      if (db) {
+        const donationsQuery = query(collection(db, "food_donations"));
+        unsubscribeFirestore = onSnapshot(
+          donationsQuery,
+          (snapshot) => {
+            const liveDonations = [];
+            snapshot.forEach((docSnap) => {
+              liveDonations.push({ id: docSnap.id, ...docSnap.data() });
+            });
 
-  useEffect(() => {
-    try {
-      localStorage.setItem("nourish_notifications", JSON.stringify(notifications));
-    } catch (e) {}
-  }, [notifications]);
+            // Sort by submittedAt descending
+            liveDonations.sort((a, b) => new Date(b.submittedAt || b.cookedTime || 0) - new Date(a.submittedAt || a.cookedTime || 0));
 
-  // Load from database / API on mount & set up BroadcastChannel & Firestore
-  useEffect(() => {
-    let isMounted = true;
+            if (liveDonations.length > 0) {
+              setDonations(liveDonations);
+              // Save to localStorage for instant offline access
+              try {
+                localStorage.setItem("nourish_donations", JSON.stringify(liveDonations));
+              } catch (_) {}
+            } else if (!initialSyncDone.current) {
+              // Fallback to mock data only if database is completely empty on first sync
+              setDonations(INITIAL_DONATIONS);
+            }
+            initialSyncDone.current = true;
+            setIsConnected(true);
+          },
+          (err) => {
+            console.warn("[NourishRelief] Firestore real-time snapshot notice:", err);
+            // Fallback to localStorage or mock data
+            try {
+              const saved = localStorage.getItem("nourish_donations");
+              if (saved) {
+                const parsed = JSON.parse(saved);
+                if (Array.isArray(parsed) && parsed.length > 0) {
+                  setDonations(parsed);
+                  return;
+                }
+              }
+            } catch (_) {}
+            setDonations(INITIAL_DONATIONS);
+          }
+        );
+      }
+    } catch (err) {
+      console.warn("[NourishRelief] Firestore snapshot init notice:", err);
+    }
 
-    // 1. Setup BroadcastChannel for instant cross-tab / cross-window sync
+    // 2. Setup BroadcastChannel for instant cross-tab / cross-window sync
     if ("BroadcastChannel" in window) {
       const bc = new BroadcastChannel("nourish_relief_sync");
       broadcastChannelRef.current = bc;
       bc.onmessage = (event) => {
-        if (!isMounted) return;
         const { type, payload } = event.data || {};
         if (type === "DONATION_CREATED" && payload) {
           const { donation, notification } = payload;
@@ -91,86 +102,14 @@ function App({ forcedRole }) {
       };
     }
 
-    // 2. Fetch from Firestore database if available
-    const syncFromDatabase = async () => {
-      try {
-        const { data: dbDonations, error } = await supabase
-          .from("food_donations")
-          .select("*")
-          .order("submittedAt", { ascending: false });
-
-        if (!error && Array.isArray(dbDonations) && dbDonations.length > 0 && isMounted) {
-          setDonations((prev) => {
-            const combined = [...dbDonations];
-            // keep local items not in db yet
-            prev.forEach((p) => {
-              if (!combined.some((c) => c.id === p.id)) combined.push(p);
-            });
-            return combined;
-          });
-        }
-      } catch (err) {
-        console.warn("[NourishRelief] Firestore fetch notice:", err);
-      }
-    };
-
-    // 3. Try API endpoint if available (local dev)
-    const fetchApiData = async () => {
-      try {
-        const res = await fetch("/api/donations");
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data) && data.length > 0 && isMounted) {
-            setDonations(data);
-          }
-        }
-      } catch (_) {}
-    };
-
-    syncFromDatabase();
-    fetchApiData();
-
-    // 4. Request browser notification permission
+    // 3. Request browser notification permission
     if ("Notification" in window && Notification.permission === "default") {
       Notification.requestPermission();
     }
 
-    // 5. Connect SSE if backend API server is available
-    let eventSource = null;
-    try {
-      eventSource = new EventSource("/api/events");
-      eventSource.onopen = () => setIsConnected(true);
-      eventSource.onerror = () => setIsConnected(true); // Fallback to database mode
-      eventSource.onmessage = (event) => {
-        try {
-          const parsed = JSON.parse(event.data);
-          if (parsed.type === "DONATION_CREATED") {
-            const { donation, notification } = parsed.payload;
-            setDonations((prev) => [donation, ...prev.filter((d) => d.id !== donation.id)]);
-            if (notification) {
-              setNotifications((prev) => [notification, ...prev]);
-              setActiveToastNotif(notification);
-              try { playNotificationSound("NEW_DONATION"); } catch (_) {}
-            }
-          } else if (parsed.type === "STATUS_UPDATED") {
-            const { donation, notification } = parsed.payload;
-            setDonations((prev) => prev.map((d) => (d.id === donation.id ? donation : d)));
-            if (notification) {
-              setNotifications((prev) => [notification, ...prev]);
-              setActiveToastNotif(notification);
-              try { playNotificationSound(notification.type); } catch (_) {}
-            }
-          }
-        } catch (err) {}
-      };
-    } catch (_) {
-      setIsConnected(true);
-    }
-
     return () => {
-      isMounted = false;
+      if (unsubscribeFirestore) unsubscribeFirestore();
       if (broadcastChannelRef.current) broadcastChannelRef.current.close();
-      if (eventSource) eventSource.close();
     };
   }, []);
 
@@ -200,13 +139,13 @@ function App({ forcedRole }) {
         read: false
       };
 
-      // Update Local State
+      // 1. Optimistic Local State Update
       setDonations((prev) => [newDonation, ...prev.filter((d) => d.id !== donationId)]);
       setNotifications((prev) => [newNotification, ...prev]);
       setActiveToastNotif(newNotification);
       try { playNotificationSound("NEW_DONATION"); } catch (_) {}
 
-      // Broadcast to other open tabs/windows (e.g. Admin Tab)
+      // 2. Broadcast to other open tabs/windows
       if (broadcastChannelRef.current) {
         broadcastChannelRef.current.postMessage({
           type: "DONATION_CREATED",
@@ -214,14 +153,14 @@ function App({ forcedRole }) {
         });
       }
 
-      // Save to Firestore Database
+      // 3. WRITE DIRECTLY TO FIRESTORE DATABASE (Real-time sync to Admin)
       try {
         await supabase.from("food_donations").insert(newDonation);
       } catch (err) {
-        console.warn("[NourishRelief] Firestore insert notice:", err);
+        console.warn("[NourishRelief] Firestore database insert error:", err);
       }
 
-      // Try Backend API if available
+      // 4. Try Express API backend if local server running
       try {
         await fetch("/api/donations", {
           method: "POST",
@@ -265,7 +204,7 @@ function App({ forcedRole }) {
         read: false
       };
 
-      // Update Local State
+      // 1. Optimistic Local State Update
       setDonations((prev) => prev.map((d) => (d.id === donationId ? updatedDonation : d)));
       setNotifications((prev) => [newNotification, ...prev]);
       setActiveToastNotif(newNotification);
@@ -275,7 +214,7 @@ function App({ forcedRole }) {
         setSelectedProofDonation(updatedDonation);
       }
 
-      // Broadcast to other open tabs/windows (e.g. Donor Tab)
+      // 2. Broadcast to other open tabs/windows
       if (broadcastChannelRef.current) {
         broadcastChannelRef.current.postMessage({
           type: "STATUS_UPDATED",
@@ -283,17 +222,17 @@ function App({ forcedRole }) {
         });
       }
 
-      // Update Firestore Database
+      // 3. UPDATE FIRESTORE DATABASE IN REAL-TIME
       try {
         await supabase
           .from("food_donations")
           .eq("id", donationId)
           .update({ status: status, statusReason: updatedDonation.statusReason, updatedAt: nowIso });
       } catch (err) {
-        console.warn("[NourishRelief] Firestore status update notice:", err);
+        console.warn("[NourishRelief] Firestore database update error:", err);
       }
 
-      // Try Backend API if available
+      // 4. Try Express API backend if local server running
       try {
         await fetch(`/api/donations/${donationId}/status`, {
           method: "PATCH",

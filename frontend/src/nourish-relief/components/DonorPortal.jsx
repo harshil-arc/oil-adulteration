@@ -95,8 +95,30 @@ const DonorPortal = ({
     }
     setPhotoError(null);
     const reader = new FileReader();
-    reader.onload = () => {
-      setPhotoProofUrl(reader.result);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        let width = img.width;
+        let height = img.height;
+        const maxDim = 800;
+        if (width > maxDim || height > maxDim) {
+          if (width > height) {
+            height = Math.round((height * maxDim) / width);
+            width = maxDim;
+          } else {
+            width = Math.round((width * maxDim) / height);
+            height = maxDim;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+        const compressedBase64 = canvas.toDataURL("image/jpeg", 0.75);
+        setPhotoProofUrl(compressedBase64);
+      };
+      img.src = event.target?.result;
     };
     reader.readAsDataURL(file);
   };

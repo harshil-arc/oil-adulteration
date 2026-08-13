@@ -534,40 +534,89 @@ Provide 2-3 likely adulterants only.`;
 
           return (
             <>
-              {/* ── SECTION 1: 3-CLASS CLASSIFICATION VERDICT CARD ── */}
-              <div className="card p-6 rounded-3xl border border-[var(--border-color)] flex flex-col items-center text-center gap-4 relative overflow-hidden bg-gradient-to-b from-[var(--bg-card)] to-[var(--bg-elevated)] shadow-xl">
+              {/* ── SECTION 1: DETERMINISTIC CALIBRATION VERDICT CARD (GLOWING LEDS, NO PERCENTAGES) ── */}
+              <div className="card p-6 rounded-3xl border border-[var(--border-color)] flex flex-col items-center text-center gap-5 relative overflow-hidden bg-gradient-to-b from-[var(--bg-card)] to-[var(--bg-elevated)] shadow-2xl">
                 <div className="text-[10px] text-[#d4af37] font-extrabold uppercase tracking-widest bg-[#d4af37]/10 px-3 py-1 rounded-full border border-[#d4af37]/30">
-                  Machine Learning Classification Verdict
+                  Deterministic Calibration Verdict
+                </div>
+
+                {/* GLOWING LED INDICATOR LIGHT DISPLAY */}
+                <div className="flex flex-col items-center gap-3 my-2">
+                  {/* Glowing Ring & LED Orb */}
+                  <div className="relative flex items-center justify-center">
+                    {/* Outer Glow Pulsing Aura */}
+                    <div
+                      className={`w-28 h-28 rounded-full blur-xl opacity-60 animate-pulse transition-all ${
+                        activeTier === 'pure' ? 'bg-emerald-500' : activeTier === 'heavy' ? 'bg-red-500' : 'bg-gray-400'
+                      }`}
+                    />
+                    
+                    {/* Inner Solid LED Ring */}
+                    <div
+                      className={`relative z-10 w-24 h-24 rounded-full flex items-center justify-center border-4 shadow-2xl transition-all ${
+                        activeTier === 'pure'
+                          ? 'bg-gradient-to-br from-emerald-400 to-emerald-600 border-emerald-300 shadow-[0_0_35px_rgba(16,185,129,0.8)]'
+                          : activeTier === 'heavy'
+                          ? 'bg-gradient-to-br from-red-500 to-red-700 border-red-300 shadow-[0_0_35px_rgba(239,68,68,0.8)]'
+                          : 'bg-gradient-to-br from-gray-500 to-gray-700 border-gray-400 shadow-[0_0_20px_rgba(156,163,175,0.5)]'
+                      }`}
+                    >
+                      {activeTier === 'pure' ? (
+                        <ShieldCheck size={48} className="text-white drop-shadow-md" />
+                      ) : activeTier === 'heavy' ? (
+                        <AlertTriangle size={48} className="text-white drop-shadow-md" />
+                      ) : (
+                        <Activity size={48} className="text-white drop-shadow-md" />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Status Label Pill */}
+                  <div
+                    className={`mt-2 px-5 py-2 rounded-2xl border text-xs font-black uppercase tracking-widest flex items-center gap-2 ${
+                      activeTier === 'pure'
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
+                        : activeTier === 'heavy'
+                        ? 'bg-red-500/20 text-red-300 border-red-500/40'
+                        : 'bg-gray-500/20 text-gray-300 border-gray-500/40'
+                    }`}
+                  >
+                    <span
+                      className={`w-3.5 h-3.5 rounded-full animate-ping ${
+                        activeTier === 'pure' ? 'bg-emerald-400' : activeTier === 'heavy' ? 'bg-red-400' : 'bg-gray-400'
+                      }`}
+                    />
+                    <span>
+                      {activeTier === 'pure'
+                        ? 'GREEN LED ACTIVE — PURE OIL (SAFE)'
+                        : activeTier === 'heavy'
+                        ? 'RED LED ACTIVE — ADULTERATED OIL (UNSAFE)'
+                        : 'GRAY LED ACTIVE — NO OIL PRESENT'}
+                    </span>
+                  </div>
                 </div>
 
                 {/* Large Main Status Banner */}
-                <div className={`w-full py-5 px-4 rounded-2xl border flex flex-col items-center justify-center gap-2 ${activeTc.bg} ${activeTc.border} shadow-lg`}>
-                  <activeTc.Icon size={42} style={{ color: activeTc.color }} />
+                <div className={`w-full py-4 px-4 rounded-2xl border flex flex-col items-center justify-center gap-1 ${activeTc.bg} ${activeTc.border} shadow-lg`}>
                   <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight" style={{ color: activeTc.color }}>
-                    {activeTier === 'no_oil' ? 'NO OIL PRESENT' : activeTier === 'pure' ? 'PURE OIL (SAFE)' : 'ADULTERATED OIL (UNSAFE)'}
+                    {activeTier === 'no_oil' ? 'NO OIL PRESENT' : activeTier === 'pure' ? 'PURE OIL' : 'ADULTERATED'}
                   </h2>
-                  <p className="text-xs font-medium text-gray-300">
-                    {activeTier === 'no_oil' ? 'Air / Empty Cuvette Scan Baseline' : activeTier === 'pure' ? '100% Conforming to FSSAI Purity Standards' : 'Non-Conforming Adulterated Signature Detected'}
+                  <p className="text-xs font-semibold text-gray-300">
+                    {currentResult.grade || (activeTier === 'no_oil' ? 'Air / Empty Cuvette Baseline' : activeTier === 'pure' ? 'Pure / trace mustard oil to 80% pure' : 'Adulterated Sample Signature Detected')}
                   </p>
                 </div>
 
-                {/* Model & Confidence Metadata Row */}
-                <div className="w-full grid grid-cols-2 gap-3 pt-1">
-                  <div className="bg-[var(--bg-elevated)] rounded-2xl p-3 border border-[var(--border-color)] text-left">
-                    <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider block mb-0.5">Classification Model</span>
-                    <span className="text-xs font-mono font-black text-purple-400">ExtraTrees 3-Class (D:\oilmodel)</span>
-                  </div>
-                  <div className="bg-[var(--bg-elevated)] rounded-2xl p-3 border border-[var(--border-color)] text-left">
-                    <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider block mb-0.5">AI Confidence Score</span>
-                    <span className="text-xs font-mono font-black text-emerald-400">{currentResult.confidenceScore || 95}%</span>
-                  </div>
+                {/* Model Metadata Row */}
+                <div className="w-full bg-[var(--bg-elevated)] rounded-2xl p-3 border border-[var(--border-color)] text-center">
+                  <span className="text-[9px] text-gray-400 font-bold uppercase tracking-wider block mb-0.5">Calibration Engine</span>
+                  <span className="text-xs font-mono font-black text-amber-400">13-Channel Deterministic Ratio Calibrator</span>
                 </div>
 
                 {/* Government Portal Reporting option if Adulterated */}
                 {activeTier === 'heavy' && (
                   <div className="w-full pt-2">
                     <button
-                      onClick={() => navigate('/report', { state: { scanData: { oilType: selectedOil.oilName, status: currentResult.status, confidence: currentResult.confidenceScore } } })}
+                      onClick={() => navigate('/report', { state: { scanData: { oilType: selectedOil.oilName, status: currentResult.status } } })}
                       className="w-full py-3.5 bg-gradient-to-r from-red-500 to-amber-500 text-black font-black text-xs uppercase tracking-wider rounded-2xl shadow-glow-red hover:scale-[1.01] transition-transform flex items-center justify-center gap-2 cursor-pointer"
                     >
                       <FileText size={16} /> Report Through Official Government Portal →

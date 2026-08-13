@@ -1,33 +1,7 @@
 /**
  * adulterationEngine.js
- * Deterministic + Euclidean spectral comparison system for oil purity.
+ * Deterministic spectral channel ratio & threshold calibration system.
  */
-
-// STEP 4: CALIBRATED DATASET (STRICT USE)
-// Used exact mathematical float derivations of your samples to prevent Euclidean rounding-drift inversions
-const SPECTRAL_DB = {
-  "Groundnut Oil": {
-    pure:        [0, 1/30, 3/30, 3/30, 3/30, 1/30, 5/30, 4/30, 3/30, 1/30, 0, 6/30, 0],
-    adulterated: [0, 1/26, 3/26, 2/26, 3/26, 1/26, 4/26, 4/26, 2/26, 1/26, 0, 5/26, 0]
-  },
-  "Mustard Oil": {
-    pure:        [0, 1/31, 3/31, 3/31, 3/31, 1/31, 5/31, 4/31, 3/31, 2/31, 0, 6/31, 0],
-    adulterated: [0, 1/27, 3/27, 2/27, 3/27, 1/27, 4/27, 4/27, 3/27, 1/27, 0, 5/27, 0]
-  },
-  "Coconut Oil": {
-    pure:        [0, 1/29, 3/29, 3/29, 3/29, 1/29, 5/29, 4/29, 3/29, 1/29, 0, 5/29, 0],
-    adulterated: [0, 1/28, 3/28, 3/28, 3/28, 1/28, 4/28, 4/28, 2/28, 1/28, 0, 5/28, 0]
-  }
-};
-
-// Map fallback names in case of slight string mismatches
-function getReference(oilName) {
-  const name = oilName.toLowerCase();
-  if (name.includes('groundnut') || name.includes('peanut')) return SPECTRAL_DB["Groundnut Oil"];
-  if (name.includes('mustard')) return SPECTRAL_DB["Mustard Oil"];
-  if (name.includes('coconut')) return SPECTRAL_DB["Coconut Oil"];
-  return SPECTRAL_DB["Mustard Oil"]; 
-}
 
 // STEP 1: CONVERT STRING → ARRAY
 function parseSpectralData(raw) {
@@ -43,7 +17,6 @@ function parseSpectralData(raw) {
     ];
   } else if (typeof raw === 'string') {
     const trimmed = raw.trim();
-    // Check if it's a compact 13-digit string (e.g. "0133315432060")
     if (trimmed.length === 13 && /^\d+$/.test(trimmed)) {
       extract = trimmed.split('').map(ch => parseInt(ch, 10));
     } else {
@@ -59,199 +32,131 @@ function parseSpectralData(raw) {
     finalArray.push(isNaN(val) ? 0 : val);
   }
   
-  console.log("[Adulteration Engine] Parsed Spectral Data:", finalArray);
   return finalArray;
 }
 
-// STEP 3: NORMALIZATION
-function normalizeArray(arr) {
-  const sum = arr.reduce((acc, val) => acc + Math.abs(val), 0);
-  if (sum === 0) return arr.map(() => 0); 
-  return arr.map(val => val / sum);
+export function no_oil_check(channels) {
+  const ch2 = channels[1] || 0;
+  const ch4 = channels[3] || 0;
+  const ch5 = channels[4] || 0;
+  const ch6 = channels[5] || 0;
+  const ch7 = channels[6] || 0;
+  const ch11 = channels[10] || 0;
+  const total = channels.reduce((a, b) => a + b, 0);
+
+  const cond1 = ch6 >= 3 && ch6 <= 34;
+  const cond2 = ch7 >= 3 && ch7 <= 34;
+  const cond3 = ch11 >= 3 && ch11 <= 42;
+
+  const denom = (ch4 + ch5) !== 0 ? (ch4 + ch5) : 0.0001;
+  const ratio = (ch11 + ch7) / denom;
+  const cond4 = ratio < 2.0 || ratio > 3.5;
+
+  const cond5 = (total < 25) || (ch2 >= 16);
+
+  const conditions = [cond1, cond2, cond3, cond4, cond5];
+  const conditions_met = conditions.filter(Boolean).length;
+  const is_no_oil = conditions_met >= 4;
+
+  return { is_no_oil, conditions_met, ratio, total };
 }
 
-// STEP 5: DISTANCE CALCULATION (Euclidean)
-function calculateEuclideanDistance(arr1, arr2) {
-  let sumSq = 0;
-  for (let i = 0; i < 13; i++) {
-    // STEP 10: TOLERANCE (Reduced to 0.005. The old 0.02 wiped out the signals completely)
-    let diff = Math.abs(arr1[i] - arr2[i]);
-    if (diff <= 0.005) diff = 0;
-    
-    sumSq += (diff * diff);
+export function classifyChannels(channels) {
+  if (!Array.isArray(channels) || channels.length < 13) {
+    return { result: "NO OIL PRESENT", grade: "Invalid channels", tier: "no_oil", led_color: "gray", status: "No Oil Present" };
   }
-  return Math.sqrt(sumSq);
+
+  const { is_no_oil, conditions_met } = no_oil_check(channels);
+  if (is_no_oil) {
+    return {
+      result: "NO OIL PRESENT",
+      grade: `(${conditions_met}/5 erratic-baseline conditions matched)`,
+      tier: "no_oil",
+      led_color: "gray",
+      status: "No Oil Present"
+    };
+  }
+
+  const ch7 = channels[6] || 0;
+  const ch8 = channels[7] || 0;
+  const ch9 = channels[8] || 0;
+  const total78 = ch7 + ch8;
+
+  if (total78 <= 18 && ch9 <= 6) {
+    return {
+      result: "PURE OIL",
+      grade: "Pure / trace mustard oil to 80% pure",
+      tier: "pure",
+      led_color: "green",
+      status: "Pure Oil"
+    };
+  } else {
+    let grade = "Highly adulterated";
+    if (total78 <= 23) grade = "~65% pure";
+    else if (total78 <= 35) grade = "~45% pure (significant adulteration)";
+    else if (total78 <= 50) grade = "Likely heavily adulterated";
+
+    return {
+      result: "ADULTERATED",
+      grade,
+      tier: "heavy",
+      led_color: "red",
+      status: "Adulterated Oil"
+    };
+  }
 }
 
 export function calculateAdulteration(sensorReadings, oilRef) {
   if (!sensorReadings || !oilRef) return fallbackResult();
 
-  let temp = sensorReadings.temperature || 25;
-  const rawArray = parseSpectralData(sensorReadings.spectral_data);
+  const temp = sensorReadings.temperature || sensorReadings.temp || 28.2;
+  const rawArray = parseSpectralData(sensorReadings.spectral_data || sensorReadings.spectral);
 
-  const refs = getReference(oilRef.oilName);
-  const isMustard = oilRef.oilName.toLowerCase().includes('mustard');
+  const classified = classifyChannels(rawArray);
 
-  // Normalization
-  const inputNorm = normalizeArray(rawArray);
-  const pureNorm = refs.pure; // dataset provided by user is pre-normalized
-  const adultNorm = refs.adulterated;
-
-  // STEP 5: Calculate Distances
-  const pure_dist = calculateEuclideanDistance(inputNorm, pureNorm);
-  const adulterated_dist = calculateEuclideanDistance(inputNorm, adultNorm);
-
-  console.log("[Engine Euclidean]", { pure_dist, adulterated_dist, isMustard });
-
-  // Check for No Oil Present baseline signatures (e.g. Air / Empty Scan / Baseline readings)
-  const sumRaw = rawArray.reduce((a, b) => a + Math.abs(b), 0);
-  const isNoOilBaseline = (sumRaw === 0) || 
-    (rawArray[0] >= 4 && rawArray[1] >= 4) ||
-    (rawArray[2] >= 20 && rawArray[11] >= 30) ||
-    (Math.abs(pure_dist - adulterated_dist) < 0.005 && rawArray[1] <= 1 && rawArray[2] <= 4 && rawArray[3] <= 4);
-
-  if (isNoOilBaseline && isMustard) {
-    return {
-      usingMlModel: true,
-      isMlModel: true,
-      modelPath: 'D:\\oilmodel',
-      modelType: 'Random Forest Classifier (Mustard Oil)',
-      modelVersion: 'D:\\oilmodel (Mustard RF v1.0)',
-      oil_type: 'Mustard Oil',
-      purityPercentage: 0,
-      adulterationPercentage: 0,
-      confidenceScore: 95,
-      status: 'No Oil Present',
-      tier: 'no_oil',
-      primaryIndicator: 'ML Model (D:\\oilmodel): No Oil Detected in Sample (Air / Baseline Scan)',
-      usingCalibration: false,
-      deviationDetails: {
-        pure_match: {
-          label: 'ML Spectral Distance to Pure Mustard',
-          value: Number(pure_dist.toFixed(4)),
-          unit: 'dist',
-          rangeMin: 0,
-          rangeMax: 0.5,
-          inRange: false
-        },
-        adult_match: {
-          label: 'ML Spectral Distance to Adulterated Mustard',
-          value: Number(adulterated_dist.toFixed(4)),
-          unit: 'dist',
-          rangeMin: 0,
-          rangeMax: 0.5,
-          inRange: false
-        }
-      },
-      distances: {
-        pure: pure_dist.toFixed(4),
-        adulterated: adulterated_dist.toFixed(4)
-      },
-      matched_with: 'no_oil',
-      temperature: temp
-    };
-  }
-
-  // STEP 7: PURITY CALCULATION
-  const total_dist = pure_dist + adulterated_dist;
-  let purity = 100;
-  
-  const sumInput = inputNorm.reduce((a, b) => a + b, 0);
-  if (sumInput === 0) {
-    purity = 0;
-  } else if (total_dist > 0) {
-    const wPure = 1 / Math.pow(pure_dist + 0.0001, 2);
-    const wAdult = 1 / Math.pow(adulterated_dist + 0.0001, 2);
-    purity = (wPure / (wPure + wAdult)) * 100;
-  } else {
-    purity = 100; 
-  }
-  
-  purity = Math.min(Math.max(purity, 0), 100);
-  const adulterationLevel = Math.round((100 - purity) * 10) / 10;
-  
-  let status = pure_dist <= adulterated_dist ? "Pure Oil" : "Adulterated Oil";
-  if (isMustard) {
-    status = pure_dist <= adulterated_dist ? "Pure Mustard Oil" : "Adulterated Mustard Oil";
-  }
-  let matched_with = pure_dist <= adulterated_dist ? "pure" : "adulterated";
-  
-  let tier = 'pure';
-  if (adulterationLevel > 60) tier = 'heavy';
-  else if (adulterationLevel > 20) tier = 'moderate';
-
-  let confidence = 100 - (Math.min(pure_dist, adulterated_dist) * 200);
-  confidence = Math.min(Math.max(confidence, 0), 100);
-
-  let primaryIndicator = isMustard 
-    ? "Trained Mustard Oil ML Model (D:\\oilmodel)" 
-    : "Spectral Match";
-
-  if (temp < 20 || temp > 40) {
-    primaryIndicator = "Warning: Sensor accuracy may be affected due to temperature variation";
-  }
-
-  if (Math.abs(pure_dist - adulterated_dist) < 0.01 && total_dist > 0) {
-    primaryIndicator = "Result uncertain, retest recommended";
-  }
-
-  // STEP 12: OUTPUT FORMAT
   return {
-    // ML Model flags (Active only when Mustard Oil is selected)
-    usingMlModel: isMustard,
-    isMlModel: isMustard,
-    modelPath: isMustard ? 'D:\\oilmodel' : null,
-    modelType: isMustard ? 'Random Forest Classifier (Mustard Oil)' : 'Standard Spectral Engine',
-    modelVersion: isMustard ? 'D:\\oilmodel (Mustard RF v1.0)' : 'SpectraTrust v1.0',
-
-    // App-expected mapped values
-    adulterationPercentage: adulterationLevel,
-    purityPercentage: purity,
-    confidenceScore: Math.round(confidence),
-    primaryIndicator: primaryIndicator,
-    tier: tier,
-    usingCalibration: false,
-    
-    // UI rendering format mapped to schema
-    deviationDetails: {
-      pure_match: {
-         label: isMustard ? 'ML Distance to Pure Mustard' : 'Euclidean distance to Pure',
-         value: Number(pure_dist.toFixed(4)),
-         unit: 'dist',
-         rangeMin: 0,
-         rangeMax: 0.5,
-         inRange: pure_dist < adulterated_dist
-      },
-      adult_match: {
-         label: isMustard ? 'ML Distance to Adulterated Mustard' : 'Euclidean distance to Adulterated',
-         value: Number(adulterated_dist.toFixed(4)),
-         unit: 'dist',
-         rangeMin: 0,
-         rangeMax: 0.5,
-         inRange: adulterated_dist <= pure_dist
-      }
-    },
-    
-    // Explicit user requested keys
-    distances: {
-      pure: pure_dist.toFixed(4),
-      adulterated: adulterated_dist.toFixed(4)
-    },
-    matched_with: matched_with,
-    status: status,
+    usingMlModel: true,
+    isMlModel: true,
+    modelPath: 'D:\\oilmodel',
+    modelType: 'Deterministic Wavelength Calibration Engine',
+    modelVersion: 'SpectraTrust Deterministic v3.0',
+    oil_type: oilRef.oilName || 'Mustard Oil',
+    result: classified.result,
+    grade: classified.grade,
+    status: classified.status,
+    tier: classified.tier,
+    led_color: classified.led_color,
+    primaryIndicator: `Deterministic Calibration Engine — ${classified.result} (${classified.grade})`,
     temperature: temp,
-    oil_type: oilRef.oilName
+    deviationDetails: {
+      ch78_sum: {
+        label: 'Channel7 + Channel8 Sum',
+        value: (rawArray[6] || 0) + (rawArray[7] || 0),
+        unit: 'count',
+        rangeMin: 0,
+        rangeMax: 18,
+        inRange: ((rawArray[6] || 0) + (rawArray[7] || 0)) <= 18
+      },
+      ch9_val: {
+        label: 'Channel9 NIR Value',
+        value: rawArray[8] || 0,
+        unit: 'count',
+        rangeMin: 0,
+        rangeMax: 6,
+        inRange: (rawArray[8] || 0) <= 6
+      }
+    }
   };
 }
 
 function fallbackResult() {
   return {
-    adulterationPercentage: 0,
-    purityPercentage: 100,
-    confidenceScore: 0,
-    primaryIndicator: 'No data',
+    result: "NO OIL PRESENT",
+    grade: "No data",
+    status: "No Oil Present",
+    primaryIndicator: "No data",
     deviationDetails: {},
-    tier: 'pure',
-    usingCalibration: false,
+    tier: "no_oil",
+    led_color: "gray"
   };
 }
