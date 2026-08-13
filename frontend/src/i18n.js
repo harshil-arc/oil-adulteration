@@ -13,7 +13,17 @@ export const SUPPORTED_LANGUAGES = [
 const resources = {
   en: {
     translation: {
+      "bottom_nav": {
+        "home": "HOME",
+        "oil_test": "OIL TEST",
+        "hotspots": "HOTSPOTS",
+        "community": "COMMUNITY",
+        "profile": "PROFILE"
+      },
       "home": {
+        "greeting_morning": "Good Morning",
+        "greeting_afternoon": "Good Afternoon",
+        "greeting_evening": "Good Evening",
         "greeting": "Hey, Inspector",
         "title": "Food 360 Dashboard",
         "start_scan": "START SCAN",
@@ -31,7 +41,16 @@ const resources = {
         "recent_scans": "Recent Scans",
         "view_all": "View All",
         "no_scans": "No scans yet.",
-        "tap_to_begin": "Tap Start Scan to begin"
+        "tap_to_begin": "Tap Start Scan to begin",
+        "quick_tools": "Quick Safety Tools",
+        "physical_testing": "Kitchen Physical Test",
+        "physical_desc": "Zero-device home testing guide",
+        "hotspots_title": "Safety Hotspots Map",
+        "hotspots_desc": "Live regional contamination alerts",
+        "intelligence_title": "Safety Intelligence",
+        "intelligence_desc": "Complaints & verified lab directory",
+        "disaster_title": "Emergency & Relief",
+        "disaster_desc": "Disaster response & surplus food network"
       },
       "profile": {
         "title": "My Profile",
@@ -39,6 +58,7 @@ const resources = {
         "select_language": "Select Native Language",
         "native_language": "Native Language",
         "choose_language_desc": "Choose your primary preferred language for the interface",
+        "confirm_language": "Confirm Language Selection",
         "settings": "Preferences & Settings",
         "language": "Language",
         "dark_mode": "AMOLED Dark Mode",
@@ -52,7 +72,13 @@ const resources = {
         "fssai_guidelines": "FSSAI Guidelines",
         "edit_profile": "Edit Profile",
         "save_changes": "Save Changes",
-        "close": "Close"
+        "close": "Close",
+        "account_info": "Account Information",
+        "full_name": "Full Name",
+        "email_address": "Email Address",
+        "phone_number": "Phone Number",
+        "state_region": "State / Region",
+        "scan_history": "Scan History & Saved Results"
       },
       "settings": {
         "title": "Settings",
@@ -60,7 +86,9 @@ const resources = {
         "network": "Network & Integration",
         "device": "Device Management",
         "preferences": "User Preferences",
-        "calibrate": "Recalibrate Sensor"
+        "calibrate": "Recalibrate Sensor",
+        "notifications": "Push Notifications",
+        "units": "Units of Measurement"
       },
       "nav": {
         "dashboard": "Dashboard",
@@ -88,13 +116,24 @@ const resources = {
         "connected": "Connected",
         "offline": "Offline",
         "back": "Back",
-        "select": "Select"
+        "select": "Select",
+        "confirm": "Confirm"
       }
     }
   },
   hi: {
     translation: {
+      "bottom_nav": {
+        "home": "होम",
+        "oil_test": "तेल जांच",
+        "hotspots": "हॉटस्पॉट",
+        "community": "समुदाय",
+        "profile": "प्रोफाइल"
+      },
       "home": {
+        "greeting_morning": "सुप्रभात",
+        "greeting_afternoon": "शुभ दोपहर",
+        "greeting_evening": "शुभ संध्या",
         "greeting": "नमस्ते, इंस्पेक्टर",
         "title": "फूड 360 डैशबोर्ड",
         "start_scan": "स्कैन शुरू करें",
@@ -112,7 +151,16 @@ const resources = {
         "recent_scans": "हाल के स्कैन",
         "view_all": "सभी देखें",
         "no_scans": "अभी तक कोई स्कैन नहीं।",
-        "tap_to_begin": "शुरू करने के लिए 'स्कैन शुरू करें' पर टैप करें"
+        "tap_to_begin": "शुरू करने के लिए 'स्कैन शुरू करें' पर टैप करें",
+        "quick_tools": "त्वरित सुरक्षा टूल",
+        "physical_testing": "रसोई भौतिक परीक्षण",
+        "physical_desc": "बिना डिवाइस के घर पर परीक्षण गाइड",
+        "hotspots_title": "सुरक्षा हॉटस्पॉट मानचित्र",
+        "hotspots_desc": "क्षेत्रीय संदूषण अलर्ट",
+        "intelligence_title": "सुरक्षा खुफिया जानकारी",
+        "intelligence_desc": "शिकायतें और प्रयोगशाला निर्देशिका",
+        "disaster_title": "आपातकाल और राहत",
+        "disaster_desc": "आपदा प्रतिक्रिया और अतिरिक्त भोजन नेटवर्क"
       },
       "profile": {
         "title": "मेरी प्रोफाइल",
@@ -120,6 +168,7 @@ const resources = {
         "select_language": "मातृभाषा चुनें",
         "native_language": "मातृभाषा",
         "choose_language_desc": "अपनी पसंदीदा क्षेत्रीय भाषा चुनें",
+        "confirm_language": "भाषा चयन की पुष्टि करें",
         "settings": "प्राथमिकताएं और सेटिंग्स",
         "language": "भाषा",
         "dark_mode": "डार्क मोड",
@@ -133,7 +182,13 @@ const resources = {
         "fssai_guidelines": "एफएसएसएआई दिशानिर्देश",
         "edit_profile": "प्रोफाइल संपादित करें",
         "save_changes": "बदलाव सहेजें",
-        "close": "बंद करें"
+        "close": "बंद करें",
+        "account_info": "खाता जानकारी",
+        "full_name": "पूरा नाम",
+        "email_address": "ईमेल पता",
+        "phone_number": "फोन नंबर",
+        "state_region": "राज्य / क्षेत्र",
+        "scan_history": "स्कैन इतिहास और सहेजे गए परिणाम"
       },
       "settings": {
         "title": "सेटिंग्स",
@@ -141,7 +196,9 @@ const resources = {
         "network": "नेटवर्क और इंटीग्रेशन",
         "device": "डिवाइस प्रबंधन",
         "preferences": "उपयोगकर्ता प्राथमिकताएं",
-        "calibrate": "सेंसर रीकैलिव्रेट करें"
+        "calibrate": "सेंसर रीकैलिव्रेट करें",
+        "notifications": "पुश सूचनाएं",
+        "units": "माप की इकाइयाँ"
       },
       "nav": {
         "dashboard": "डैशबोर्ड",
@@ -169,13 +226,24 @@ const resources = {
         "connected": "कनेक्टेड",
         "offline": "ऑफलाइन",
         "back": "वापस",
-        "select": "चुनें"
+        "select": "चुनें",
+        "confirm": "पुष्टि करें"
       }
     }
   },
   kn: {
     translation: {
+      "bottom_nav": {
+        "home": "ಹೋಮ್",
+        "oil_test": "ಎಣ್ಣೆ ಪರೀಕ್ಷೆ",
+        "hotspots": "ಹಾಟ್‌ಸ್ಪಾಟ್‌ಗಳು",
+        "community": "ಸಮುದಾಯ",
+        "profile": "ಪ್ರೊಫೈಲ್"
+      },
       "home": {
+        "greeting_morning": "ಶುಭೋದಯ",
+        "greeting_afternoon": "ಶುಭ ಮಧ್ಯಾಹ್ನ",
+        "greeting_evening": "ಶುಭ ಸಂಜೆ",
         "greeting": "ನಮಸ್ಕಾರ, ಇನ್ಸ್‌ಪೆಕ್ಟರ್",
         "title": "ಫುಡ್ 360 ಡ್ಯಾಶ್‌ಬೋರ್ಡ್",
         "start_scan": "ಸ್ಕ್ಯಾನ್ ಪ್ರಾರಂಭಿಸಿ",
@@ -193,7 +261,16 @@ const resources = {
         "recent_scans": "ಇತ್ತೀಚಿನ ಸ್ಕ್ಯಾನ್‌ಗಳು",
         "view_all": "ಎಲ್ಲವನ್ನೂ ವೀಕ್ಷಿಸಿ",
         "no_scans": "ಇನ್ನೂ ಯಾವುದೇ ಸ್ಕ್ಯಾನ್ ಇಲ್ಲ.",
-        "tap_to_begin": "ಆರಂಭಿಸಲು 'ಸ್ಕ್ಯಾನ್ ಪ್ರಾರಂಭಿಸಿ' ಟ್ಯಾಪ್ ಮಾಡಿ"
+        "tap_to_begin": "ಆರಂಭಿಸಲು 'ಸ್ಕ್ಯಾನ್ ಪ್ರಾರಂಭಿಸಿ' ಟ್ಯಾಪ್ ಮಾಡಿ",
+        "quick_tools": "ತ್ವರಿತ ಸುರಕ್ಷತಾ ಪರಿಕರಗಳು",
+        "physical_testing": "ಮನೆ ಅಡುಗೆಮನೆ ಭೌತಿಕ ಪರೀಕ್ಷೆ",
+        "physical_desc": "ಸಾಧನವಿಲ್ಲದೆ ಮನೆ ಪರೀಕ್ಷಾ ಮಾರ್ಗದರ್ಶಿ",
+        "hotspots_title": "ಸುರಕ್ಷತಾ ಹಾಟ್‌ಸ್ಪಾಟ್‌ಗಳ ನಕ್ಷೆ",
+        "hotspots_desc": "ಪ್ರಾದೇಶಿಕ ಕಲುಷಿತ ಎಚ್ಚರಿಕೆಗಳು",
+        "intelligence_title": "ಸುರಕ್ಷತಾ ಮಾಹಿತಿ ಸಂಶೋಧನೆ",
+        "intelligence_desc": "ದೂರುಗಳು ಮತ್ತು ಪ್ರಯೋಗಾಲಯ ಕೋಶ",
+        "disaster_title": "ತುರ್ತು ಮತ್ತು ಪರಿಹಾರ",
+        "disaster_desc": "ದುರಂತ ಪ್ರತಿಕ್ರಿಯೆ ಮತ್ತು ಆಹಾರ ಜಾಲ"
       },
       "profile": {
         "title": "ನನ್ನ ಪ್ರೊಫೈಲ್",
@@ -201,6 +278,7 @@ const resources = {
         "select_language": "ಮಾತೃಭಾಷೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ",
         "native_language": "ಮಾತೃಭಾಷೆ",
         "choose_language_desc": "ನಿಮ್ಮ ನೆಚ್ಚಿನ ಪ್ರಾದೇಶಿಕ ಭಾಷೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ",
+        "confirm_language": "ಭಾಷೆಯ ಆಯ್ಕೆಯನ್ನು ಖಚಿತಪಡಿಸಿ",
         "settings": "ಆದ್ಯತೆಗಳು ಮತ್ತು ಸಂಯೋಜನೆಗಳು",
         "language": "ಭಾಷೆ",
         "dark_mode": "ಡಾರ್ಕ್ ಮೋಡ್",
@@ -214,7 +292,13 @@ const resources = {
         "fssai_guidelines": "FSSAI ಮಾರ್ಗಸೂಚಿಗಳು",
         "edit_profile": "ಪ್ರೊಫೈಲ್ ಎಡಿಟ್ ಮಾಡಿ",
         "save_changes": "ಬದಲಾವಣೆಗಳನ್ನು ಉಳಿಸಿ",
-        "close": "ಮುಚ್ಚಿ"
+        "close": "ಮುಚ್ಚಿ",
+        "account_info": "ಖಾತೆಯ ಮಾಹಿತಿ",
+        "full_name": "ಪೂರ್ಣ ಹೆಸರು",
+        "email_address": "ಇಮೇಲ್ ವಿಳಾಸ",
+        "phone_number": "ಫೋನ್ ಸಂಖ್ಯೆ",
+        "state_region": "ರಾಜ್ಯ / ಪ್ರದೇಶ",
+        "scan_history": "ಸ್ಕ್ಯಾನ್ ಇತಿಹಾಸ ಮತ್ತು ಉಳಿಸಿದ ಫಲಿತಾಂಶಗಳು"
       },
       "settings": {
         "title": "ಸಂಯೋಜನೆಗಳು",
@@ -222,7 +306,9 @@ const resources = {
         "network": "ನೆಟ್‌ವರ್ಕ್ ಮತ್ತು ಏಕೀಕರಣ",
         "device": "ಸಾಧನ ನಿರ್ವಹಣೆ",
         "preferences": "ಬಳಕೆದಾರರ ಆದ್ಯತೆಗಳು",
-        "calibrate": "ಸೆನ್ಸರ್ ಮರುಹೊಂದಿಸಿ"
+        "calibrate": "ಸೆನ್ಸರ್ ಮರುಹೊಂದಿಸಿ",
+        "notifications": "ಪುಷ್ ಸೂಚನೆಗಳು",
+        "units": "ಅಳತೆಯ ಪ್ರಮಾಣಗಳು"
       },
       "nav": {
         "dashboard": "ಡ್ಯಾಶ್‌ಬೋರ್ಡ್",
@@ -250,13 +336,24 @@ const resources = {
         "connected": "ಸಂಪರ್ಕಿಸಲಾಗಿದೆ",
         "offline": "ಆಫ್‌ಲೈನ್",
         "back": "ಹಿಂತಿರುಗಿ",
-        "select": "ಆಯ್ಕೆಮಾಡಿ"
+        "select": "ಆಯ್ಕೆಮಾಡಿ",
+        "confirm": "ಖಚಿತಪಡಿಸಿ"
       }
     }
   },
   te: {
     translation: {
+      "bottom_nav": {
+        "home": "హోమ్",
+        "oil_test": "నూనె పరీక్ష",
+        "hotspots": "హాట్‌స్పాట్‌లు",
+        "community": "కమ్యూనిటీ",
+        "profile": "ప్రొఫైల్"
+      },
       "home": {
+        "greeting_morning": "శుభోదయం",
+        "greeting_afternoon": "శుభ మధ్యాహ్నం",
+        "greeting_evening": "శుభ సాయంత్రం",
         "greeting": "నమస్కారం, ఇన్స్పెక్టర్",
         "title": "ఫుడ్ 360 డాష్‌బోర్డ్",
         "start_scan": "స్కాన్ ప్రారంభించండి",
@@ -274,7 +371,16 @@ const resources = {
         "recent_scans": "ఇటీవలి స్కాన్‌లు",
         "view_all": "అన్నీ చూడండి",
         "no_scans": "ఇంకా స్కాన్‌లు లేవు.",
-        "tap_to_begin": "ప్రారంభించడానికి 'స్కాన్ ప్రారంభించండి' నొక్కండి"
+        "tap_to_begin": "ప్రారంభించడానికి 'స్కాన్ ప్రారంభించండి' నొక్కండి",
+        "quick_tools": "త్వరిత భద్రతా సాధనాలు",
+        "physical_testing": "వంటింటి భౌతిక పరీక్ష",
+        "physical_desc": "పరికరాలు లేని గృహ పరీక్ష మార్గదర్శి",
+        "hotspots_title": "భద్రతా హాట్‌స్పాట్‌ల మ్యాప్",
+        "hotspots_desc": "ప్రాంతీయ కల్తీ హెచ్చరికలు",
+        "intelligence_title": "భద్రతా సమాచారం",
+        "intelligence_desc": "ఫిర్యాదులు & ల్యాబ్‌ల డైరెక్టరీ",
+        "disaster_title": "అత్యవసర & సహాయక సేవలు",
+        "disaster_desc": "విపత్తు స్పందన & ఆహార జాలం"
       },
       "profile": {
         "title": "నా ప్రొఫైల్",
@@ -282,6 +388,7 @@ const resources = {
         "select_language": "మాతృభాషను ఎంచుకోండి",
         "native_language": "మాతృభాష",
         "choose_language_desc": "మీకు కావలసిన ప్రాంతీయ భాషను ఎంచుకోండి",
+        "confirm_language": "భాషను ఖరారు చేయండి",
         "settings": "ప్రాధాన్యతలు & సెట్టింగ్‌లు",
         "language": "భాష",
         "dark_mode": "డార్క్ మోడ్",
@@ -295,7 +402,13 @@ const resources = {
         "fssai_guidelines": "FSSAI మార్గదర్శకాలు",
         "edit_profile": "ప్రొఫైల్‌ను సవరించండి",
         "save_changes": "మార్పులను సేవ్ చేయండి",
-        "close": "మూసివేయి"
+        "close": "మూసివేయి",
+        "account_info": "ఖాతా సమాచారం",
+        "full_name": "పూర్తి పేరు",
+        "email_address": "ఈమెయిల్ చిరునామా",
+        "phone_number": "ఫోన్ నంబర్",
+        "state_region": "రాష్ట్రం / ప్రాంతం",
+        "scan_history": "స్కాన్ హిస్టరీ & సేవ్ చేసిన ఫలితాలు"
       },
       "settings": {
         "title": "సెట్టింగ్‌లు",
@@ -303,7 +416,9 @@ const resources = {
         "network": "నెట్‌వర్క్ & ఇంటిగ్రేషన్",
         "device": "పరికర నిర్వహణ",
         "preferences": "యూజర్ ప్రాధాన్యతలు",
-        "calibrate": "సెన్సార్ కాలిబ్రేట్ చేయండి"
+        "calibrate": "సెన్సార్ కాలిబ్రేట్ చేయండి",
+        "notifications": "పుష్ నోటిఫికేషన్‌లు",
+        "units": "కొలతల ప్రమాణాలు"
       },
       "nav": {
         "dashboard": "డాష్‌బోర్డ్",
@@ -331,13 +446,24 @@ const resources = {
         "connected": "కనెక్ట్ అయింది",
         "offline": "ఆఫ్‌లైన్",
         "back": "వెనుకకు",
-        "select": "ఎంచుకోండి"
+        "select": "ఎంచుకోండి",
+        "confirm": "సమర్థించండి"
       }
     }
   },
   ml: {
     translation: {
+      "bottom_nav": {
+        "home": "ഹോം",
+        "oil_test": "എണ്ണ പരിശോധന",
+        "hotspots": "ഹോട്ട്‌സ്‌പോട്ടുകൾ",
+        "community": "കമ്മ്യൂണിറ്റി",
+        "profile": "പ്രൊഫൈൽ"
+      },
       "home": {
+        "greeting_morning": "സുപ്രഭാതം",
+        "greeting_afternoon": "ശുഭ ഉച്ചസമയം",
+        "greeting_evening": "ശുഭ സായാഹ്നം",
         "greeting": "നമസ്കാരം, ഇൻസ്പെക്ടർ",
         "title": "ഫുഡ് 360 ഡാഷ്‌ബോർഡ്",
         "start_scan": "സ്കാൻ ആരംഭിക്കുക",
@@ -355,7 +481,16 @@ const resources = {
         "recent_scans": "സമീപകാല സ്കാനുകൾ",
         "view_all": "എല്ലാം കാണുക",
         "no_scans": "ഇതുവരെ സ്കാനുകളൊന്നുമില്ല.",
-        "tap_to_begin": "ആരംഭിക്കാൻ 'സ്കാൻ ആരംഭിക്കുക' അമർത്തുക"
+        "tap_to_begin": "ആരംഭിക്കാൻ 'സ്കാൻ ആരംഭിക്കുക' അമർത്തുക",
+        "quick_tools": "ദ്രുത സുരക്ഷാ ടൂളുകൾ",
+        "physical_testing": "അടുക്കള ഭൗതിക പരിശോധന",
+        "physical_desc": "ഉപകരണങ്ങളില്ലാതെ വീട്ടു പരിശോധനാ ഗൈഡ്",
+        "hotspots_title": "സുരക്ഷാ ഹോട്ട്‌സ്‌പോട്ട് മാപ്പ്",
+        "hotspots_desc": "മേഖലാ മായം കലരൽ മുന്നറിയിപ്പുകൾ",
+        "intelligence_title": "സുരക്ഷാ വിവരങ്ങൾ",
+        "intelligence_desc": "പരാതികളും പരിശോധനാ ലാബ് ഡയറക്ടറിയും",
+        "disaster_title": "അടിയന്തര ഘട്ടവും സഹായവും",
+        "disaster_desc": "ദുരന്ത പ്രതികരണവും ഭക്ഷണ വിതരണ ശൃംഖലയും"
       },
       "profile": {
         "title": "എന്റെ പ്രൊഫൈൽ",
@@ -363,6 +498,7 @@ const resources = {
         "select_language": "മാതൃഭാഷ തിരഞ്ഞെടുക്കുക",
         "native_language": "മാതൃഭാഷ",
         "choose_language_desc": "നിങ്ങളുടെ പ്രാദേശിക ഭാഷ തിരഞ്ഞെടുക്കുക",
+        "confirm_language": "ഭാഷ തിരഞ്ഞെടുക്കൽ ഉറപ്പാക്കുക",
         "settings": "മുൻഗണനകളും ക്രമീകരണങ്ങളും",
         "language": "ഭാഷ",
         "dark_mode": "ഡാർക്ക് മോഡ്",
@@ -376,7 +512,13 @@ const resources = {
         "fssai_guidelines": "FSSAI മാർഗ്ഗനിർദ്ദേശങ്ങൾ",
         "edit_profile": "പ്രൊഫൈൽ തിരുത്തുക",
         "save_changes": "മാറ്റങ്ങൾ സേവ് ചെയ്യുക",
-        "close": "അടയ്ക്കുക"
+        "close": "അടയ്ക്കുക",
+        "account_info": "അക്കൗണ്ട് വിവരങ്ങൾ",
+        "full_name": "പൂർണ്ണ നാമം",
+        "email_address": "ഇമെയിൽ വിലാസം",
+        "phone_number": "ഫോൺ നമ്പർ",
+        "state_region": "സംസ്ഥാനം / സ്ഥലം",
+        "scan_history": "സ്കാൻ ഹിസ്റ്ററിയും സേവ് ചെയ്ത ഫലങ്ങളും"
       },
       "settings": {
         "title": "ക്രമീകരണങ്ങൾ",
@@ -384,7 +526,9 @@ const resources = {
         "network": "നെറ്റ്‌വർക്കും ഇന്റഗ്രേഷനും",
         "device": "ഉപകരണ മാനേജ്മെന്റ്",
         "preferences": "ഉപയോക്തൃ മുൻഗണനകൾ",
-        "calibrate": "സെൻസർ കാലിബ്രേറ്റ് ചെയ്യുക"
+        "calibrate": "സെൻസർ കാലിബ്രേറ്റ് ചെയ്യുക",
+        "notifications": "പുഷ് അറിയിപ്പുകൾ",
+        "units": "അളവ് യൂണിറ്റുകൾ"
       },
       "nav": {
         "dashboard": "ഡാഷ്‌ബോർഡ്",
@@ -412,7 +556,8 @@ const resources = {
         "connected": "ബന്ധിപ്പിച്ചിരിക്കുന്നു",
         "offline": "ഓഫ്ലൈൻ",
         "back": "തിരികെ",
-        "select": "തിരഞ്ഞെടുക്കുക"
+        "select": "തിരഞ്ഞെടുക്കുക",
+        "confirm": "ഉറപ്പാക്കുക"
       }
     }
   }

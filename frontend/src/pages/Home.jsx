@@ -11,6 +11,7 @@ import {
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 import { supabase } from '../lib/supabase';
 import { useApp } from '../context/AppContext';
+import { useTranslation } from 'react-i18next';
 import NationalIntelligenceCenter from '../components/NationalIntelligenceCenter';
 
 // Simple Count-Up Component for numbers
@@ -38,6 +39,7 @@ function CountUp({ end, duration = 800, suffix = "" }) {
 export default function Home() {
   const navigate = useNavigate();
   const { profile } = useApp();
+  const { t } = useTranslation();
   
   // Data State
   const [scans, setScans] = useState([]);
@@ -55,10 +57,10 @@ export default function Home() {
   // Time-based Greeting
   const greeting = useMemo(() => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Good Morning';
-    if (hour < 18) return 'Good Afternoon';
-    return 'Good Evening';
-  }, []);
+    if (hour < 12) return t('home.greeting_morning', 'Good Morning');
+    if (hour < 18) return t('home.greeting_afternoon', 'Good Afternoon');
+    return t('home.greeting_evening', 'Good Evening');
+  }, [t]);
 
   const formattedDate = useMemo(() => {
     return new Date().toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });

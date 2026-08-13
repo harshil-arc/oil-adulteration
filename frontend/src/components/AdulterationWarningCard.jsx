@@ -6,10 +6,11 @@ export default function AdulterationWarningCard({ scanData, threshold = 20 }) {
   const [modalOpen, setModalOpen] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
-  const adulterationPercentage = scanData?.result?.adulterationPercentage ?? 0;
+  const isAdulterated = scanData?.result?.tier === 'heavy' || scanData?.result?.result === 'ADULTERATED';
+  const adulterationPercentage = typeof scanData?.result?.adulterationPercentage === 'number' ? scanData.result.adulterationPercentage : 0;
 
-  // Only display if adulteration exceeds threshold and user has not dismissed card
-  if (adulterationPercentage <= threshold || dismissed) {
+  // Only display if adulterated and user has not dismissed card
+  if (!isAdulterated || dismissed) {
     return null;
   }
 
@@ -29,7 +30,7 @@ export default function AdulterationWarningCard({ scanData, threshold = 20 }) {
               <div className="flex items-center gap-2">
                 <h4 className="text-sm font-black text-red-400 tracking-wide">⚠ Suspected Adulteration Detected</h4>
                 <span className="bg-red-500/20 text-red-300 text-[10px] font-mono font-bold px-2 py-0.5 rounded-full border border-red-500/30">
-                  {adulterationPercentage.toFixed(1)}% Adulterated
+                  {adulterationPercentage > 0 ? `${adulterationPercentage.toFixed(1)}% Adulterated` : 'Adulterated Sample'}
                 </span>
               </div>
 

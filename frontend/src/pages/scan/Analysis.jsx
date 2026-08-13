@@ -89,7 +89,7 @@ function PurityGaugeAnimated({ purity = 100 }) {
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-end pb-2">
-          <span className="text-4xl font-black font-mono" style={{ color }}>{clamped.toFixed(1)}%</span>
+          <span className="text-4xl font-black font-mono" style={{ color }}>{typeof clamped === 'number' && !isNaN(clamped) ? clamped.toFixed(1) : '0.0'}%</span>
           <span className="text-[10px] text-[var(--text-muted)] font-bold uppercase tracking-widest mt-0.5">PURITY SCORE</span>
         </div>
       </div>
@@ -396,7 +396,8 @@ Provide 2-3 likely adulterants only.`;
   // ── Share Report ──────────────────────────────────────────────────────────
   const handleShare = async () => {
     if (!result || !selectedOil) return;
-    const text = `🫙 Food 360 Official Inspection Certificate\nOil: ${selectedOil.oilName}\nPurity Score: ${result.purityPercentage.toFixed(1)}%\nReport #: ${reportNo}\nDevice: ${deviceId}\nVerified with Food 360 AI — spectratrust.org`;
+    const purityStr = typeof result.purityPercentage === 'number' ? `${result.purityPercentage.toFixed(1)}%` : (result.result || result.status || 'Verified');
+    const text = `🫙 Food 360 Official Inspection Certificate\nOil: ${selectedOil.oilName}\nStatus: ${purityStr}\nReport #: ${reportNo}\nDevice: ${deviceId}\nVerified with Food 360 AI — spectratrust.org`;
     try {
       if (navigator.share) {
         await navigator.share({ title: 'Food 360 Digital Certificate', text });
@@ -420,7 +421,7 @@ Provide 2-3 likely adulterants only.`;
 
   // Previous scan comparison data
   const prevScan = timelineScans.find(s => s.oil_type === selectedOil.oilName && s.id !== certUuid);
-  const purityDelta = prevScan ? (result.purityPercentage - prevScan.purity).toFixed(1) : null;
+  const purityDelta = (prevScan && typeof result.purityPercentage === 'number' && typeof prevScan.purity === 'number') ? (result.purityPercentage - prevScan.purity).toFixed(1) : null;
 
   return (
     <div className="flex flex-col min-h-screen theme-bg animate-fade-in pb-32">
@@ -753,19 +754,23 @@ Provide 2-3 likely adulterants only.`;
 
             <div className="grid grid-cols-3 gap-3 text-center text-xs">
               <div className="bg-[var(--bg-elevated)] p-3 rounded-2xl border border-[var(--border-color)]">
-                <span className="text-[10px] text-gray-400 font-bold block mb-1">Previous Purity</span>
-                <span className="font-mono font-black text-gray-300">{prevScan.purity.toFixed(1)}%</span>
+                <span className="text-[10px] text-gray-400 font-bold block mb-1">Previous Result</span>
+                <span className="font-mono font-black text-gray-300">
+                  {typeof prevScan.purity === 'number' ? `${prevScan.purity.toFixed(1)}%` : (prevScan.result || prevScan.status || 'Logged')}
+                </span>
               </div>
 
               <div className="bg-[var(--bg-elevated)] p-3 rounded-2xl border border-[var(--border-color)]">
-                <span className="text-[10px] text-gray-400 font-bold block mb-1">Current Purity</span>
-                <span className="font-mono font-black text-emerald-400">{result.purityPercentage.toFixed(1)}%</span>
+                <span className="text-[10px] text-gray-400 font-bold block mb-1">Current Result</span>
+                <span className="font-mono font-black text-emerald-400">
+                  {typeof result.purityPercentage === 'number' ? `${result.purityPercentage.toFixed(1)}%` : (result.result || result.status || 'Verified')}
+                </span>
               </div>
 
               <div className="bg-[var(--bg-elevated)] p-3 rounded-2xl border border-[var(--border-color)]">
                 <span className="text-[10px] text-gray-400 font-bold block mb-1">Purity Shift</span>
-                <span className={`font-mono font-black ${Number(purityDelta) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                  {Number(purityDelta) >= 0 ? `+${purityDelta}%` : `${purityDelta}%`}
+                <span className={`font-mono font-black ${purityDelta != null && Number(purityDelta) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                  {purityDelta != null ? (Number(purityDelta) >= 0 ? `+${purityDelta}%` : `${purityDelta}%`) : 'N/A'}
                 </span>
               </div>
             </div>
@@ -822,7 +827,7 @@ Provide 2-3 likely adulterants only.`;
             {timelineScans.slice(0, 5).map((scan, idx) => (
               <div key={idx} className="bg-[var(--bg-elevated)] p-3 rounded-2xl border border-[var(--border-color)] flex items-center justify-between text-xs">
                 <div className="flex items-center gap-3">
-                  <div className={`w-3 h-3 rounded-full ${scan.purity >= 80 ? 'bg-emerald-400' : 'bg-red-400'}`} />
+                  <div className={`w-3 h-3 rounded-full ${(scan.purity >= 80 || scan.tier === 'pure' || scan.result === 'PURE OIL') ? 'bg-emerald-400' : 'bg-red-400'}`} />
                   <div>
                     <h4 className="font-bold text-white">{scan.oil_type}</h4>
                     <p className="text-[10px] text-gray-400">{new Date(scan.timestamp).toLocaleString('en-IN', { dateStyle: 'short', timeStyle: 'short' })}</p>
@@ -830,8 +835,8 @@ Provide 2-3 likely adulterants only.`;
                 </div>
 
                 <div className="flex items-center gap-3">
-                  <span className={`font-mono font-black text-sm ${scan.purity >= 80 ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {scan.purity.toFixed(1)}%
+                  <span className={`font-mono font-black text-sm ${(scan.purity >= 80 || scan.tier === 'pure' || scan.result === 'PURE OIL') ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {typeof scan.purity === 'number' ? `${scan.purity.toFixed(1)}%` : (scan.result || scan.status || 'Logged')}
                   </span>
                   <button onClick={() => setCertModalOpen(true)} className="p-1.5 rounded-lg bg-gray-800 text-gray-300 hover:text-white">
                     <Award size={14} />
