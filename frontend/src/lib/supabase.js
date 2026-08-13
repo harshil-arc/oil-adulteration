@@ -142,6 +142,19 @@ const ensureAuth = () => {
   return auth;
 };
 
+const sanitizeData = (obj) => {
+  if (obj === null || obj === undefined) return null;
+  if (typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(sanitizeData);
+  const clean = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      clean[key] = sanitizeData(value);
+    }
+  }
+  return clean;
+};
+
 class QueryBuilder {
   constructor(tableName) {
     this.tableName = tableName;
@@ -238,7 +251,7 @@ class QueryBuilder {
 
       for (const item of items) {
         const docId = item.id || doc(colRef).id;
-        const record = { id: docId, created_at: new Date().toISOString(), ...item };
+        const record = sanitizeData({ id: docId, created_at: new Date().toISOString(), ...item });
         await setDoc(doc(colRef, docId), record);
         results.push(record);
       }
@@ -283,7 +296,7 @@ class QueryBuilder {
       const updatedDocs = [];
       for (const docSnap of snap.docs) {
         const docRef = doc(db, this.tableName, docSnap.id);
-        const record = { ...payload, updated_at: new Date().toISOString() };
+        const record = sanitizeData({ ...payload, updated_at: new Date().toISOString() });
         await updateDoc(docRef, record);
         updatedDocs.push({ id: docSnap.id, ...docSnap.data(), ...record });
       }

@@ -42,33 +42,14 @@ function App({ forcedRole }) {
             // Sort by submittedAt descending
             liveDonations.sort((a, b) => new Date(b.submittedAt || b.cookedTime || 0) - new Date(a.submittedAt || a.cookedTime || 0));
 
-            if (liveDonations.length > 0) {
-              setDonations(liveDonations);
-              // Save to localStorage for instant offline access
-              try {
-                localStorage.setItem("nourish_donations", JSON.stringify(liveDonations));
-              } catch (_) {}
-            } else if (!initialSyncDone.current) {
-              // Fallback to mock data only if database is completely empty on first sync
-              setDonations(INITIAL_DONATIONS);
-            }
-            initialSyncDone.current = true;
+            setDonations(liveDonations);
+            try {
+              localStorage.setItem("nourish_donations", JSON.stringify(liveDonations));
+            } catch (_) {}
             setIsConnected(true);
           },
           (err) => {
             console.warn("[NourishRelief] Firestore real-time snapshot notice:", err);
-            // Fallback to localStorage or mock data
-            try {
-              const saved = localStorage.getItem("nourish_donations");
-              if (saved) {
-                const parsed = JSON.parse(saved);
-                if (Array.isArray(parsed) && parsed.length > 0) {
-                  setDonations(parsed);
-                  return;
-                }
-              }
-            } catch (_) {}
-            setDonations(INITIAL_DONATIONS);
           }
         );
       }
