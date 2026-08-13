@@ -34,41 +34,10 @@ export default function OilWise() {
     setRecommendation(initialRec);
   }, []);
 
-  const handleProfileSubmit = async (profile, runAi) => {
+  const handleProfileSubmit = (profile) => {
     setUserProfile(profile);
     const calculated = calculateOilRecommendations(profile);
     setRecommendation(calculated);
-    setAiError(null);
-
-    if (runAi) {
-      setIsLoadingAi(true);
-      try {
-        const response = await fetch('/api/recommend-oils', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            conditions: profile.selectedConditions,
-            cookingHabits: profile.cookingHabits,
-            age: profile.ageGroup,
-            weight: profile.weightKg,
-            activityLevel: profile.activityLevel,
-            customNotes: profile.customNotes
-          })
-        });
-
-        const resData = await response.json();
-        if (resData.success && resData.data) {
-          setAiResult(resData.data);
-        } else {
-          setAiError(resData.error || 'Failed to fetch AI analysis.');
-        }
-      } catch (err) {
-        console.error('AI call failed:', err);
-        setAiError('Unable to connect to AI server. Showing standard recommendation.');
-      } finally {
-        setIsLoadingAi(false);
-      }
-    }
   };
 
   const handleCompareFromDirectory = (oilIds) => {

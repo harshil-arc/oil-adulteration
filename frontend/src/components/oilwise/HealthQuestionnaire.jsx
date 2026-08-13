@@ -23,7 +23,6 @@ export const HealthQuestionnaire = ({
     initialProfile?.activityLevel || 'moderate'
   );
   const [householdMembers, setHouseholdMembers] = useState(initialProfile?.householdMembers || 4);
-  const [customNotes, setCustomNotes] = useState(initialProfile?.customNotes || '');
 
   const toggleCondition = (id) => {
     if (selectedConditions.includes(id)) {
@@ -41,17 +40,16 @@ export const HealthQuestionnaire = ({
     }
   };
 
-  const handleSubmit = (runAi) => {
+  const handleSubmit = () => {
     const profile = {
       selectedConditions,
       cookingHabits,
       ageGroup,
       weightKg,
       activityLevel,
-      householdMembers,
-      customNotes
+      householdMembers
     };
-    onCalculate(profile, runAi);
+    onCalculate(profile);
   };
 
   const renderIcon = (name) => {
@@ -291,49 +289,15 @@ export const HealthQuestionnaire = ({
           </div>
         </div>
 
-        {/* Step 4: Medical Notes */}
-        <div className="pt-4 border-t border-slate-100">
-          <label className="block text-sm font-bold text-slate-900 font-serif mb-1">
-            4. Doctor's Advice / Custom Medical Notes (Optional)
-          </label>
-          <p className="text-xs text-slate-500 mb-2">Our AI clinical nutritionist will analyze these custom notes to adapt recommendations.</p>
-          <textarea
-            value={customNotes}
-            onChange={(e) => setCustomNotes(e.target.value)}
-            placeholder="e.g., 'Recent reports show mild Fatty Liver', 'Avolid walnuts due to allergies', or 'Dietitian suggested increasing MUFA fats'."
-            rows={2}
-            className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-amber-500"
-          />
-        </div>
-
-        {/* Action Buttons */}
-        <div className="pt-4 border-t border-slate-100 flex flex-col sm:flex-row gap-3">
-          
+        {/* Action Button */}
+        <div className="pt-4 border-t border-slate-100 flex justify-end">
           <button
-            onClick={() => handleSubmit(false)}
-            className="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer border border-slate-200"
+            onClick={handleSubmit}
+            className="w-full sm:w-auto px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 cursor-pointer shadow-md hover:shadow-lg"
           >
-            <span>Calculate Healthy Standard Plan</span>
+            <span>Calculate Oil Recommendations</span>
+            <ChevronRight className="w-4 h-4" />
           </button>
-
-          <button
-            onClick={() => handleSubmit(true)}
-            disabled={isLoadingAi}
-            className="flex-1 px-4 py-3 bg-gradient-to-r from-amber-500 to-emerald-600 text-white rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-md hover:opacity-95 disabled:opacity-50"
-          >
-            {isLoadingAi ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                <span>Consulting Gemini Clinical AI...</span>
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4 text-amber-200" />
-                <span>ai analysis</span>
-              </>
-            )}
-          </button>
-
         </div>
 
       </div>
