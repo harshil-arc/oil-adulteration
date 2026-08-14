@@ -99,11 +99,11 @@ async function predictMustardOilML(sensorReadings) {
   adultDist = Math.sqrt(adultDist);
 
   // 3. Extract Deterministic Calibration Prediction from Python Predictor
-  const classLabel = pyResult.prediction || pyResult.class_label || (pyResult.result === 'PURE OIL' ? 'PURE' : pyResult.result === 'NO OIL PRESENT' ? 'NO_OIL' : 'ADULTERATED');
+  const classLabel = pyResult.prediction || pyResult.class_label || (pyResult.result === 'PURE OIL' ? 'PURE' : 'ADULTERATED');
   
-  let status = pyResult.status || (classLabel === 'PURE' ? 'Pure Oil' : classLabel === 'NO_OIL' ? 'No Oil Present' : 'Adulterated Oil');
-  let tier = pyResult.tier || (classLabel === 'PURE' ? 'pure' : classLabel === 'NO_OIL' ? 'no_oil' : 'heavy');
-  let led_color = pyResult.led_color || (classLabel === 'PURE' ? 'green' : classLabel === 'NO_OIL' ? 'gray' : 'red');
+  let status = pyResult.status || (classLabel === 'PURE' ? 'Pure Oil' : 'Adulterated Oil');
+  let tier = pyResult.tier || (classLabel === 'PURE' ? 'pure' : 'heavy');
+  let led_color = pyResult.led_color || (classLabel === 'PURE' ? 'green' : 'red');
 
   return {
     usingMlModel: true,
@@ -112,7 +112,7 @@ async function predictMustardOilML(sensorReadings) {
     modelType: 'Deterministic Wavelength Calibration Engine',
     modelVersion: 'D:\\oilmodel (Deterministic v3.0)',
     oil_type: 'Mustard Oil',
-    result: pyResult.result || (classLabel === 'PURE' ? 'PURE OIL' : classLabel === 'NO_OIL' ? 'NO OIL PRESENT' : 'ADULTERATED'),
+    result: pyResult.result || (classLabel === 'PURE' ? 'PURE OIL' : 'ADULTERATED'),
     grade: pyResult.grade || 'Deterministic Calibration',
     status,
     tier,

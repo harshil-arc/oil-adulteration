@@ -239,7 +239,7 @@ export default function Analysis() {
 
   // Active Result State (supports live user correction update)
   const [activeResult, setActiveResult] = useState(result);
-  const [correctedClass, setCorrectedClass] = useState('NO_OIL');
+  const [correctedClass, setCorrectedClass] = useState('PURE');
   const [isReTraining, setIsReTraining] = useState(false);
   const [retrainSuccess, setRetrainSuccess] = useState(false);
 
@@ -541,14 +541,14 @@ Provide 2-3 likely adulterants only.`;
                   Deterministic Calibration Verdict
                 </div>
 
-                {/* GLOWING LED INDICATOR LIGHT DISPLAY */}
+                {/* GLOWING LED INDICATOR LIGHT DISPLAY (PURE = GREEN LED, ADULTERATED = RED LED) */}
                 <div className="flex flex-col items-center gap-3 my-2">
                   {/* Glowing Ring & LED Orb */}
                   <div className="relative flex items-center justify-center">
                     {/* Outer Glow Pulsing Aura */}
                     <div
                       className={`w-28 h-28 rounded-full blur-xl opacity-60 animate-pulse transition-all ${
-                        activeTier === 'pure' ? 'bg-emerald-500' : activeTier === 'heavy' ? 'bg-red-500' : 'bg-gray-400'
+                        activeTier === 'pure' ? 'bg-emerald-500' : 'bg-red-500'
                       }`}
                     />
                     
@@ -557,17 +557,13 @@ Provide 2-3 likely adulterants only.`;
                       className={`relative z-10 w-24 h-24 rounded-full flex items-center justify-center border-4 shadow-2xl transition-all ${
                         activeTier === 'pure'
                           ? 'bg-gradient-to-br from-emerald-400 to-emerald-600 border-emerald-300 shadow-[0_0_35px_rgba(16,185,129,0.8)]'
-                          : activeTier === 'heavy'
-                          ? 'bg-gradient-to-br from-red-500 to-red-700 border-red-300 shadow-[0_0_35px_rgba(239,68,68,0.8)]'
-                          : 'bg-gradient-to-br from-gray-500 to-gray-700 border-gray-400 shadow-[0_0_20px_rgba(156,163,175,0.5)]'
+                          : 'bg-gradient-to-br from-red-500 to-red-700 border-red-300 shadow-[0_0_35px_rgba(239,68,68,0.8)]'
                       }`}
                     >
                       {activeTier === 'pure' ? (
                         <ShieldCheck size={48} className="text-white drop-shadow-md" />
-                      ) : activeTier === 'heavy' ? (
-                        <AlertTriangle size={48} className="text-white drop-shadow-md" />
                       ) : (
-                        <Activity size={48} className="text-white drop-shadow-md" />
+                        <AlertTriangle size={48} className="text-white drop-shadow-md" />
                       )}
                     </div>
                   </div>
@@ -576,23 +572,19 @@ Provide 2-3 likely adulterants only.`;
                   <div
                     className={`mt-2 px-5 py-2 rounded-2xl border text-xs font-black uppercase tracking-widest flex items-center gap-2 ${
                       activeTier === 'pure'
-                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40'
-                        : activeTier === 'heavy'
-                        ? 'bg-red-500/20 text-red-300 border-red-500/40'
-                        : 'bg-gray-500/20 text-gray-300 border-gray-500/40'
+                        ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 shadow-glow-green'
+                        : 'bg-red-500/20 text-red-300 border-red-500/40 shadow-glow-red'
                     }`}
                   >
                     <span
                       className={`w-3.5 h-3.5 rounded-full animate-ping ${
-                        activeTier === 'pure' ? 'bg-emerald-400' : activeTier === 'heavy' ? 'bg-red-400' : 'bg-gray-400'
+                        activeTier === 'pure' ? 'bg-emerald-400' : 'bg-red-400'
                       }`}
                     />
                     <span>
                       {activeTier === 'pure'
                         ? 'GREEN LED ACTIVE — PURE OIL (SAFE)'
-                        : activeTier === 'heavy'
-                        ? 'RED LED ACTIVE — ADULTERATED OIL (UNSAFE)'
-                        : 'GRAY LED ACTIVE — NO OIL PRESENT'}
+                        : 'RED LED ACTIVE — ADULTERATED OIL (UNSAFE)'}
                     </span>
                   </div>
                 </div>
@@ -600,10 +592,10 @@ Provide 2-3 likely adulterants only.`;
                 {/* Large Main Status Banner */}
                 <div className={`w-full py-4 px-4 rounded-2xl border flex flex-col items-center justify-center gap-1 ${activeTc.bg} ${activeTc.border} shadow-lg`}>
                   <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tight" style={{ color: activeTc.color }}>
-                    {activeTier === 'no_oil' ? 'NO OIL PRESENT' : activeTier === 'pure' ? 'PURE OIL' : 'ADULTERATED'}
+                    {activeTier === 'pure' ? 'PURE OIL' : 'ADULTERATED'}
                   </h2>
                   <p className="text-xs font-semibold text-gray-300">
-                    {currentResult.grade || (activeTier === 'no_oil' ? 'Air / Empty Cuvette Baseline' : activeTier === 'pure' ? 'Pure / trace mustard oil to 80% pure' : 'Adulterated Sample Signature Detected')}
+                    {currentResult.grade || (activeTier === 'pure' ? 'Pure / trace mustard oil to 80% pure' : 'Adulterated Sample Signature Detected')}
                   </p>
                 </div>
 
@@ -614,7 +606,7 @@ Provide 2-3 likely adulterants only.`;
                 </div>
 
                 {/* Government Portal Reporting option if Adulterated */}
-                {activeTier === 'heavy' && (
+                {activeTier !== 'pure' && (
                   <div className="w-full pt-2">
                     <button
                       onClick={() => navigate('/report', { state: { scanData: { oilType: selectedOil.oilName, status: currentResult.status } } })}
@@ -677,7 +669,6 @@ Provide 2-3 likely adulterants only.`;
                     onChange={(e) => setCorrectedClass(e.target.value)}
                     className="flex-1 bg-[#0b0e14] border border-purple-500/50 focus:border-purple-400 text-sm font-bold text-white rounded-xl p-3 outline-none cursor-pointer shadow-md"
                   >
-                    <option value="NO_OIL" className="bg-[#0b0e14] text-white py-2 font-medium">🚫 NO_OIL (No Oil Present / Air Baseline)</option>
                     <option value="PURE" className="bg-[#0b0e14] text-white py-2 font-medium">🟢 PURE (Pure Mustard Oil / Safe)</option>
                     <option value="ADULTERATED" className="bg-[#0b0e14] text-white py-2 font-medium">🔴 ADULTERATED (Adulterated Mustard Oil / Unsafe)</option>
                   </select>

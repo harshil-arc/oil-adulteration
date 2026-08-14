@@ -63,18 +63,7 @@ export function no_oil_check(channels) {
 
 export function classifyChannels(channels) {
   if (!Array.isArray(channels) || channels.length < 13) {
-    return { result: "NO OIL PRESENT", grade: "Invalid channels", tier: "no_oil", led_color: "gray", status: "No Oil Present" };
-  }
-
-  const { is_no_oil, conditions_met } = no_oil_check(channels);
-  if (is_no_oil) {
-    return {
-      result: "NO OIL PRESENT",
-      grade: `(${conditions_met}/5 erratic-baseline conditions matched)`,
-      tier: "no_oil",
-      led_color: "gray",
-      status: "No Oil Present"
-    };
+    return { result: "ADULTERATED", grade: "Invalid channels", tier: "heavy", led_color: "red", status: "Adulterated Oil" };
   }
 
   const ch7 = channels[6] || 0;

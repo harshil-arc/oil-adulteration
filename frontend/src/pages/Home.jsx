@@ -205,7 +205,7 @@ export default function Home() {
           <div className="flex items-center justify-between mb-3 border-b border-[var(--border-color)] pb-2.5">
             <div className="flex items-center gap-2">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-[#d4af37]">Latest Oil Scan</span>
+              <span className="text-[10px] font-black uppercase tracking-widest text-[#d4af37]">{t('home.latest_scan', 'Latest Oil Scan')}</span>
             </div>
             <span className="text-[10px] font-bold text-[var(--text-muted)] font-mono">
               {new Date(latestScan.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -214,10 +214,9 @@ export default function Home() {
 
           <div className="flex items-start justify-between gap-3 mb-4">
             <div>
-              <h2 className="text-xl font-black theme-text tracking-tight">{latestScan.oil_type || 'Mustard Oil'}</h2>
-              <p className="text-[11px] text-[var(--text-muted)] mt-0.5 font-medium">{latestScan.vendor || 'Local Vendor'}</p>
+              <h2 className="text-xl font-black theme-text tracking-tight">{latestScan.oil_type || t('home.mustard_oil', 'Mustard Oil')}</h2>
+              <p className="text-[11px] text-[var(--text-muted)] mt-0.5 font-medium">{latestScan.vendor || t('home.local_vendor', 'Local Market Vendor')}</p>
             </div>
-
 
             <div className="text-right">
               <div className="text-2xl font-black font-mono text-[#d4af37]">
@@ -226,14 +225,14 @@ export default function Home() {
               <span className={`inline-block text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded mt-1 ${
                 latestScan.quality === 'Unsafe' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
               }`}>
-                {latestScan.quality === 'Unsafe' ? 'ADULTERATED' : 'SAFE'}
+                {latestScan.quality === 'Unsafe' ? t('common.unsafe', 'ADULTERATED') : t('common.safe', 'SAFE')}
               </span>
             </div>
           </div>
 
           <div className="flex items-center justify-between text-xs text-gray-300 bg-[var(--bg-elevated)] p-3 rounded-2xl border border-[var(--border-color)] mb-4">
             <span className="font-bold flex items-center gap-1.5">
-              <Sparkles size={14} className="text-[#d4af37]" /> AI Confidence Score:
+              <Sparkles size={14} className="text-[#d4af37]" /> {t('home.ai_confidence', 'AI Confidence Score:')}
             </span>
             <span className="font-mono font-black text-emerald-400">{latestScan.confidence_score || 98}%</span>
           </div>
@@ -243,13 +242,13 @@ export default function Home() {
             className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-[#f5c842] to-[#d4af37] text-black font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-glow-gold hover:brightness-110 active:scale-95 transition-all"
           >
             <ScanLine size={16} />
-            Scan Again
+            {t('home.scan_again', 'Scan Again')}
           </button>
         </div>
 
         {/* ── 3. QUICK ACTION GRID ─────────────────────── */}
         <div>
-          <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2.5 pl-1">Quick Actions</h3>
+          <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400 mb-2.5 pl-1">{t('home.quick_actions', 'Quick Actions')}</h3>
           <div className="grid grid-cols-2 gap-3">
             
             {/* FEATURED: PHYSICAL OIL TESTING PLATFORM BUTTON */}
@@ -262,13 +261,13 @@ export default function Home() {
                   <FlaskConical size={18} />
                 </div>
                 <span className="text-[9px] font-black uppercase tracking-widest bg-[#d4af37]/20 text-[#d4af37] px-2.5 py-0.5 rounded-full border border-[#d4af37]/40 flex items-center gap-1">
-                  <Sparkles size={10} /> Zero-Device Kitchen Lab
+                  <Sparkles size={10} /> {t('home.zero_device_lab', 'Zero-Device Kitchen Lab')}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-black text-[#d4af37] uppercase tracking-wider">Physical Oil Testing</p>
-                  <p className="text-[9px] text-gray-300">Rapid Home Screening, Interactive Lab, FSSAI DART Protocols & AI Chemist</p>
+                  <p className="text-xs font-black text-[#d4af37] uppercase tracking-wider">{t('home.physical_testing', 'Physical Oil Testing')}</p>
+                  <p className="text-[9px] text-gray-300">{t('home.physical_desc', 'Rapid Home Screening, Interactive Lab, FSSAI DART Protocols & AI Chemist')}</p>
                 </div>
                 <ChevronRight size={16} className="text-[#d4af37] group-hover:translate-x-1 transition-transform" />
               </div>
@@ -284,13 +283,13 @@ export default function Home() {
                   <AlertTriangle size={18} />
                 </div>
                 <span className="text-[9px] font-black uppercase tracking-widest bg-red-500/20 text-red-300 px-2.5 py-0.5 rounded-full border border-red-500/40 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" /> Live Relief Platform
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" /> {t('home.live_relief', 'Live Relief Platform')}
                 </span>
               </div>
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-black text-red-400 uppercase tracking-wider">Disaster, Emergency & Relief</p>
-                  <p className="text-[9px] text-gray-300">Connect with Verified NGOs, Camps & Food Relief Nodes</p>
+                  <p className="text-xs font-black text-red-400 uppercase tracking-wider">{t('home.disaster_title', 'Disaster, Emergency & Relief')}</p>
+                  <p className="text-[9px] text-gray-300">{t('home.disaster_desc', 'Connect with Verified NGOs, Camps & Food Relief Nodes')}</p>
                 </div>
                 <ChevronRight size={16} className="text-red-400 group-hover:translate-x-1 transition-transform" />
               </div>
@@ -304,8 +303,8 @@ export default function Home() {
                 <ScanLine size={18} />
               </div>
               <div>
-                <p className="text-xs font-black theme-text uppercase tracking-wider">Oil Scan</p>
-                <p className="text-[9px] text-gray-400">Test Purity Now</p>
+                <p className="text-xs font-black theme-text uppercase tracking-wider">{t('home.oil_scan', 'Oil Scan')}</p>
+                <p className="text-[9px] text-gray-400">{t('home.test_purity', 'Test Purity Now')}</p>
               </div>
             </button>
 
@@ -317,8 +316,8 @@ export default function Home() {
                 <ShieldAlert size={18} />
               </div>
               <div>
-                <p className="text-xs font-black theme-text uppercase tracking-wider">Report Adulteration</p>
-                <p className="text-[9px] text-gray-400">Official Govt Gateway</p>
+                <p className="text-xs font-black theme-text uppercase tracking-wider">{t('home.report_adulteration', 'Report Adulteration')}</p>
+                <p className="text-[9px] text-gray-400">{t('home.official_gateway', 'Official Govt Gateway')}</p>
               </div>
             </button>
 
@@ -330,8 +329,8 @@ export default function Home() {
                 <MapPin size={18} />
               </div>
               <div>
-                <p className="text-xs font-black theme-text uppercase tracking-wider">Testing Centres</p>
-                <p className="text-[9px] text-gray-400">Map & Labs</p>
+                <p className="text-xs font-black theme-text uppercase tracking-wider">{t('home.testing_centres', 'Testing Centres')}</p>
+                <p className="text-[9px] text-gray-400">{t('home.lab_locator', 'NABL Lab Locator')}</p>
               </div>
             </button>
 

@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { fetchLatestCloudReading } from '../lib/firestoreSensorService';
 import { useNavigate } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
+import { useTranslation } from 'react-i18next';
 import { socket } from '../lib/socket';
 import ErrorBoundary from '../components/ErrorBoundary';
 import BLEConnection from '../components/BLEConnection';
@@ -13,6 +14,7 @@ import { sendAiResultToEsp32 } from '../services/syncService';
 export default function ScanFlow() {
   const navigate = useNavigate();
   const { deviceStatus, liveData } = useApp();
+  const { t } = useTranslation();
   
   // 0: MethodSelect, 1a: BLE, 1b: WiFi, 1c: USB, 2: Verification, 3: Scanning, 4: Results
   const [step, setStep] = useState(0);
@@ -359,63 +361,33 @@ export default function ScanFlow() {
 
       <div className="flex-1 p-5 flex flex-col pt-safe">
         
-        {/* STEP 0: SELECTION */}
+        {/* STEP 0: SELECTION (Cloud Mode only) */}
         {step === 0 && (
           <div className="animate-fade-in flex flex-col gap-4">
             <div className="mb-4">
-               <h2 className="text-2xl font-black theme-text mb-1">Pair Sensor</h2>
-               <p className="text-gray-500 text-sm">Select your hardware communication protocol.</p>
+               <h2 className="text-2xl font-black theme-text mb-1">{t('scan.pair_sensor', 'Pair Sensor')}</h2>
+               <p className="text-gray-500 text-sm">{t('scan.select_connection_desc', 'Select your hardware communication protocol.')}</p>
             </div>
             
-            <div onClick={() => handleSelectMethod('wifi')} className="card hover:border-[#d4af37]/50 cursor-pointer transition-all active:scale-[0.98] group overflow-hidden relative">
-              <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 transition-opacity">
-                 <Globe size={120} strokeWidth={1} />
-              </div>
-              <div className="flex items-start gap-4 relative z-10">
-                <div className="p-3 bg-[#d4af37]/10 rounded-2xl text-[#d4af37] group-hover:bg-[#d4af37] group-hover:text-[#0a0a0a] transition-colors">
-                  <Wifi size={24} />
-                </div>
-                <div>
-                  <h3 className="theme-text font-bold text-lg">Local Area Network</h3>
-                  <p className="text-gray-400 text-xs mt-1">Direct IP or Local Router sync. Most stable for long sessions.</p>
-                </div>
-              </div>
-            </div>
-
-            <div onClick={() => handleSelectMethod('ble')} className="card hover:border-blue-500/50 cursor-pointer transition-all active:scale-[0.98] group overflow-hidden relative">
-              <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 transition-opacity">
-                 <Bluetooth size={120} strokeWidth={1} />
-              </div>
-              <div className="flex items-start gap-4 relative z-10">
-                <div className="p-3 bg-blue-500/10 rounded-2xl text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-colors">
-                  <Bluetooth size={24} />
-                </div>
-                <div>
-                  <h3 className="theme-text font-bold text-lg">Web Bluetooth</h3>
-                  <p className="text-gray-400 text-xs mt-1">Wire-free pairing via GATT. Best for portable field tests.</p>
-                </div>
-              </div>
-            </div>
-
-            <div onClick={() => handleSelectMethod('usb')} className="card hover:border-purple-500/50 cursor-pointer transition-all active:scale-[0.98] group overflow-hidden relative">
+            <div onClick={() => handleSelectMethod('usb')} className="card hover:border-[#0052ff] cursor-pointer transition-all active:scale-[0.98] group overflow-hidden relative border-2 border-[#0052ff]/40 bg-gradient-to-br from-[var(--bg-card)] to-blue-500/10 shadow-lg">
               <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 transition-opacity">
                  <Cloud size={120} strokeWidth={1} />
               </div>
-              <div className="flex items-start gap-4 relative z-10">
-                <div className="p-3 bg-purple-500/10 rounded-2xl text-purple-500 group-hover:bg-purple-500 group-hover:text-white transition-colors">
-                  <Cloud size={24} />
+              <div className="flex items-start gap-4 relative z-10 p-2">
+                <div className="p-3.5 bg-[#0052ff] rounded-2xl text-white shadow-md group-hover:scale-105 transition-transform">
+                  <Cloud size={28} />
                 </div>
                 <div>
-                  <h3 className="theme-text font-bold text-lg">Cloud Mode</h3>
-                  <p className="text-gray-400 text-xs mt-1">Fetches latest data pushed by the ESP32 to the Supabase cloud database.</p>
+                  <h3 className="theme-text font-black text-xl">{t('scan.cloud_mode', 'Cloud Mode & Sensor Sync')}</h3>
+                  <p className="text-gray-400 text-xs mt-1.5 font-medium">{t('scan.cloud_mode_desc', 'Fetches real-time sensor data synced directly from your ESP32 device.')}</p>
                 </div>
               </div>
             </div>
 
-            <div className="mt-8 p-4 bg-amber-500/5 border border-amber-500/10 rounded-2xl flex gap-3">
-               <AlertTriangle size={20} className="text-amber-500 flex-shrink-0" />
+            <div className="mt-8 p-4 bg-blue-500/5 border border-blue-500/10 rounded-2xl flex gap-3">
+               <ShieldCheck size={20} className="text-[#0052ff] flex-shrink-0" />
                <p className="text-[10px] text-gray-500 font-medium leading-relaxed">
-                 Some protocols like <strong>WebUSB</strong> and <strong>Bluetooth</strong> require a secure HTTPS connection and a modern browser like Chrome or Edge.
+                 {t('scan.cloud_info', 'Cloud Mode connects your testing device via Supabase real-time cloud data pipeline.')}
                </p>
             </div>
           </div>

@@ -15,9 +15,11 @@ import {
   saveNotificationPreferences, 
   getNotificationPreferences 
 } from '../services/foodSafetyIntelligenceService';
+import { useTranslation } from 'react-i18next';
 
 export default function Community() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   // State Management
   const [selectedCategory, setSelectedCategory] = useState('All');
@@ -125,13 +127,13 @@ export default function Community() {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-lg font-black tracking-tight theme-text">
-                Food Safety <span className="text-blue-400">Intelligence</span> Center
+                {t('community.header_title', 'Food Safety Intelligence Center')}
               </h1>
               <span className="bg-blue-500/20 text-blue-300 border border-blue-500/40 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Verified Sources
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> {t('community.verified_sources', 'VERIFIED SOURCES')}
               </span>
             </div>
-            <p className="text-[10px] text-[var(--text-muted)] font-medium">Latest verified food safety alerts from official authorities</p>
+            <p className="text-[10px] text-[var(--text-muted)] font-medium">{t('community.header_desc', 'Latest verified food safety alerts from official authorities')}</p>
           </div>
 
         </div>
@@ -170,7 +172,7 @@ export default function Community() {
         <div className="flex items-center justify-between p-3 rounded-2xl bg-gradient-to-r from-blue-950/60 via-[#121620] to-indigo-950/60 border border-blue-500/40 text-xs font-bold text-white shadow-md">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span>OpenFDA & FSSAI Live API Sync</span>
+            <span>{t('community.live_api_sync', 'OpenFDA & FSSAI Live API Sync')}</span>
           </div>
           <button
             onClick={handleRefresh}
@@ -178,7 +180,7 @@ export default function Community() {
             className="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 !text-white forced-white rounded-xl text-[10px] font-black uppercase tracking-wider flex items-center gap-1 shadow-md cursor-pointer transition-transform hover:scale-105"
           >
             <RefreshCw size={12} className={isRefreshing ? 'animate-spin' : ''} />
-            Fetch Latest Live Details
+            {t('community.fetch_latest', 'FETCH LATEST LIVE DETAILS')}
           </button>
         </div>
 
@@ -188,7 +190,7 @@ export default function Community() {
             <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
-              placeholder="Search by Product, Brand, Company, Oil, Milk, Ghee, Honey, State..."
+              placeholder={t('community.search_placeholder', 'Search by Product, Brand, Company, Oil, Milk, Ghee, Honey, State...')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-[var(--bg-elevated)] border border-[var(--border-color)] text-xs text-[var(--text-primary)] p-3.5 pl-10 pr-9 rounded-2xl focus:border-blue-500 outline-none transition-colors"
@@ -234,10 +236,10 @@ export default function Community() {
             <div className="flex items-center justify-between border-b border-red-500/30 pb-2.5">
               <div className="flex items-center gap-2">
                 <AlertTriangle size={18} className="text-red-400 animate-pulse shrink-0" />
-                <h3 className="text-xs font-black uppercase tracking-widest text-red-400">🚨 FEATURED HIGH PRIORITY ALERT</h3>
+                <h3 className="text-xs font-black uppercase tracking-widest text-red-400">🚨 {t('community.featured_alert', 'FEATURED HIGH PRIORITY ALERT')}</h3>
               </div>
               <span className="text-[9px] bg-red-600 text-white font-mono font-black px-2.5 py-0.5 rounded-full shadow-md">
-                {featuredAlert.severity} Severity
+                {featuredAlert.severity} {t('community.critical_severity', 'Severity')}
               </span>
             </div>
 

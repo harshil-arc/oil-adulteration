@@ -8,6 +8,7 @@ import {
   Activity, Zap, Eye, Phone, ArrowUpRight, Globe, Lock, Unlock, X, BarChart2
 } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
+import { useTranslation } from 'react-i18next';
 
 // Fix Leaflet default icon paths
 delete L.Icon.Default.prototype._getIconUrl;
@@ -76,6 +77,7 @@ const GOVERNMENT_RECALLS = [
 ];
 
 export default function NationalIntelligenceCenter() {
+  const { t } = useTranslation();
   // Map Controls
   const [activeLayers, setActiveLayers] = useState(['hotspots', 'vendors', 'unsafe', 'labs', 'raids']);
   const [searchQuery, setSearchQuery] = useState('');

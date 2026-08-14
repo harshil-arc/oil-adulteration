@@ -1,14 +1,10 @@
 import { useNavigate } from 'react-router-dom';
-import { Bluetooth, Wifi, Cloud, AlertTriangle, ShieldCheck, ChevronLeft } from 'lucide-react';
+import { Cloud, ChevronLeft, ShieldCheck, Zap } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export default function ProtocolSelector() {
   const navigate = useNavigate();
-  const isHttps = window.location.protocol === 'https:';
-
-  const showUsbToast = () => {
-    // Simple alert-based toast for USB
-    alert('USB mode works best on desktop Chrome with Arduino Serial Monitor.');
-  };
+  const { t } = useTranslation();
 
   return (
     <div className="flex flex-col h-full animate-fade-in relative z-20 theme-bg">
@@ -19,10 +15,10 @@ export default function ProtocolSelector() {
         </button>
         <div className="flex flex-col">
           <h1 className="theme-text font-bold tracking-widest uppercase text-[10px]">
-            Connection Hub
+            {t('scan.connection_hub', 'Connection Hub')}
           </h1>
           <p className="text-[9px] text-gray-500 font-bold uppercase tracking-widest">
-            Level 4 Secured Link
+            {t('scan.level4_link', 'Level 4 Secured Link')}
           </p>
         </div>
       </div>
@@ -30,82 +26,43 @@ export default function ProtocolSelector() {
       <div className="flex-1 p-5 flex flex-col pt-safe">
         {/* Title */}
         <div className="mb-6">
-          <h2 className="text-2xl font-black theme-text mb-1">Pair Sensor</h2>
-          <p className="text-gray-500 text-sm">Select a connection method for your testing device.</p>
+          <h2 className="text-2xl font-black theme-text mb-1">{t('scan.pair_sensor', 'Pair Sensor')}</h2>
+          <p className="text-gray-500 text-sm">{t('scan.select_connection_desc', 'Select a connection method for your testing device.')}</p>
         </div>
 
         <div className="flex flex-col gap-4">
-          {/* Card 1 — Bluetooth (PRIMARY) */}
-          <div
-            onClick={() => navigate('/scan/bluetooth')}
-            className="card hover:border-blue-500/50 cursor-pointer transition-all active:scale-[0.98] group overflow-hidden relative"
-          >
-            <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 transition-opacity">
-              <Bluetooth size={120} strokeWidth={1} />
-            </div>
-            <div className="flex items-start gap-4 relative z-10 w-full">
-              <div className="p-3 bg-blue-500/10 rounded-2xl text-blue-500 group-hover:bg-blue-500 group-hover:text-white transition-colors">
-                <Bluetooth size={24} />
-              </div>
-              <div className="flex-1">
-                <div className="flex justify-between items-start w-full">
-                  <h3 className="theme-text font-bold text-lg">Bluetooth</h3>
-                  <span className="bg-[#C8952A] text-black text-[9px] font-black uppercase px-2 py-0.5 rounded-full whitespace-nowrap">✓ Recommended</span>
-                </div>
-                <p className="text-gray-400 text-xs mt-1">Wire-free direct connection. Best for portable field tests.</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Card 2 — Local Network (DEV ONLY) */}
-          <div
-            onClick={() => navigate('/scan/local')}
-            className="card transition-all group overflow-hidden relative cursor-pointer hover:border-[#C8952A]/50 active:scale-[0.98]"
-          >
-            <div className="flex items-start gap-4 relative z-10 w-full">
-              <div className="p-3 bg-[#C8952A]/10 rounded-2xl text-[#C8952A] transition-colors">
-                <Wifi size={24} />
-              </div>
-              <div className="flex-1">
-                <div className="flex justify-between items-start w-full">
-                  <h3 className="theme-text font-bold text-lg">Local Network</h3>
-                  <span className="bg-gray-700 text-white text-[9px] font-black uppercase px-2 py-0.5 rounded-full whitespace-nowrap">Dev Only</span>
-                </div>
-                <p className="text-gray-400 text-xs mt-1">Direct local network link. Most stable for long sessions & real-time data.</p>
-                {!isHttps && <p className="text-[#C8952A] text-[9px] font-bold mt-1 uppercase tracking-tighter">Perfect for local testing</p>}
-                {isHttps && <p className="text-amber-500/80 text-[9px] font-bold mt-1 uppercase tracking-tighter">Requires local network permission in browser</p>}
-              </div>
-            </div>
-          </div>
-
-          {/* Card 3 — Cloud Sync (FALLBACK) */}
+          {/* Cloud Mode (PRIMARY & ONLY METHOD) */}
           <div
             onClick={() => navigate('/scan/cloud')}
-            className="card hover:border-purple-500/50 cursor-pointer transition-all active:scale-[0.98] group overflow-hidden relative"
+            className="card hover:border-[#0052ff] cursor-pointer transition-all active:scale-[0.98] group overflow-hidden relative border-2 border-[#0052ff]/40 bg-gradient-to-br from-[var(--bg-card)] to-blue-500/10 shadow-lg"
           >
             <div className="absolute top-0 right-0 p-3 opacity-5 group-hover:opacity-10 transition-opacity">
               <Cloud size={120} strokeWidth={1} />
             </div>
-            <div className="flex items-start gap-4 relative z-10 w-full">
-              <div className="p-3 bg-purple-500/10 rounded-2xl text-purple-500 group-hover:bg-purple-500 group-hover:text-white transition-colors">
-                <Cloud size={24} />
+            <div className="flex items-start gap-4 relative z-10 w-full p-2">
+              <div className="p-3.5 bg-[#0052ff] rounded-2xl text-white shadow-md group-hover:scale-105 transition-transform">
+                <Cloud size={28} />
               </div>
               <div className="flex-1">
                 <div className="flex justify-between items-start w-full">
-                  <h3 className="theme-text font-bold text-lg">Cloud Mode</h3>
-                  <span className="bg-[#1c1c1c] border border-[#333] text-gray-400 text-[9px] font-black uppercase px-2 py-0.5 rounded-full whitespace-nowrap">Fallback</span>
+                  <h3 className="theme-text font-black text-xl">{t('scan.cloud_mode', 'Cloud Mode & Sensor Sync')}</h3>
+                  <span className="bg-[#0052ff] text-white text-[9px] font-black uppercase px-2.5 py-1 rounded-full whitespace-nowrap shadow-sm">
+                    ✓ {t('common.active', 'ACTIVE')}
+                  </span>
                 </div>
-                <p className="text-gray-400 text-xs mt-1">Fetches the latest reading synced from your testing device via the cloud.</p>
+                <p className="text-gray-400 text-xs mt-1.5 font-medium">
+                  {t('scan.cloud_mode_desc', 'Fetches real-time spectral data synced directly from your ESP32 testing device.')}
+                </p>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Bottom warning */}
-        <div className="mt-8 p-4 bg-amber-500/5 border border-amber-500/10 rounded-2xl flex gap-3">
-          <AlertTriangle size={20} className="text-amber-500 flex-shrink-0" />
-          <p className="text-[10px] text-gray-500 font-medium leading-relaxed">
-            ⚠️ Web-based pairing requires a compatible modern browser and a secure connection.
+        {/* Info Box */}
+        <div className="mt-8 p-4 bg-blue-500/5 border border-blue-500/20 rounded-2xl flex gap-3 items-center">
+          <ShieldCheck size={22} className="text-[#0052ff] flex-shrink-0" />
+          <p className="text-[11px] text-gray-400 font-medium leading-relaxed">
+            {t('scan.cloud_info', 'Cloud Mode automatically connects your Rapid Testing Sensor to the Food 360 AI Analysis Engine.')}
           </p>
         </div>
       </div>
