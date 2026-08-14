@@ -440,8 +440,25 @@ void readSensors() {
       quantizeChannel(nir));
     currentData.spectralDigits = String(buf);
 
-    Serial.printf("[AS7343 REAL SPECTRAL] F1:%u F2:%u FZ:%u F3:%u F4:%u F5:%u FY:%u FXL:%u F6:%u F7:%u F8:%u VIS:%u NIR:%u\n",
-      f1, f2, fz, f3, f4, f5, fy, fxl, f6, f7, f8, vis, nir);
+    // --- Standalone Spectral Threshold Rule (Ch7 + Ch8 < 21 -> Pure Oil / Green LED) ---
+    uint8_t q_f7 = quantizeChannel(f7);
+    uint8_t q_f8 = quantizeChannel(f8);
+    uint8_t total78 = q_f7 + q_f8;
+
+    if (total78 < 21) {
+      digitalWrite(GREEN_LED_PIN, HIGH);
+      digitalWrite(RED_LED_PIN, LOW);
+      if (!currentData.hasActivePrediction) currentData.status = "Pure Oil";
+      Serial.printf("[HARDWARE LED] GREEN LED ON (Ch7+Ch8 = %u < 21) -> PURE OIL\n", total78);
+    } else {
+      digitalWrite(GREEN_LED_PIN, LOW);
+      digitalWrite(RED_LED_PIN, HIGH);
+      if (!currentData.hasActivePrediction) currentData.status = "Adulterated";
+      Serial.printf("[HARDWARE LED] RED LED ON (Ch7+Ch8 = %u >= 21) -> ADULTERATED OIL\n", total78);
+    }
+
+    Serial.printf("[AS7343 REAL SPECTRAL] F1:%u F2:%u FZ:%u F3:%u F4:%u F5:%u FY:%u FXL:%u F6:%u F7:%u F8:%u VIS:%u NIR:%u | Ch7+Ch8:%u\n",
+      f1, f2, fz, f3, f4, f5, fy, fxl, f6, f7, f8, vis, nir, total78);
   } else {
     currentData.spectralDigits = "--";
     Serial.println(F("[AS7343 SPECTRAL] Sensor Not Connected or Offline on 0x39 / 0x38"));

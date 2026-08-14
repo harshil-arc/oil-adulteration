@@ -406,6 +406,16 @@ void loop() {
   snprintf(spectralDigits, sizeof(spectralDigits), "%u%u%u%u%u%u%u%u%u%u%u%u%u",
     q_f1, q_f2, q_fz, q_f3, q_f4, q_f5, q_fy, q_fxl, q_f6, q_f7, q_f8, q_vis, q_nir);
 
+  // Standalone Hardware LED Rule (Channel7 + Channel8 < 21 -> PURE OIL / GREEN LED)
+  uint8_t total78 = q_f7 + q_f8;
+  if (total78 < 21) {
+    digitalWrite(GREEN_LED_PIN, HIGH);
+    digitalWrite(RED_LED_PIN, LOW);
+  } else {
+    digitalWrite(GREEN_LED_PIN, LOW);
+    digitalWrite(RED_LED_PIN, HIGH);
+  }
+
   // ── 3. ISO8601 Timestamp for Firestore ───────────────────
   time_t now = time(nullptr);
   struct tm timeinfo;

@@ -71,7 +71,7 @@ export function classifyChannels(channels) {
   const ch9 = channels[8] || 0;
   const total78 = ch7 + ch8;
 
-  if (total78 <= 18 && ch9 <= 6) {
+  if (total78 < 21) {
     return {
       result: "PURE OIL",
       grade: "Pure / trace mustard oil to 80% pure",
