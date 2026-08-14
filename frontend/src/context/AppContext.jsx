@@ -85,24 +85,10 @@ export function AppProvider({ children }) {
 
   // Supabase Auth Management
   useEffect(() => {
-    const initializeAuth = async () => {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      if (session) {
-        setSession(session);
-        setUser(session.user);
-        
-        // Sync email and name from Supabase user metadata
-        updateProfile({
-          email: session.user.email,
-          name: session.user.user_metadata?.full_name || session.user.email.split('@')[0]
-        });
-      }
-      setLoadingSession(false);
-    };
-
-    initializeAuth();
+    let isMounted = true;
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!isMounted) return;
       setSession(session);
       setUser(session?.user || null);
       
@@ -112,10 +98,12 @@ export function AppProvider({ children }) {
           name: session.user.user_metadata?.full_name || session.user.email.split('@')[0]
         });
       }
+      setLoadingSession(false);
     });
 
     return () => {
-      subscription.unsubscribe();
+      isMounted = false;
+      subscription?.unsubscribe();
     };
   }, []);
 

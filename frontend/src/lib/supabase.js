@@ -557,6 +557,9 @@ export const supabase = {
         if (!auth) {
           return { data: { session: null }, error: null };
         }
+        if (auth.authStateReady) {
+          await auth.authStateReady();
+        }
         const user = auth.currentUser;
         if (!user) return { data: { session: null }, error: null };
         const token = await user.getIdToken();
@@ -579,6 +582,7 @@ export const supabase = {
     onAuthStateChange: (callback) => {
       if (!auth) {
         console.warn("Firebase Auth not initialized. Registering dummy AuthStateChange listener.");
+        setTimeout(() => callback('SIGNED_OUT', null), 0);
         return {
           data: {
             subscription: {
