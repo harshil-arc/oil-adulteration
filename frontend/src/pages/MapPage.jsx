@@ -200,11 +200,8 @@ export default function MapPage() {
       <div className="h-72 w-full border border-[var(--border-color)] rounded-3xl overflow-hidden relative z-0">
         <MapContainer center={mapCenter} zoom={mapZoom} scrollWheelZoom={true} className="w-full h-full" zoomControl={false}>
           <TileLayer
-            url={document.documentElement.classList.contains('dark')
-              ? "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-              : "https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-            }
-            attribution='&copy; ESRI / CartoDB / FSSAI'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           />
           <ChangeMapView center={mapCenter} zoom={mapZoom} />
 
