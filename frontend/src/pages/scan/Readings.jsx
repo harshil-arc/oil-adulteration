@@ -59,6 +59,7 @@ export default function Readings() {
 
     // LOCAL or CLOUD — polling with rapid live updates
     const getBackoff = (fails) => {
+      if (conn.mode === 'LOCAL') return 1200; // Ultra-snappy 1.2s refresh for local direct network
       if (conn.mode === 'CLOUD') return 1500; // Snappy 1.5s refresh for cloud telemetry
       if (fails <= 0) return 2000;
       if (fails === 1) return 4000;
@@ -78,17 +79,40 @@ export default function Readings() {
         if (conn.mode === 'LOCAL') {
           const ctrl = new AbortController();
           const tid = setTimeout(() => ctrl.abort(), 2000);
-          const res = await fetch(`http://${conn.ip}/data`, { signal: ctrl.signal });
+          let res = null;
+          try {
+            res = await fetch(`http://${conn.ip}/data`, { signal: ctrl.signal });
+          } catch (_) {
+            const ctrl2 = new AbortController();
+            const tid2 = setTimeout(() => ctrl2.abort(), 2000);
+            res = await fetch(`http://${conn.ip}/sensor`, { signal: ctrl2.signal });
+            clearTimeout(tid2);
+          }
           clearTimeout(tid);
-          if (!res.ok) throw new Error('HTTP error');
+          if (!res || !res.ok) throw new Error('HTTP error reaching ESP32');
           const json = await res.json();
           console.log('[Readings] LOCAL data:', json);
-          setData({
-            temperature:        json.temperature        ?? 0,
-            spectral_data:      json.spectral_data ? JSON.stringify(json.spectral_data) : '—',
-            oil_type:           json.oil_type           || '—',
+
+          let specStr = '—';
+          if (json.spectral_data) {
+            specStr = typeof json.spectral_data === 'string' 
+              ? json.spectral_data 
+              : (Array.isArray(json.spectral_data) ? json.spectral_data.join(',') : JSON.stringify(json.spectral_data));
+          } else if (json.spectral_digits) {
+            specStr = json.spectral_digits;
+          }
+
+          const readingObj = {
+            temperature: json.temperature ?? 0,
+            spectral_data: specStr,
+            oil_type: json.oil_type || '—',
             adulteration_index: json.adulteration_index ?? 0,
-          });
+          };
+
+          setData(readingObj);
+          try {
+            sessionStorage.setItem('sensor_snapshot', JSON.stringify(readingObj));
+          } catch (_) {}
           setFailCount(0);
           setLastUpdated(Date.now());
           localFails = 0;
@@ -99,12 +123,17 @@ export default function Readings() {
           if (latestRow) {
             console.log('[Readings] CLOUD data received from ESP32 Firestore:', latestRow);
 
-            setData({
+            const readingObj = {
               temperature:        latestRow.temperature,
               spectral_data:      latestRow.spectral_data,
               oil_type:           latestRow.oil_type || 'Cloud Sample',
               adulteration_index: latestRow.adulteration_index || 0,
-            });
+            };
+
+            setData(readingObj);
+            try {
+              sessionStorage.setItem('sensor_snapshot', JSON.stringify(readingObj));
+            } catch (_) {}
             setFailCount(0);
             setLastUpdated(Date.now());
             localFails = 0;

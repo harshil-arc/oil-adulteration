@@ -17,7 +17,7 @@ export function setOledSyncEnabled(enabled) {
 }
 
 /**
- * Send structured AI Result Packet back to ESP32 for OLED Carousel Display
+ * Send structured AI Result Packet back to ESP32 for OLED Carousel Display & LED status
  */
 export async function sendAiResultToEsp32(result) {
   if (!isOledSyncEnabled()) {
@@ -26,25 +26,31 @@ export async function sendAiResultToEsp32(result) {
   }
 
   const conn = getActiveConnection();
+  const savedIp = localStorage.getItem('esp32_last_ip');
+  const targetIp = (conn?.mode === 'LOCAL' && conn?.ip) ? conn.ip : (savedIp || null);
 
   // Construct standardized result packet matching user prediction specs
   const purity = parseFloat((result.purityPercentage || result.purityScore || result.purity || 91.4).toFixed(1));
   const adultPct = parseFloat((result.adulterationPercentage ?? Math.max(0, 100 - purity)).toFixed(1));
-  const status = result.status || (purity >= 90 ? 'Pure' : purity >= 75 ? 'Suspicious' : 'Adulterated');
-  const adulterant = result.adulterationType || result.detectedAdulterant || result.possible_adulterant || (purity < 90 ? 'Palm Oil' : 'None');
-  const estMix = purity >= 90 ? '0% (Pure)' : `${adultPct}%`;
+  
+  // Clean, crisp status for ESP32 OLED screen & LED rules
+  const rawStatus = (result.status || '').toLowerCase();
+  const isPure = (rawStatus.includes('safe') || rawStatus.includes('pure')) && !rawStatus.includes('adulterat') && purity >= 75.0;
+  const displayStatus = isPure ? 'Pure Oil' : 'Adulterated';
+  const adulterant = result.adulterationType || result.detectedAdulterant || result.possible_adulterant || (isPure ? 'None' : 'Palm Oil');
+  const estMix = isPure ? '0% (Pure)' : `${adultPct}%`;
   const confidence = Math.round(result.confidenceScore || result.confidence || 97);
-  const temp = parseFloat((result.temperature || 31.2).toFixed(1));
+  const temp = parseFloat((result.temperature || 28.5).toFixed(1));
 
   const packet = {
     scan_id: result.scanId || `SCAN-${Math.floor(100000 + Math.random() * 900000)}`,
-    device_id: result.deviceId || 'ESP32-SPECTRA-01',
+    device_id: result.deviceId || 'Food360-ESP32',
     timestamp: Date.now(),
     oil_type: result.oilTypeSelected || result.oilName || result.oil_type || 'Mustard Oil',
     purity_percentage: purity,
     confidence_score: confidence,
-    safety_status: status,
-    adulteration_detected: purity < 90,
+    safety_status: displayStatus,
+    adulteration_detected: !isPure,
     adulteration_type: adulterant,
     estimated_adulteration_percent: estMix,
     temperature: temp,
@@ -56,10 +62,29 @@ export async function sendAiResultToEsp32(result) {
 
   console.log('[SyncService] Transmitting AI Result Packet to ESP32:', packet);
 
-  let wifiOk = false;
+  let localOk = false;
+  let cloudOk = false;
   let bleOk = false;
 
-  // 1. CLOUD / WiFi Mode — Post to Firebase Realtime Database device_result node
+  // 1. LOCAL WiFi Mode — Post directly to ESP32 IP endpoint (Zero Latency / Low Connectivity)
+  if (targetIp) {
+    const cleanIp = targetIp.trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    try {
+      const localRes = await fetch(`http://${cleanIp}/result`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(packet)
+      });
+      if (localRes.ok) {
+        localOk = true;
+        console.log(`[SyncService] Result posted directly to ESP32 at http://${cleanIp}/result (OLED & LEDs synced)`);
+      }
+    } catch (err) {
+      console.warn(`[SyncService] Direct ESP32 IP sync to http://${cleanIp}/result notice:`, err.message);
+    }
+  }
+
+  // 2. CLOUD Mode — Post to Firebase Realtime Database device_result node
   try {
     const res = await fetch(FIREBASE_DEVICE_RESULT_URL, {
       method: 'PUT',
@@ -67,28 +92,11 @@ export async function sendAiResultToEsp32(result) {
       body: JSON.stringify(packet)
     });
     if (res.ok) {
-      wifiOk = true;
+      cloudOk = true;
       console.log('[SyncService] Result posted to Firebase RTDB device_result node successfully.');
     }
   } catch (err) {
-    console.warn('[SyncService] Firebase RTDB sync failed:', err);
-  }
-
-  // 2. LOCAL WiFi Mode — Post directly to ESP32 IP endpoint if available
-  if (conn?.mode === 'LOCAL' && conn?.ip) {
-    try {
-      const localRes = await fetch(`http://${conn.ip}/result`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(packet)
-      });
-      if (localRes.ok) {
-        wifiOk = true;
-        console.log(`[SyncService] Result posted directly to ESP32 at http://${conn.ip}/result`);
-      }
-    } catch (err) {
-      console.warn(`[SyncService] Direct ESP32 IP sync to http://${conn.ip}/result failed:`, err);
-    }
+    console.warn('[SyncService] Firebase RTDB sync notice:', err.message);
   }
 
   // 3. BLE Mode — Write result payload to BLE characteristic
@@ -105,17 +113,39 @@ export async function sendAiResultToEsp32(result) {
       bleOk = true;
       console.log('[SyncService] Result transmitted via BLE characteristic write.');
     } catch (err) {
-      console.warn('[SyncService] BLE write failed:', err);
+      console.warn('[SyncService] BLE write notice:', err.message);
     }
   }
 
-  return { success: wifiOk || bleOk, packet };
+  return { success: localOk || cloudOk || bleOk, packet };
 }
 
 /**
  * Reset ESP32 OLED Display back to Standby when user exits the inspection page
  */
 export async function clearEsp32OledResult() {
+  const conn = getActiveConnection();
+  const savedIp = localStorage.getItem('esp32_last_ip');
+  const targetIp = (conn?.mode === 'LOCAL' && conn?.ip) ? conn.ip : (savedIp || null);
+
+  // 1. Reset local ESP32
+  if (targetIp) {
+    const cleanIp = targetIp.trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+    try {
+      await fetch(`http://${cleanIp}/result`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          scan_id: '',
+          oil_type: '--',
+          safety_status: 'Standby',
+          purity_percentage: 0.0
+        })
+      });
+    } catch (_) {}
+  }
+
+  // 2. Reset cloud node
   try {
     await fetch(FIREBASE_DEVICE_RESULT_URL, { method: 'DELETE' });
     console.log('[SyncService] Cleared OLED result node on Firebase RTDB.');
