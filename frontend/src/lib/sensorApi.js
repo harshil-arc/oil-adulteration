@@ -1,79 +1,82 @@
-import { getConfig } from './config';
-
 /**
- * Detects if the app is running in a production environment (like Vercel)
- * where it is served over HTTPS and not on localhost.
+ * Fetch live sensor data directly from ESP32 or through local proxy
  */
-export const isProductionEnvironment = () => {
-  return typeof window !== 'undefined' && 
-         window.location.protocol === 'https:' && 
-         window.location.hostname !== 'localhost' && 
-         window.location.hostname !== '127.0.0.1';
-};
-
-/**
- * A safe wrapper around fetch for local network devices to prevent 
- * ugly mixed-content browser errors and provide helpful UI feedback.
- */
-export const safeLocalFetch = async (url, options = {}) => {
-  // 1. Detect Environment & Block Mixed Content Early
-  if (isProductionEnvironment() && url.startsWith('http://')) {
-    throw new Error('Mixed content blocked: Local device access only works on same network. Please run app locally.');
-  }
-
+export const fetchLocalEspSensor = async (ip, signal = null) => {
+  const cleanIp = String(ip || '192.168.43.100').trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+  
+  // 1. Try Direct fetch to /data
   try {
-    const response = await fetch(url, options);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
-    return response;
-  } catch (error) {
-    if (error.message.includes('Mixed content blocked')) {
-      throw error;
-    }
-    if (error.name === 'AbortError') {
-      throw new Error(`Timeout connecting to ${url}`);
-    }
-    // "Failed to fetch" usually means it can't reach the local IP
-    if (error.message.includes('Failed to fetch') || error.message.includes('Network request failed')) {
-      throw new Error('Device not reachable. Use local mode for ESP connection.');
-    }
-    throw error;
-  }
-};
-
-/**
- * Standard function to get data based on current config (Simulator or ESP)
- */
-export const getSensorData = async (customUrl = null, signal = null) => {
-  const config = getConfig();
-  let url = customUrl || (config.USE_SIMULATOR ? config.SIMULATOR_URL : config.ESP_URL);
-
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 sec timeout
-    const fetchSignal = signal || controller.signal;
-
-    // Use our safe fetch wrapper
-    const response = await safeLocalFetch(url, {
+    const res = await fetch(`http://${cleanIp}/data`, {
       method: 'GET',
-      headers: {
-        'Accept': 'application/json',
-      },
-      signal: fetchSignal
+      signal: signal || AbortSignal.timeout(2500)
     });
-
-    clearTimeout(timeoutId);
-
-    const data = await response.json();
-
-    // Validate expected structure based on simulation requirements
-    if (typeof data.temperature === 'undefined' || typeof data.density === 'undefined' || typeof data.wavelength === 'undefined') {
-      console.warn("Sensor JSON might be missing keys, received:", data);
+    if (res.ok) {
+      const json = await res.json();
+      if (json) return json;
     }
+  } catch (_) {}
 
-    return data;
-  } catch (error) {
-    throw error;
-  }
+  // 2. Try Direct fetch to /sensor
+  try {
+    const res2 = await fetch(`http://${cleanIp}/sensor`, {
+      method: 'GET',
+      signal: signal || AbortSignal.timeout(2500)
+    });
+    if (res2.ok) {
+      const json2 = await res2.json();
+      if (json2) return json2;
+    }
+  } catch (_) {}
+
+  // 3. Fallback: Proxy via Local Dev Server / Backend Proxy
+  try {
+    const proxyRes = await fetch(`/api/esp/read?ip=${encodeURIComponent(cleanIp)}`, {
+      method: 'GET',
+      signal: signal || AbortSignal.timeout(2500)
+    });
+    if (proxyRes.ok) {
+      const proxyJson = await proxyRes.json();
+      if (proxyJson && !proxyJson.error) return proxyJson;
+    }
+  } catch (_) {}
+
+  throw new Error(`Unable to fetch readings from ESP32 at ${cleanIp}`);
 };
+
+/**
+ * Post AI prediction results directly to ESP32 OLED and LED indicator
+ */
+export const postLocalEspResult = async (ip, packet) => {
+  const cleanIp = String(ip || '192.168.43.100').trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+  const payloadStr = typeof packet === 'string' ? packet : JSON.stringify(packet);
+  let ok = false;
+
+  // 1. Direct fetch with text/plain (Simple Request = NO OPTIONS preflight required)
+  try {
+    await fetch(`http://${cleanIp}/result`, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: payloadStr,
+      signal: AbortSignal.timeout(2500)
+    });
+    ok = true;
+  } catch (_) {}
+
+  // 2. Also try proxy endpoint
+  try {
+    const proxyRes = await fetch(`/api/esp/result?ip=${encodeURIComponent(cleanIp)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: payloadStr,
+      signal: AbortSignal.timeout(2500)
+    });
+    if (proxyRes.ok) ok = true;
+  } catch (_) {}
+
+  return ok;
+};
+
+export const safeLocalFetch = fetchLocalEspSensor;
+export const getSensorData = async (ip) => fetchLocalEspSensor(ip);
+

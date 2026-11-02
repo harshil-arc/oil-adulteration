@@ -1,91 +1,137 @@
 /**
- * ESP32 Firestore REST API Simulator
+ * ESP32 Firebase Multi-Provider Telemetry Simulator
  * 
- * This script simulates the ESP32 hardware pushing real-time sensor
- * telemetry directly to the Firebase Firestore "readings" collection
- * using the exact same REST HTTP payload structure as the C++ code.
+ * Simulates the ESP32 hardware pushing real-time sensor telemetry
+ * directly to BOTH:
+ * 1. Firebase Realtime Database (/readings.json)
+ * 2. Google Cloud Firestore (/readings collection via REST API)
+ * 
+ * Usage:
+ *   node simulate-cloud-push.js          -> Push a single test reading
+ *   node simulate-cloud-push.js --stream -> Continuously push fresh readings every 2.5s
  */
 
 const FIREBASE_PROJECT_ID = "oil-adulteration";
 const FIREBASE_API_KEY = "AIzaSyAhu9pa7EIlmZD-u68xxDeMXz483G98bS0";
 const FIRESTORE_URL = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents/readings?key=${FIREBASE_API_KEY}`;
+const FIREBASE_RTDB_URL = "https://oil-adulteration-default-rtdb.firebaseio.com/readings.json";
 
-// Generate mock readings
-const tempC = parseFloat((Math.random() * 5 + 27).toFixed(2)); // 27 to 32 °C
-const weightG = parseFloat((Math.random() * 50 + 200).toFixed(2)); // 200 to 250 g
+function generateSample() {
+  const tempC = parseFloat((Math.random() * 4 + 26.5).toFixed(2)); // 26.5 to 30.5 °C
+  const weightG = parseFloat((Math.random() * 30 + 210).toFixed(2));
 
-// Generate channel readings
-const ch_f1  = Math.floor(Math.random() * 5 + 1);
-const ch_f2  = Math.floor(Math.random() * 10 + 5);
-const ch_fz  = Math.floor(Math.random() * 15 + 10);
-const ch_f3  = Math.floor(Math.random() * 20 + 15);
-const ch_f4  = Math.floor(Math.random() * 25 + 20);
-const ch_f5  = Math.floor(Math.random() * 30 + 25);
-const ch_fy  = Math.floor(Math.random() * 30 + 25);
-const ch_fxl = Math.floor(Math.random() * 30 + 25);
-const ch_f6  = Math.floor(Math.random() * 25 + 20);
-const ch_f7  = Math.floor(Math.random() * 15 + 10);
-const ch_f8  = Math.floor(Math.random() * 10 + 5);
-const ch_vis = Math.floor(Math.random() * 50 + 35);
-const ch_nir = Math.floor(Math.random() * 5 + 1);
+  // 13 AS7343 spectral channels
+  const channels = [
+    Math.floor(Math.random() * 3 + 1),   // f1_405nm
+    Math.floor(Math.random() * 8 + 3),   // f2_425nm
+    Math.floor(Math.random() * 12 + 8),  // fz_450nm
+    Math.floor(Math.random() * 18 + 12), // f3_475nm
+    Math.floor(Math.random() * 22 + 15), // f4_515nm
+    Math.floor(Math.random() * 25 + 20), // f5_550nm
+    Math.floor(Math.random() * 25 + 20), // fy_555nm
+    Math.floor(Math.random() * 25 + 20), // fxl_600nm
+    Math.floor(Math.random() * 20 + 15), // f6_640nm
+    Math.floor(Math.random() * 12 + 6),  // f7_690nm
+    Math.floor(Math.random() * 8 + 3),   // f8_745nm
+    Math.floor(Math.random() * 40 + 30), // vis
+    Math.floor(Math.random() * 4 + 1)    // nir_855nm
+  ];
 
-const payload = {
-  fields: {
-    temperature: { doubleValue: tempC },
-    weight: { doubleValue: weightG },
-    created_at: { stringValue: new Date().toISOString() },
-    spectral_data: {
-      mapValue: {
-        fields: {
-          f1_405nm: { integerValue: String(ch_f1) },
-          f2_425nm: { integerValue: String(ch_f2) },
-          fz_450nm: { integerValue: String(ch_fz) },
-          f3_475nm: { integerValue: String(ch_f3) },
-          f4_515nm: { integerValue: String(ch_f4) },
-          f5_550nm: { integerValue: String(ch_f5) },
-          fy_555nm: { integerValue: String(ch_fy) },
-          fxl_600nm: { integerValue: String(ch_fxl) },
-          f6_640nm: { integerValue: String(ch_f6) },
-          f7_690nm: { integerValue: String(ch_f7) },
-          f8_745nm: { integerValue: String(ch_f8) },
-          vis: { integerValue: String(ch_vis) },
-          nir_855nm: { integerValue: String(ch_nir) }
-        }
-      }
+  const specCsv = channels.join(',');
+  const nowEpoch = Date.now();
+  const nowIso = new Date().toISOString();
+
+  return { tempC, weightG, channels, specCsv, nowEpoch, nowIso };
+}
+
+async function pushReading() {
+  const sample = generateSample();
+
+  // 1. Payload for Firebase Realtime Database
+  const rtdbPayload = {
+    temperature: sample.tempC,
+    weight: sample.weightG,
+    spectral_data: sample.specCsv,
+    oil_type: "Mustard Oil Sample",
+    timestamp: sample.nowEpoch,
+    created_at: sample.nowIso
+  };
+
+  // 2. Payload for Firestore REST API
+  const firestorePayload = {
+    fields: {
+      temperature: { doubleValue: sample.tempC },
+      weight: { doubleValue: sample.weightG },
+      spectral_data: { stringValue: sample.specCsv },
+      oil_type: { stringValue: "Mustard Oil Sample" },
+      created_at: { stringValue: sample.nowIso },
+      timestamp: { integerValue: String(sample.nowEpoch) }
     }
-  }
-};
+  };
 
-console.log("--------------------------------------------------");
-console.log("📡 SIMULATING ESP32 HARDWARE CLOUD PUSH");
-console.log(`URL: ${FIRESTORE_URL}`);
-console.log("Payload:", JSON.stringify(payload, null, 2));
-console.log("--------------------------------------------------");
+  console.log(`\n📡 [${new Date().toLocaleTimeString()}] Pushing Sensor Telemetry to Firebase:`);
+  console.log(`   Temp: ${sample.tempC}°C | Spec (13-Ch): ${sample.specCsv}`);
 
-const options = {
-  method: 'POST',
-  headers: {
-    'Content-Type': 'application/json'
-  },
-  body: JSON.stringify(payload)
-};
+  let rtdbSuccess = false;
+  let fsSuccess = false;
 
-fetch(FIRESTORE_URL, options)
-  .then(async (res) => {
-    const text = await res.text();
-    if (res.ok) {
-      console.log(`✅ SUCCESS! Document added to Firestore.`);
-      console.log(`Response Code: ${res.status}`);
-      console.log("Response Body:", text);
-      console.log("\n💡 Open your SpectraTrust App, go to 'Scan' -> 'Cloud Mode', and you will see the new live readings instantly!");
+  // Push to Firebase RTDB
+  try {
+    const rtdbRes = await fetch(FIREBASE_RTDB_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(rtdbPayload)
+    });
+    if (rtdbRes.ok) {
+      const data = await rtdbRes.json();
+      rtdbSuccess = true;
+      console.log(`   ✅ Firebase Realtime Database: SUCCESS (Key: ${data.name})`);
     } else {
-      console.error(`❌ FAILED! Firebase returned error code: ${res.status}`);
-      console.error("Error Detail:", text);
-      if (res.status === 403) {
-        console.error("\n💡 Double check that your Firestore Rules allow write access to /readings/{id}");
-      }
+      console.error(`   ❌ Firebase Realtime Database: HTTP ${rtdbRes.status}`);
     }
-  })
-  .catch(err => {
-    console.error("❌ Connection failed:", err);
+  } catch (err) {
+    console.error(`   ❌ Firebase Realtime Database Error:`, err.message);
+  }
+
+  // Push to Firestore REST
+  try {
+    const fsRes = await fetch(FIRESTORE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(firestorePayload)
+    });
+    if (fsRes.ok) {
+      fsSuccess = true;
+      console.log(`   ✅ Google Cloud Firestore: SUCCESS (HTTP 200)`);
+    } else {
+      console.error(`   ❌ Google Cloud Firestore: HTTP ${fsRes.status}`);
+    }
+  } catch (err) {
+    console.error(`   ❌ Google Cloud Firestore Error:`, err.message);
+  }
+
+  return rtdbSuccess || fsSuccess;
+}
+
+const isStream = process.argv.includes('--stream') || process.argv.includes('--loop') || process.argv.includes('-s');
+
+if (isStream) {
+  console.log("==================================================");
+  console.log("🚀 STARTING CONTINUOUS SENSOR TELEMETRY STREAM");
+  console.log("   Pushing simulated sensor packets every 2.5s...");
+  console.log("   Press Ctrl+C to terminate");
+  console.log("==================================================");
+
+  pushReading();
+  setInterval(pushReading, 2500);
+} else {
+  console.log("--------------------------------------------------");
+  console.log("📡 SIMULATING SINGLE ESP32 CLOUD PUSH");
+  console.log("--------------------------------------------------");
+  pushReading().then(ok => {
+    if (ok) {
+      console.log("\n💡 Telemetry pushed to Firebase! Open the Food 360 App, go to 'Scan' -> 'Cloud Sync' -> 'START FETCHING' to view live data!");
+      console.log("💡 To stream continuously, run: node backend/simulate-cloud-push.js --stream");
+    }
   });
+}

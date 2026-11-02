@@ -30,6 +30,67 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    {
+      name: 'esp32-local-proxy',
+      configureServer(server) {
+        server.middlewares.use(async (req, res, next) => {
+          if (req.url && req.url.startsWith('/api/esp/read')) {
+            const parsedUrl = new URL(req.url, 'http://localhost');
+            const rawIp = parsedUrl.searchParams.get('ip') || '192.168.43.100';
+            const cleanIp = rawIp.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+            try {
+              const fetchRes = await fetch(`http://${cleanIp}/data`, { signal: AbortSignal.timeout(3000) });
+              const data = await fetchRes.text();
+              res.setHeader('Content-Type', 'application/json');
+              res.setHeader('Access-Control-Allow-Origin', '*');
+              res.end(data);
+            } catch (e) {
+              try {
+                const fetchRes2 = await fetch(`http://${cleanIp}/sensor`, { signal: AbortSignal.timeout(3000) });
+                const data2 = await fetchRes2.text();
+                res.setHeader('Content-Type', 'application/json');
+                res.setHeader('Access-Control-Allow-Origin', '*');
+                res.end(data2);
+              } catch (err2) {
+                res.statusCode = 502;
+                res.setHeader('Content-Type', 'application/json');
+                res.setHeader('Access-Control-Allow-Origin', '*');
+                res.end(JSON.stringify({ error: 'Failed to reach ESP32', message: err2.message }));
+              }
+            }
+            return;
+          }
+          if (req.url && req.url.startsWith('/api/esp/result')) {
+            const parsedUrl = new URL(req.url, 'http://localhost');
+            const rawIp = parsedUrl.searchParams.get('ip') || '192.168.43.100';
+            const cleanIp = rawIp.replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+            let body = '';
+            req.on('data', chunk => { body += chunk; });
+            req.on('end', async () => {
+              try {
+                const postRes = await fetch(`http://${cleanIp}/result`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'text/plain' },
+                  body: body,
+                  signal: AbortSignal.timeout(3000)
+                });
+                const respText = await postRes.text();
+                res.setHeader('Content-Type', 'application/json');
+                res.setHeader('Access-Control-Allow-Origin', '*');
+                res.end(respText || '{"status":"ok"}');
+              } catch (e) {
+                res.statusCode = 502;
+                res.setHeader('Content-Type', 'application/json');
+                res.setHeader('Access-Control-Allow-Origin', '*');
+                res.end(JSON.stringify({ error: 'Failed to post to ESP32', message: e.message }));
+              }
+            });
+            return;
+          }
+          next();
+        });
+      }
+    },
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'pwa-192x192.png', 'pwa-512x512.png'],

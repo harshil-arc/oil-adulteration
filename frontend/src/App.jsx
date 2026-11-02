@@ -4,7 +4,6 @@ import SplashOnboarding from './pages/SplashOnboarding';
 import Login from './pages/Login';
 import Home from './pages/Home';
 import NgoDashboard from './pages/NgoDashboard';
-import ScanFlow from './pages/ScanFlow'; // Kept as backup or delete
 import QRLanding from './pages/QRLanding';
 import BluetoothScan from './pages/scan/Bluetooth';
 import LocalRouter from './pages/scan/LocalRouter';
@@ -20,7 +19,6 @@ import NourishRelief from './pages/NourishRelief';
 import DisasterDashboard from './pages/DisasterDashboard';
 import Profile from './pages/Profile';
 import OilWise from './pages/OilWise';
-import FitnessPage from './pages/FitnessPage';
 import PhysicalOilTesting from './pages/PhysicalOilTesting';
 import TestingCentres from './pages/TestingCentres';
 import ReportPage from './pages/Report';
@@ -99,7 +97,7 @@ export default function App() {
                       <Route path="/profile" element={<Profile />} />
                       <Route path="/nutrition" element={<Navigate to="/oilwise" replace />} />
                       <Route path="/oilwise" element={<OilWise />} />
-                      <Route path="/fitness" element={<FitnessPage />} />
+                      <Route path="/fitness" element={<Navigate to="/home" replace />} />
                       <Route path="/physical-oil-testing" element={<PhysicalOilTesting />} />
                       <Route path="/physical-testing" element={<PhysicalOilTesting />} />
                       <Route path="/privacy" element={<PrivacySecurity />} />

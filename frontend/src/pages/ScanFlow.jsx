@@ -133,7 +133,7 @@ export default function ScanFlow() {
       setScanResult(null);
       let poller;
 
-      if (deviceInfo?.method === 'Supabase Cloud' || deviceInfo?.method === 'Cloud Firestore') {
+      if (deviceInfo?.method === 'Supabase Cloud' || deviceInfo?.method === 'Cloud Firestore' || deviceInfo?.method === 'Firebase Cloud') {
         let fetchedData = false;
         poller = setInterval(async () => {
           try {
@@ -528,9 +528,9 @@ export default function ScanFlow() {
               <div className="w-24 h-24 bg-purple-500/10 text-purple-500 rounded-full flex items-center justify-center mb-6 border border-purple-500/30 animate-pulse">
                 <Cloud size={48} />
               </div>
-              <h3 className="theme-text font-black text-2xl mb-3">Supabase Cloud Link</h3>
+              <h3 className="theme-text font-black text-2xl mb-3">Firebase Cloud Link</h3>
               <p className="text-sm text-gray-500 text-center max-w-[280px]">
-                Your ESP32 pushes sensor telemetry to the Supabase database. This mode fetches the latest readings from the cloud.
+                Your ESP32 pushes sensor telemetry to Firebase. This mode fetches the latest readings from the cloud.
               </p>
             </div>
             
@@ -538,8 +538,8 @@ export default function ScanFlow() {
               <button
                 onClick={() => {
                   proceedToVerification({
-                    name: 'Supabase Cloud Database',
-                    method: 'Supabase Cloud',
+                    name: 'Firebase Cloud Database',
+                    method: 'Firebase Cloud',
                     battery: 'N/A',
                     firmware: 'Vite Database Client'
                   });

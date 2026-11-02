@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Wifi, RefreshCw, ChevronLeft, AlertTriangle, CheckCircle2, Smartphone, Search, Zap } from 'lucide-react';
 import { setActiveConnection } from '../../lib/sensorConnection';
+import { fetchLocalEspSensor } from '../../lib/sensorApi';
 
 export default function LocalRouter() {
   const navigate = useNavigate();
@@ -46,13 +47,27 @@ export default function LocalRouter() {
         clearTimeout(tid3);
       }
 
-      if (!res.ok) return null;
-      const json = await res.json();
-      if (json && (json.status === 'ok' || json.deviceId || json.temperature !== undefined)) {
-        return { ip: clean, data: json };
+      if (res && res.ok) {
+        const json = await res.json();
+        if (json && (json.status === 'ok' || json.deviceId || json.temperature !== undefined)) {
+          return { ip: clean, data: json };
+        }
       }
+
+      // 4. Try local proxy fallback
+      const jsonProxy = await fetchLocalEspSensor(clean);
+      if (jsonProxy && (jsonProxy.status === 'ok' || jsonProxy.deviceId || jsonProxy.temperature !== undefined)) {
+        return { ip: clean, data: jsonProxy };
+      }
+
       return null;
     } catch {
+      try {
+        const jsonProxy = await fetchLocalEspSensor(clean);
+        if (jsonProxy && (jsonProxy.status === 'ok' || jsonProxy.deviceId || jsonProxy.temperature !== undefined)) {
+          return { ip: clean, data: jsonProxy };
+        }
+      } catch (_) {}
       return null;
     }
   };

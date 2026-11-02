@@ -4,6 +4,7 @@ import { Bluetooth, Wifi, Cloud, AlertTriangle, LogOut, ChevronLeft, RefreshCw, 
 import { getActiveConnection, clearConnection } from '../../lib/sensorConnection';
 import { supabase } from '../../lib/supabase';
 import { fetchLatestCloudReading } from '../../lib/firestoreSensorService';
+import { fetchLocalEspSensor } from '../../lib/sensorApi';
 
 
 /* ------------------------------------------------------------------ */
@@ -67,30 +68,22 @@ export default function Readings() {
       return 15000;
     };
 
+    const maxFails = conn.mode === 'CLOUD' ? 12 : 5;
+
     const poll = async () => {
       if (cancelled) return;
-      if (localFails >= 5) {
-        console.log('[Readings] 5 failures — stopping');
-        setFailCount(5);
+      if (localFails >= maxFails) {
+        console.log(`[Readings] ${maxFails} failures — stopping`);
+        setFailCount(maxFails);
         return;
       }
 
       try {
         if (conn.mode === 'LOCAL') {
           const ctrl = new AbortController();
-          const tid = setTimeout(() => ctrl.abort(), 2000);
-          let res = null;
-          try {
-            res = await fetch(`http://${conn.ip}/data`, { signal: ctrl.signal });
-          } catch (_) {
-            const ctrl2 = new AbortController();
-            const tid2 = setTimeout(() => ctrl2.abort(), 2000);
-            res = await fetch(`http://${conn.ip}/sensor`, { signal: ctrl2.signal });
-            clearTimeout(tid2);
-          }
+          const tid = setTimeout(() => ctrl.abort(), 2500);
+          const json = await fetchLocalEspSensor(conn.ip, ctrl.signal);
           clearTimeout(tid);
-          if (!res || !res.ok) throw new Error('HTTP error reaching ESP32');
-          const json = await res.json();
           console.log('[Readings] LOCAL data:', json);
 
           let specStr = '—';
@@ -148,7 +141,7 @@ export default function Readings() {
       }
 
       if (cancelled) return;
-      if (localFails < 5) {
+      if (localFails < maxFails) {
         timer = setTimeout(poll, getBackoff(localFails));
       }
     };
@@ -210,8 +203,9 @@ export default function Readings() {
 
   if (!conn) return null;
 
-  const isUnstable = failCount >= 3 && failCount < 5;
-  const isDisconnected = failCount >= 5;
+  const maxAllowedFails = conn?.mode === 'CLOUD' ? 12 : 5;
+  const isUnstable = failCount >= 3 && failCount < maxAllowedFails;
+  const isDisconnected = failCount >= maxAllowedFails;
 
   const ModeIcon = conn.mode === 'BLE' ? Bluetooth : conn.mode === 'LOCAL' ? Wifi : Cloud;
   const modeColor = conn.mode === 'BLE' ? 'text-blue-500' : conn.mode === 'LOCAL' ? 'text-[#C8952A]' : 'text-purple-500';

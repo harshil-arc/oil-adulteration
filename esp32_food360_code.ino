@@ -26,8 +26,9 @@
 const char* ssid     = "atl";
 const char* password = "harshil913";
 
-// HTTPS REST Endpoints (Enforces HTTPS for Firebase RTDB)
+// HTTPS REST Endpoints (Enforces HTTPS for Firebase RTDB & Firestore)
 const char* FIREBASE_TELEMETRY_URL = "https://oil-adulteration-default-rtdb.firebaseio.com/readings.json";
+const char* FIREBASE_FIRESTORE_URL = "https://firestore.googleapis.com/v1/projects/oil-adulteration/databases/(default)/documents/readings?key=AIzaSyAhu9pa7EIlmZD-u68xxDeMXz483G98bS0";
 const char* FIREBASE_RESULT_URL    = "https://oil-adulteration-default-rtdb.firebaseio.com/device_result.json";
 
 // ============================================================
@@ -465,18 +466,12 @@ void readSensors() {
   }
 }
 
-// Upload sensor telemetry packet to Firebase Realtime Database readings.json and Supabase
+// Upload sensor telemetry packet to Firebase Realtime Database readings.json and Firestore REST
 void uploadTelemetry() {
   if (WiFi.status() != WL_CONNECTED) return;
 
-  // 1. Upload to Firebase Realtime Database
   WiFiClientSecure client;
   client.setInsecure();
-
-  HTTPClient http;
-  http.begin(client, FIREBASE_TELEMETRY_URL);
-  http.addHeader("Content-Type", "application/json");
-  http.setTimeout(2500);
 
   time_t nowSec = time(nullptr);
   uint64_t nowEpoch = (uint64_t)nowSec * 1000ULL;
@@ -484,32 +479,35 @@ void uploadTelemetry() {
     nowEpoch = 1785243000000ULL + millis();
   }
 
+  // 1. Upload to Firebase Realtime Database (Primary Live Telemetry Channel)
+  HTTPClient http;
+  http.begin(client, FIREBASE_TELEMETRY_URL);
+  http.addHeader("Content-Type", "application/json");
+  http.setTimeout(2500);
+
   char payload[380];
   snprintf(payload, sizeof(payload),
-    "{\"temperature\":%.2f,\"spectral_data\":\"%s\",\"timestamp\":%llu}",
+    "{\"temperature\":%.2f,\"spectral_data\":\"%s\",\"oil_type\":\"Raw Sample\",\"timestamp\":%llu}",
     currentData.temperature, currentData.spectralDigits.c_str(), nowEpoch);
 
   int code = http.POST(payload);
-  Serial.printf("[TELEMETRY FIREBASE] HTTP %d | Temp: %.1f C | Spectral: %s\n", code, currentData.temperature, currentData.spectralDigits.c_str());
+  Serial.printf("[TELEMETRY FIREBASE RTDB] HTTP %d | Temp: %.1f C | Spectral: %s\n", code, currentData.temperature, currentData.spectralDigits.c_str());
   http.end();
 
-  // 2. Upload to Supabase REST API (for Supabase Cloud Mode)
-  HTTPClient httpSupa;
-  httpSupa.begin("https://vntaprmahmjeyuzhwqsc.supabase.co/rest/v1/readings");
-  httpSupa.addHeader("Content-Type", "application/json");
-  httpSupa.addHeader("Prefer", "return=minimal");
-  httpSupa.addHeader("apikey", "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZudGFwcm1haG1qZXl1emh3cXNjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0NjY3NDMsImV4cCI6MjA5MTA0Mjc0M30.K3NE7-bRaYRRRhV9Up2Y7f4mVoRvM3B0_dNMitJT_S8");
-  httpSupa.addHeader("Authorization", "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZudGFwcm1haG1qZXl1emh3cXNjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU0NjY3NDMsImV4cCI6MjA5MTA0Mjc0M30.K3NE7-bRaYRRRhV9Up2Y7f4mVoRvM3B0_dNMitJT_S8");
-  httpSupa.setTimeout(2500);
+  // 2. Upload to Google Cloud Firestore REST API (Document Persistence)
+  HTTPClient httpFs;
+  httpFs.begin(client, FIREBASE_FIRESTORE_URL);
+  httpFs.addHeader("Content-Type", "application/json");
+  httpFs.setTimeout(2500);
 
-  char supaPayload[380];
-  snprintf(supaPayload, sizeof(supaPayload),
-    "{\"temperature\":%.2f,\"wavelength\":525,\"spectral_data\":[%s]}",
+  char fsPayload[450];
+  snprintf(fsPayload, sizeof(fsPayload),
+    "{\"fields\":{\"temperature\":{\"doubleValue\":%.2f},\"spectral_data\":{\"stringValue\":\"%s\"},\"oil_type\":{\"stringValue\":\"Raw Sample\"}}}",
     currentData.temperature, currentData.spectralDigits.c_str());
 
-  int supaCode = httpSupa.POST(supaPayload);
-  Serial.printf("[TELEMETRY SUPABASE] HTTP %d\n", supaCode);
-  httpSupa.end();
+  int fsCode = httpFs.POST(fsPayload);
+  Serial.printf("[TELEMETRY FIRESTORE] HTTP %d\n", fsCode);
+  httpFs.end();
 }
 
 void setup() {

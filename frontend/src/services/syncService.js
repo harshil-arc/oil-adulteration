@@ -3,6 +3,7 @@
  * Two-Way AI Result Synchronization System between Food 360 App & ESP32 OLED
  */
 import { getActiveConnection } from '../lib/sensorConnection';
+import { postLocalEspResult } from '../lib/sensorApi';
 
 const FIREBASE_DEVICE_RESULT_URL = 'https://oil-adulteration-default-rtdb.firebaseio.com/device_result.json';
 const OLED_SYNC_SETTING_KEY = 'esp32_oled_sync_enabled';
@@ -68,19 +69,9 @@ export async function sendAiResultToEsp32(result) {
 
   // 1. LOCAL WiFi Mode — Post directly to ESP32 IP endpoint (Zero Latency / Low Connectivity)
   if (targetIp) {
-    const cleanIp = targetIp.trim().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
-    try {
-      const localRes = await fetch(`http://${cleanIp}/result`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(packet)
-      });
-      if (localRes.ok) {
-        localOk = true;
-        console.log(`[SyncService] Result posted directly to ESP32 at http://${cleanIp}/result (OLED & LEDs synced)`);
-      }
-    } catch (err) {
-      console.warn(`[SyncService] Direct ESP32 IP sync to http://${cleanIp}/result notice:`, err.message);
+    localOk = await postLocalEspResult(targetIp, packet);
+    if (localOk) {
+      console.log(`[SyncService] Result posted directly to ESP32 at http://${targetIp}/result (OLED & LEDs synced)`);
     }
   }
 

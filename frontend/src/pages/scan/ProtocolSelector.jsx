@@ -112,7 +112,7 @@ export default function ProtocolSelector() {
                   </span>
                 </div>
                 <p className="text-gray-400 text-xs mt-1 font-medium">
-                  Fetches sensor telemetry pushed to Firebase / Supabase cloud database over the internet.
+                  Fetches sensor telemetry pushed to Firebase Realtime Database & Firestore over the internet.
                 </p>
               </div>
             </div>

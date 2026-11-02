@@ -4,6 +4,26 @@ const supabase = require('../supabaseClient');
 const { analyzeOil } = require('../services/analysisService');
 const { validateDeviceApiKey } = require('../middleware/auth');
 
+const FIREBASE_RTDB_READINGS_URL = "https://oil-adulteration-default-rtdb.firebaseio.com/readings.json";
+const FIREBASE_RTDB_LATEST_URL   = "https://oil-adulteration-default-rtdb.firebaseio.com/readings/latest.json";
+
+async function forwardReadingToFirebase(payload) {
+  try {
+    await fetch(FIREBASE_RTDB_LATEST_URL, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    await fetch(FIREBASE_RTDB_READINGS_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+  } catch (e) {
+    console.warn('[forwardReadingToFirebase] Notice:', e.message);
+  }
+}
+
 // POST /api/data – Receive data from ESP32 and analyze
 router.post('/', validateDeviceApiKey, async (req, res) => {
   try {
@@ -88,6 +108,19 @@ router.post('/', validateDeviceApiKey, async (req, res) => {
 
     if (resultError) throw resultError;
 
+    // Sync to Firebase Cloud
+    forwardReadingToFirebase({
+      temperature: temperature_c,
+      tds_ppm,
+      ph,
+      density_gcm3,
+      refractive_index,
+      oil_type,
+      device_id,
+      timestamp: Date.now(),
+      created_at: new Date().toISOString()
+    });
+
     // 7. Real-time Broadcast
     const io = req.app.get('io');
     if (io) {
@@ -169,6 +202,16 @@ router.post('/readings', async (req, res) => {
       spectral_data: typeof spectral_data === 'string' ? JSON.parse(spectral_data) : spectral_data
     });
     if (error) throw error;
+
+    // Sync to Firebase Cloud
+    forwardReadingToFirebase({
+      temperature: parseFloat(temperature),
+      weight: parseFloat(weight || 0),
+      spectral_data: typeof spectral_data === 'string' ? spectral_data : JSON.stringify(spectral_data),
+      timestamp: Date.now(),
+      created_at: new Date().toISOString()
+    });
+
     res.status(201).json({ success: true, data });
   } catch (err) {
     console.error('Error saving readings:', err);

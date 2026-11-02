@@ -161,6 +161,43 @@ app.get('/api/network/scan', async (req, res) => {
   }
 });
 
+// ── Direct ESP32 Local Proxy Routes (Offline / Low-Connectivity LAN Mode) ──
+app.get('/api/esp/read', async (req, res) => {
+  const rawIp = req.query.ip || '192.168.43.100';
+  const cleanIp = String(rawIp).replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+  try {
+    const fetchRes = await fetch(`http://${cleanIp}/data`, { signal: AbortSignal.timeout(3000) });
+    const json = await fetchRes.json();
+    return res.json(json);
+  } catch (e) {
+    try {
+      const fetchRes2 = await fetch(`http://${cleanIp}/sensor`, { signal: AbortSignal.timeout(3000) });
+      const json2 = await fetchRes2.json();
+      return res.json(json2);
+    } catch (err2) {
+      return res.status(502).json({ error: 'Failed to reach ESP32', message: err2.message });
+    }
+  }
+});
+
+app.post('/api/esp/result', express.text({ type: '*/*' }), async (req, res) => {
+  const rawIp = req.query.ip || '192.168.43.100';
+  const cleanIp = String(rawIp).replace(/^https?:\/\//, '').replace(/\/.*$/, '');
+  const payload = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+  try {
+    const postRes = await fetch(`http://${cleanIp}/result`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain' },
+      body: payload,
+      signal: AbortSignal.timeout(3000)
+    });
+    const respText = await postRes.text();
+    return res.send(respText || '{"status":"ok"}');
+  } catch (e) {
+    return res.status(502).json({ error: 'Failed to post to ESP32', message: e.message });
+  }
+});
+
 // ── Health check ──────────────────────────────────────────
 app.get('/api/health', (req, res) => {
   res.json({

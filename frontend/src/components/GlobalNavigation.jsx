@@ -1,7 +1,7 @@
 import { 
   X, Home, ScanLine, Clock, MapIcon, Users,
   BookOpen, FileText, User, Settings, Info,
-  LogOut, LayoutDashboard, Zap, Apple, Heart, Dumbbell, Droplet, FlaskConical
+  LogOut, LayoutDashboard, Zap, Apple, Heart, Droplet, FlaskConical
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
@@ -24,7 +24,6 @@ export default function GlobalNavigation() {
     { id: 'disaster', translationKey: 'nav.disaster', label: 'Disaster & Emergency', desc: 'Live GDACS Alerts & Emergency', icon: Zap, path: '/disaster?tab=disaster', roles: ['citizen', 'ngo', 'volunteer', 'inspector', 'senior_officer', 'admin'] },
     { id: 'relief', translationKey: 'nav.relief', label: 'Food Relief & Donations', desc: 'Surplus Food & NGO Logistics', icon: Heart, path: '/disaster?tab=relief', roles: ['citizen', 'ngo', 'volunteer', 'admin'] },
     { id: 'oilwise', translationKey: 'nav.oilwise', label: 'OilWise', desc: 'Edible Oil Health & Quantity Advisor', icon: Droplet, path: '/oilwise', roles: ['citizen', 'admin'] },
-    { id: 'fitness', translationKey: 'nav.fitness', label: 'AI Fitness Coach', desc: 'Adaptive Workouts & Burn Engine', icon: Dumbbell, path: '/fitness', roles: ['citizen', 'admin'] },
     { id: 'learning', translationKey: 'nav.learning', label: 'Learning Center', desc: 'Documentation & Guides', icon: BookOpen, path: '/learning', roles: ['citizen', 'vendor', 'inspector', 'admin'] },
     { id: 'reports', translationKey: 'nav.reports', label: 'System Reports', desc: 'Regulatory Logs & Analytics', icon: FileText, path: '/reports', roles: ['inspector', 'senior_officer', 'admin'] },
     { id: 'profile', translationKey: 'nav.profile_settings', label: 'Profile Settings', desc: 'Identity & Accreditation', icon: User, path: '/profile', roles: ['citizen', 'vendor', 'inspector', 'laboratory', 'ngo', 'senior_officer', 'admin'] },
