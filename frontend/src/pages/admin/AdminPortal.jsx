@@ -200,10 +200,10 @@ export default function AdminPortal() {
       {/* Sidebar - Desktop */}
       <aside className="hidden md:flex flex-col w-64 bg-[#0f172a] border-r border-[#1e293b] p-6 shrink-0 relative">
         <div className="flex items-center space-x-3 mb-10 pb-4 border-b border-[#1e293b]/60">
-          <img src="/food360-logo.jpg" alt="Logo" className="w-10 h-10 rounded-xl border border-amber-500/30 shadow-md object-cover" />
+          <img src="/spectratrust-logo.jpg" alt="Logo" className="w-10 h-10 rounded-xl border border-amber-500/30 shadow-md object-cover" />
           <div>
             <h2 className="text-md font-black tracking-tight text-white flex items-center">
-              food360 <span className="text-amber-500 text-[10px] ml-1 bg-amber-500/10 px-1.5 py-0.5 rounded font-black border border-amber-500/20">ADMIN</span>
+              SpectraTrust <span className="text-amber-500 text-[10px] ml-1 bg-amber-500/10 px-1.5 py-0.5 rounded font-black border border-amber-500/20">ADMIN</span>
             </h2>
             <p className="text-[9px] text-gray-500 uppercase tracking-widest font-bold mt-0.5">Control Terminal</p>
           </div>
@@ -245,8 +245,8 @@ export default function AdminPortal() {
       {/* Header - Mobile */}
       <header className="md:hidden flex items-center justify-between bg-[#0f172a] border-b border-[#1e293b] px-5 py-4 z-40">
         <div className="flex items-center space-x-3">
-          <img src="/food360-logo.jpg" alt="Logo" className="w-8 h-8 rounded-lg object-cover" />
-          <h2 className="text-sm font-black text-white uppercase tracking-tight">food360 Admin</h2>
+          <img src="/spectratrust-logo.jpg" alt="Logo" className="w-8 h-8 rounded-lg object-cover" />
+          <h2 className="text-sm font-black text-white uppercase tracking-tight">SpectraTrust Admin</h2>
         </div>
         <button
           onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}

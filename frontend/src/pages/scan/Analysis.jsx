@@ -397,10 +397,10 @@ Provide 2-3 likely adulterants only.`;
   const handleShare = async () => {
     if (!result || !selectedOil) return;
     const purityStr = typeof result.purityPercentage === 'number' ? `${result.purityPercentage.toFixed(1)}%` : (result.result || result.status || 'Verified');
-    const text = `🫙 Food 360 Official Inspection Certificate\nOil: ${selectedOil.oilName}\nStatus: ${purityStr}\nReport #: ${reportNo}\nDevice: ${deviceId}\nVerified with Food 360 AI — spectratrust.org`;
+    const text = `🫙 SpectraTrust Official Inspection Certificate\nOil: ${selectedOil.oilName}\nStatus: ${purityStr}\nReport #: ${reportNo}\nDevice: ${deviceId}\nVerified with SpectraTrust AI — spectratrust.org`;
     try {
       if (navigator.share) {
-        await navigator.share({ title: 'Food 360 Digital Certificate', text });
+        await navigator.share({ title: 'SpectraTrust Digital Certificate', text });
       } else {
         await navigator.clipboard.writeText(text);
         alert('Inspection certificate details copied to clipboard!');

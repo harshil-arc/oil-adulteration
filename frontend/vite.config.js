@@ -95,8 +95,8 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'pwa-192x192.png', 'pwa-512x512.png'],
       manifest: {
-        name: 'Food 360 – Food Safety & Adulteration Intelligence',
-        short_name: 'Food 360',
+        name: 'SpectraTrust – Oil Adulteration Detector',
+        short_name: 'SpectraTrust',
         description: 'Laboratory-grade oil adulteration detection powered by ESP32 sensors and AI analysis.',
         start_url: '/',
         display: 'standalone',

@@ -18,7 +18,7 @@ const defaultSettings = {
 
 const defaultProfile = {
   name: 'Harshil Patel',
-  email: 'harshil@food360.app',
+  email: 'harshil@spectratrust.app',
   phone: '+91 98765 43210',
   state: 'Gujarat',
   memberSince: '2024-01-15',

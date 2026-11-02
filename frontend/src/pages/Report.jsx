@@ -44,7 +44,7 @@ export default function ReportPage() {
     const oilType = scanData?.oilType || scanData?.oil_type || 'Edible Oil';
     const purity  = scanData?.purity != null ? `${parseFloat(scanData.purity).toFixed(1)}%` : 'N/A';
     const conf    = scanData?.confidence != null ? `${scanData.confidence}%` : 'N/A';
-    return `--- FSSAI FOOD ADULTERATION COMPLAINT ---\n\nOil Type Tested : ${oilType}\nPurity Score    : ${purity}\nAI Confidence   : ${conf}\nScan Timestamp  : ${timestamp}\nDetection Tool  : Food 360 Spectral Analyser (ESP32 + AS7343)\nApp Reference   : ${scanData?.reportNo || 'Auto-Generated'}\n\nFINDING: This oil sample has been flagged as potentially adulterated by\nan AI-assisted spectrophotometric screening device.\n\nACTION REQUESTED: Please investigate and take regulatory action.\n\nNOTE: Preliminary AI screening only. Lab confirmation recommended.\n\nSubmitted via Food 360 App — foscos.fssai.gov.in\n-----------------------------------------`;
+    return `--- FSSAI FOOD ADULTERATION COMPLAINT ---\n\nOil Type Tested : ${oilType}\nPurity Score    : ${purity}\nAI Confidence   : ${conf}\nScan Timestamp  : ${timestamp}\nDetection Tool  : SpectraTrust Spectral Analyser (ESP32 + AS7343)\nApp Reference   : ${scanData?.reportNo || 'Auto-Generated'}\n\nFINDING: This oil sample has been flagged as potentially adulterated by\nan AI-assisted spectrophotometric screening device.\n\nACTION REQUESTED: Please investigate and take regulatory action.\n\nNOTE: Preliminary AI screening only. Lab confirmation recommended.\n\nSubmitted via SpectraTrust App — foscos.fssai.gov.in\n-----------------------------------------`;
   };
 
   const handleCopyDossier = () => {

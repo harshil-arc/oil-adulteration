@@ -1,4 +1,4 @@
-// ─── FOOD 360 THEME AUDITOR & ACCESSIBILITY CONTRAST CHECKER ──────────
+// ─── SPECTRATRUST THEME AUDITOR & ACCESSIBILITY CONTRAST CHECKER ──────────
 
 /**
  * Developer Theme Audit Tool
@@ -60,7 +60,7 @@ export function runThemeAudit() {
       : `⚠️ Theme Audit Flagged ${issues.length} potential contrast items.`,
   };
 
-  console.group('🎨 Food 360 Theme System Audit Report');
+  console.group('🎨 SpectraTrust Theme System Audit Report');
   console.log(`Operating Mode: ${report.mode}`);
   console.log(`Elements Scanned: ${report.totalAudited}`);
   console.log(`Status: ${report.summary}`);

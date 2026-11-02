@@ -26,7 +26,7 @@ export default function SplashOnboarding() {
     },
     {
       title: "Connect Your ESP32 Device",
-      subtitle: "Pair your Food 360 hardware via Bluetooth or WiFi to seamlessly sync real-time spectra data.",
+      subtitle: "Pair your SpectraTrust hardware via Bluetooth or WiFi to seamlessly sync real-time spectra data.",
       Icon: Zap,
     },
     {
@@ -42,9 +42,9 @@ export default function SplashOnboarding() {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-[#d4af37] opacity-10 rounded-full blur-[80px]" />
         
         <div className="flex flex-col items-center justify-center z-10 animate-slide-up">
-          <img src="/food360-logo.jpg" alt="Food 360 Logo" className="w-28 h-28 rounded-[2rem] object-cover shadow-2xl border-2 border-[#d4af37]/50 mb-6 shadow-glow-gold" />
-          <h1 className="text-4xl font-black tracking-tight text-white mb-2">Food <span className="text-[#d4af37]">360</span></h1>
-          <p className="text-[#9ca3af] font-medium tracking-wide uppercase text-xs">Know What You Consume</p>
+          <img src="/spectratrust-logo.jpg" alt="SpectraTrust Logo" className="w-28 h-28 rounded-[2rem] object-cover shadow-2xl border-2 border-[#d4af37]/50 mb-6 shadow-glow-gold" />
+          <h1 className="text-4xl font-black tracking-tight text-white mb-2">Spectra<span className="text-[#d4af37]">Trust</span></h1>
+          <p className="text-[#9ca3af] font-medium tracking-wide uppercase text-xs">Oil Adulteration Detector</p>
         </div>
       </div>
     );

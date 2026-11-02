@@ -1,6 +1,6 @@
 /**
  * syncService.js
- * Two-Way AI Result Synchronization System between Food 360 App & ESP32 OLED
+ * Two-Way AI Result Synchronization System between SpectraTrust App & ESP32 OLED
  */
 import { getActiveConnection } from '../lib/sensorConnection';
 import { postLocalEspResult } from '../lib/sensorApi';
@@ -45,7 +45,7 @@ export async function sendAiResultToEsp32(result) {
 
   const packet = {
     scan_id: result.scanId || `SCAN-${Math.floor(100000 + Math.random() * 900000)}`,
-    device_id: result.deviceId || 'Food360-ESP32',
+    device_id: result.deviceId || 'SpectraTrust-ESP32',
     timestamp: Date.now(),
     oil_type: result.oilTypeSelected || result.oilName || result.oil_type || 'Mustard Oil',
     purity_percentage: purity,

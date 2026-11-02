@@ -140,16 +140,16 @@ export function PrivacySecurity() {
   );
 }
 
-// 2. About Food 360 Screen
+// 2. About SpectraTrust Screen
 export function AboutApp() {
   return (
     <div className="min-h-screen bg-[#0a0a0a] text-white flex flex-col pb-24 animate-fade-in relative z-20">
-      <SubScreenNav title="About Food 360" />
+      <SubScreenNav title="About SpectraTrust" />
       <div className="p-5 flex flex-col items-center flex-1">
          <div className="w-24 h-24 bg-gradient-to-br from-[#f5c842] to-[#d4af37] text-black rounded-[2rem] flex flex-col items-center justify-center shadow-glow-gold relative overflow-hidden mt-10 mb-6">
            <Shield size={48} strokeWidth={1} fill="currentColor" />
          </div>
-         <h1 className="text-3xl font-black text-white">Pure<span className="text-[#d4af37]">Oil</span></h1>
+         <h1 className="text-3xl font-black text-white">Spectra<span className="text-[#d4af37]">Trust</span></h1>
          <p className="text-gray-500 text-xs mt-1 font-bold tracking-widest uppercase">Version 2.4.0 (Build 402)</p>
 
          <div className="w-full mt-12 card border-[#333] p-0 flex flex-col divide-y divide-[#1c1c1c]">
@@ -168,7 +168,7 @@ export function AboutApp() {
          </div>
 
          <p className="mt-auto text-center text-xs text-gray-600 max-w-[250px]">
-           © 2026 Food 360 Ecosystem. All rights reserved. Designed for professional field inspection.
+           © 2026 SpectraTrust Ecosystem. All rights reserved. Designed for professional field inspection.
          </p>
       </div>
     </div>

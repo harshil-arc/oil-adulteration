@@ -174,11 +174,11 @@ export default function Home() {
       {/* ── 1. HEADER & BRANDING ────────────────────────────────────────────── */}
       <div className="px-5 pt-4 pb-3 flex items-center justify-between border-b border-[var(--border-color)] bg-[var(--bg-card)]/80 backdrop-blur-md sticky top-0 z-30">
         <div className="flex items-center gap-3">
-          <img src="/food360-logo.jpg" alt="Food 360 Logo" className="w-10 h-10 rounded-xl object-cover border border-[#d4af37]/40 shadow-md" />
+          <img src="/spectratrust-logo.jpg" alt="SpectraTrust Logo" className="w-10 h-10 rounded-xl object-cover border border-[#d4af37]/40 shadow-md" />
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-lg font-black tracking-tight theme-text">
-                Food <span className="text-[#d4af37]">360</span>
+                Spectra<span className="text-[#d4af37]">Trust</span>
               </h1>
               <span className="bg-[#d4af37]/20 text-[#d4af37] border border-[#d4af37]/40 text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider flex items-center gap-1">
                 <Award size={10} /> Gold Inspector
@@ -436,7 +436,7 @@ export default function Home() {
             <div className="flex items-center justify-between p-4 border-b border-[var(--border-color)] bg-[var(--bg-elevated)]">
               <div className="flex items-center gap-2">
                 <BarChart2 className="text-[#d4af37]" size={18} />
-                <h3 className="text-sm font-black theme-text">Food 360 Full Analytics & Intelligence</h3>
+                <h3 className="text-sm font-black theme-text">SpectraTrust Full Analytics & Intelligence</h3>
               </div>
               <button onClick={() => setShowFullAnalytics(false)} className="p-1.5 rounded-full bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:theme-text">
                 <X size={16} />

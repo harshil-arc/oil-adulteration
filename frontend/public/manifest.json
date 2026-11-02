@@ -1,6 +1,6 @@
 {
-  "name": "Food 360 Detection",
-  "short_name": "Food 360",
+  "name": "SpectraTrust – Oil Adulteration Detector",
+  "short_name": "SpectraTrust",
   "description": "Smart field inspection and laboratory-grade oil adulteration detection system.",
   "start_url": "/home",
   "display": "standalone",
@@ -9,14 +9,14 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛢️</text></svg>",
+      "src": "/spectratrust-logo.jpg",
       "sizes": "192x192",
-      "type": "image/svg+xml"
+      "type": "image/jpeg"
     },
     {
-      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛢️</text></svg>",
+      "src": "/spectratrust-logo.jpg",
       "sizes": "512x512",
-      "type": "image/svg+xml",
+      "type": "image/jpeg",
       "purpose": "any maskable"
     }
   ]

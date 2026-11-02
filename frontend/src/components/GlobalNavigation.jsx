@@ -48,7 +48,7 @@ export default function GlobalNavigation() {
         {/* Header */}
         <div className="p-8 flex items-center justify-between border-b border-[var(--border-color)]">
            <div className="flex items-center gap-3">
-              <img src="/food360-logo.jpg" alt="SpectraTrust Logo" className="w-10 h-10 rounded-xl object-cover shadow-lg border border-[#d4af37]/30" />
+              <img src="/spectratrust-logo.jpg" alt="SpectraTrust Logo" className="w-10 h-10 rounded-xl object-cover shadow-lg border border-[#d4af37]/30" />
               <div>
                  <h2 className="text-xs font-black theme-text uppercase tracking-widest leading-none">SpectraTrust Portal</h2>
                  <p className="text-[8px] text-[#d4af37] font-bold uppercase tracking-widest mt-1">Role: {role.replace('_', ' ')}</p>

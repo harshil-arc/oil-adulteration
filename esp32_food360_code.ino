@@ -285,7 +285,7 @@ void updateLedIndicators(const String& status, float purity, bool hasPrediction)
 
 // Direct Local WebServer Handshake endpoint (http://<esp32-ip>/connect)
 void handleConnect() {
-  server.send(200, "application/json", "{\"status\":\"ok\",\"deviceId\":\"Food360-ESP32\",\"firmware\":\"SpectraTrust DualSync v1.0\"}");
+  server.send(200, "application/json", "{\"status\":\"ok\",\"deviceId\":\"SpectraTrust-ESP32\",\"firmware\":\"SpectraTrust DualSync v1.0\"}");
   Serial.println(F("[LOCAL IP] Handshake connection received from App."));
 }
 
@@ -293,7 +293,7 @@ void handleConnect() {
 void handleSensorDataGet() {
   char buf[450];
   snprintf(buf, sizeof(buf),
-    "{\"status\":\"ok\",\"deviceId\":\"Food360-ESP32\",\"temperature\":%.2f,\"tds\":450,\"density\":0.908,\"refractive_index\":1.470,\"optical\":1.470,\"spectral_data\":\"%s\",\"spectral_digits\":\"%s\",\"timestamp\":%lu}",
+    "{\"status\":\"ok\",\"deviceId\":\"SpectraTrust-ESP32\",\"temperature\":%.2f,\"tds\":450,\"density\":0.908,\"refractive_index\":1.470,\"optical\":1.470,\"spectral_data\":\"%s\",\"spectral_digits\":\"%s\",\"timestamp\":%lu}",
     currentData.temperature,
     currentData.spectralDigits.c_str(),
     currentData.spectralDigits.c_str(),

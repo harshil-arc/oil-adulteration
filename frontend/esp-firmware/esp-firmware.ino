@@ -93,7 +93,7 @@ void renderOledCarousel(float tempC, const char* specDigits) {
       // Page 1: App Title & Status
       display.setTextSize(1);
       display.setCursor(20, 5);
-      display.println(F("Food 360 AI"));
+      display.println(F("SpectraTrust AI"));
       display.drawLine(0, 18, 128, 18, SSD1306_WHITE);
 
       display.setCursor(15, 30);

@@ -108,7 +108,7 @@ export default function ScanFlow() {
       if (data.status !== 'ok') throw new Error("Handshake rejected");
 
       proceedToVerification({
-        name: data.deviceId || 'Food 360-ESP32',
+        name: data.deviceId || 'SpectraTrust-ESP32',
         ip: target,
         method: `WiFi Direct (${target})`,
         battery: 'AC Power',
@@ -497,7 +497,7 @@ export default function ScanFlow() {
                   <h3 className="theme-text font-bold text-sm">Direct Hotspot Mode:</h3>
                   <ol className="text-xs text-gray-500 flex flex-col gap-4 font-medium">
                     <li className="flex gap-3 items-start"><span className="w-5 h-5 rounded-full bg-[#d4af37]/10 text-[#d4af37] flex-shrink-0 flex items-center justify-center font-bold">1</span> Power on the handheld sensor unit</li>
-                    <li className="flex gap-3 items-start"><span className="w-5 h-5 rounded-full bg-[#d4af37]/10 text-[#d4af37] flex-shrink-0 flex items-center justify-center font-bold">2</span> Connect your phone to: <span className="text-white font-mono bg-[#1c1c1c] px-2 rounded border border-[#333]">Food 360-Sensor</span></li>
+                    <li className="flex gap-3 items-start"><span className="w-5 h-5 rounded-full bg-[#d4af37]/10 text-[#d4af37] flex-shrink-0 flex items-center justify-center font-bold">2</span> Connect your phone to: <span className="text-white font-mono bg-[#1c1c1c] px-2 rounded border border-[#333]">SpectraTrust-Sensor</span></li>
                     <li className="flex gap-3 items-start"><span className="w-5 h-5 rounded-full bg-[#d4af37]/10 text-[#d4af37] flex-shrink-0 flex items-center justify-center font-bold">3</span> The device IP will be <span className="text-white font-mono bg-[#1c1c1c] px-2 rounded border border-[#333]">192.168.4.1</span></li>
                   </ol>
                   <button 
@@ -574,7 +574,7 @@ export default function ScanFlow() {
                 </div>
                 <div className="flex justify-between border-b border-[#333] pb-4">
                   <span className="text-gray-500 text-[10px] uppercase font-bold tracking-widest">Hardware ID</span>
-                  <span className="text-white font-mono text-sm">FOOD 360-SN-8842</span>
+                  <span className="text-white font-mono text-sm">SPECTRATRUST-SN-8842</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-gray-500 text-[10px] uppercase font-bold tracking-widest">GATT Pipeline</span>

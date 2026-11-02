@@ -38,7 +38,7 @@ void setup() {
   Serial.begin(115200);
   delay(300);
   Serial.println(F("\n=========================================="));
-  Serial.println(F("   FOOD 360 / SPECTRATRUST ESP32 CLOUD    "));
+  Serial.println(F("         SPECTRATRUST ESP32 CLOUD         "));
   Serial.println(F("=========================================="));
 
   Wire.begin(21, 22); // AS7343 & MLX share SDA:21, SCL:22
@@ -53,7 +53,7 @@ void setup() {
   display.setTextColor(SSD1306_WHITE);
   display.setCursor(0, 0);
   display.setTextSize(1);
-  display.println(F("FOOD 360 CLOUD SYNC"));
+  display.println(F("SPECTRATRUST CLOUD SYNC"));
   display.println(F("Connecting WiFi..."));
   display.display();
 

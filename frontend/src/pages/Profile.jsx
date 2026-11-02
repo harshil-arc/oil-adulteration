@@ -95,15 +95,15 @@ export default function Profile() {
       } catch (_) {}
     }
 
-    // Trigger direct file download of food360.apk
+    // Trigger direct file download of spectratrust.apk
     const link = document.createElement('a');
-    link.href = '/food360.apk';
-    link.download = 'food360.apk';
+    link.href = '/spectratrust.apk';
+    link.download = 'spectratrust.apk';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
 
-    setSuccessToast('✓ Food 360 APK download started! Check your downloads.');
+    setSuccessToast('✓ SpectraTrust APK download started! Check your downloads.');
     setTimeout(() => setSuccessToast(''), 4500);
   };
   
@@ -283,7 +283,7 @@ export default function Profile() {
             {/* Name & email */}
             <div className="flex-1 min-w-0">
               <h1 className="text-xl font-black text-[var(--text-primary)] leading-tight truncate">{profile?.name || 'User Profile'}</h1>
-              <p className="text-xs text-[var(--text-secondary)] mt-0.5 font-medium truncate">{profile?.email || 'user@food360.app'}</p>
+              <p className="text-xs text-[var(--text-secondary)] mt-0.5 font-medium truncate">{profile?.email || 'user@spectratrust.app'}</p>
               <div className="flex items-center gap-2 mt-1">
                 <span className="px-2.5 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/30 text-blue-500 text-[10px] font-bold flex items-center gap-1">
                   <User size={10} /> Active Account
@@ -334,7 +334,7 @@ export default function Profile() {
               </div>
               <div>
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h2 className="text-base font-black text-[var(--text-primary)] leading-tight">Download Food 360 App</h2>
+                  <h2 className="text-base font-black text-[var(--text-primary)] leading-tight">Download SpectraTrust App</h2>
                   <span className="bg-[#d4af37]/20 text-[#d4af37] border border-[#d4af37]/40 text-[9px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider">
                     APK v1.0.0
                   </span>
@@ -361,7 +361,7 @@ export default function Profile() {
             className="w-full py-4 px-4 rounded-2xl bg-gradient-to-r from-[#f5c842] to-[#d4af37] text-black font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2.5 shadow-glow-gold hover:brightness-110 active:scale-95 transition-all cursor-pointer"
           >
             <Download size={18} strokeWidth={2.5} />
-            Download APK File (food360.apk)
+            Download APK File (spectratrust.apk)
           </button>
 
           <div className="bg-[var(--bg-elevated)] p-3.5 rounded-2xl border border-[var(--border-color)] space-y-2">
@@ -379,11 +379,11 @@ export default function Profile() {
               <div className="pt-2.5 border-t border-[var(--border-color)] space-y-2.5 text-[11px] text-[var(--text-secondary)] animate-fade-in">
                 <div className="flex items-start gap-2.5">
                   <span className="w-5 h-5 rounded-full bg-[#d4af37]/20 text-[#d4af37] font-black text-[9px] flex items-center justify-center shrink-0 mt-0.5">1</span>
-                  <p>Tap <strong>Download APK File</strong> button above to save <code className="text-[#d4af37] bg-[var(--bg-card)] px-1 py-0.5 rounded border border-[var(--border-color)]">food360.apk</code>.</p>
+                  <p>Tap <strong>Download APK File</strong> button above to save <code className="text-[#d4af37] bg-[var(--bg-card)] px-1 py-0.5 rounded border border-[var(--border-color)]">spectratrust.apk</code>.</p>
                 </div>
                 <div className="flex items-start gap-2.5">
                   <span className="w-5 h-5 rounded-full bg-[#d4af37]/20 text-[#d4af37] font-black text-[9px] flex items-center justify-center shrink-0 mt-0.5">2</span>
-                  <p>Open your phone's notification shade or <strong>Downloads</strong> manager and tap <code className="text-[#d4af37] bg-[var(--bg-card)] px-1 py-0.5 rounded border border-[var(--border-color)]">food360.apk</code>.</p>
+                  <p>Open your phone's notification shade or <strong>Downloads</strong> manager and tap <code className="text-[#d4af37] bg-[var(--bg-card)] px-1 py-0.5 rounded border border-[var(--border-color)]">spectratrust.apk</code>.</p>
                 </div>
                 <div className="flex items-start gap-2.5">
                   <span className="w-5 h-5 rounded-full bg-[#d4af37]/20 text-[#d4af37] font-black text-[9px] flex items-center justify-center shrink-0 mt-0.5">3</span>
@@ -391,7 +391,7 @@ export default function Profile() {
                 </div>
                 <div className="flex items-start gap-2.5">
                   <span className="w-5 h-5 rounded-full bg-[#d4af37]/20 text-[#d4af37] font-black text-[9px] flex items-center justify-center shrink-0 mt-0.5">4</span>
-                  <p>Tap <strong>Install</strong>. When finished, open <strong>Food 360</strong> directly from your home screen!</p>
+                  <p>Tap <strong>Install</strong>. When finished, open <strong>SpectraTrust</strong> directly from your home screen!</p>
                 </div>
               </div>
             )}
@@ -606,7 +606,7 @@ export default function Profile() {
         <div className="card p-0 rounded-3xl border border-[var(--border-color)] overflow-hidden divide-y divide-[var(--border-color)]">
           {[
             { icon: Shield, label: 'Privacy & Security', sub: 'Manage your data & PIN lock', color: 'text-emerald-500', path: '/privacy-security' },
-            { icon: Info, label: 'About Food 360', sub: 'App details & licenses', color: 'text-purple-400', path: '/about' },
+            { icon: Info, label: 'About SpectraTrust', sub: 'App details & licenses', color: 'text-purple-400', path: '/about' },
           ].map(({ icon: Icon, label, sub, color, path }) => (
             <button key={path} onClick={() => navigate(path)} className="w-full flex items-center justify-between p-4 hover:bg-[var(--bg-elevated)] transition-colors text-left">
               <div className="flex items-center gap-3">
@@ -632,7 +632,7 @@ export default function Profile() {
             onClick={() => setShowLogout(true)}
             className="w-full py-3.5 rounded-2xl bg-red-600 hover:bg-red-700 text-white font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2.5 shadow-lg shadow-red-600/30 active:scale-95 transition-all"
           >
-            <LogOut size={16} /> Sign Out of Food 360
+            <LogOut size={16} /> Sign Out of SpectraTrust
           </button>
         </div>
 

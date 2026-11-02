@@ -301,8 +301,8 @@ export default function Login() {
 
       {/* Header */}
       <div className="flex flex-col items-center justify-center pt-10 pb-4 z-10 animate-slide-up">
-        <img src="/food360-logo.jpg" alt="SpectraTrust Logo" className="w-16 h-16 rounded-2xl object-cover border-2 border-[#d4af37]/50 mb-3 shadow-glow-gold" />
-        <h1 className="text-2xl font-black tracking-tight theme-text">Welcome to <span className="text-[#d4af37]">food360</span></h1>
+        <img src="/spectratrust-logo.jpg" alt="SpectraTrust Logo" className="w-16 h-16 rounded-2xl object-cover border-2 border-[#d4af37]/50 mb-3 shadow-glow-gold" />
+        <h1 className="text-2xl font-black tracking-tight theme-text">Welcome to <span className="text-[#d4af37]">SpectraTrust</span></h1>
         <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">National Food Safety & Regulatory Authority Platform</p>
       </div>
 
