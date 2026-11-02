@@ -33,6 +33,7 @@ import {
   uploadBytes, 
   getDownloadURL 
 } from 'firebase/storage';
+import { getDatabase } from 'firebase/database';
 
 const sanitizeEnv = (val, fallback) => {
   if (!val) return fallback;
@@ -62,7 +63,7 @@ const firebaseConfig = {
   measurementId: sanitizeEnv(import.meta.env.VITE_FIREBASE_MEASUREMENT_ID, "G-1T3CQ37R69")
 };
 
-let app, db, auth, storage;
+let app, db, auth, storage, rtdb;
 let firebaseInitError = null;
 
 const validateFirebaseConfig = () => {
@@ -105,6 +106,7 @@ if (initResult.ok) {
     db = getFirestore(app);
     auth = getAuth(app);
     storage = getStorage(app);
+    rtdb = getDatabase(app);
     console.log(`[Firebase] Initialized successfully. Project: "${firebaseConfig.projectId}", Key: "${firebaseConfig.apiKey.slice(0, 8)}..."`);
   } catch (err) {
     firebaseInitError = err;
@@ -654,4 +656,4 @@ export const supabase = {
   }
 };
 
-export { auth, db, storage, initResult, firebaseInitError };
+export { auth, db, rtdb, storage, initResult, firebaseInitError };

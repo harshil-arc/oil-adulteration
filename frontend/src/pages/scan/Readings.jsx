@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Bluetooth, Wifi, Cloud, AlertTriangle, LogOut, ChevronLeft, RefreshCw, FlaskConical, Zap } from 'lucide-react';
 import { getActiveConnection, clearConnection } from '../../lib/sensorConnection';
 import { supabase } from '../../lib/supabase';
-import { fetchLatestCloudReading } from '../../lib/firestoreSensorService';
+import { fetchLatestCloudReading, subscribeToLiveCloudReadings } from '../../lib/firestoreSensorService';
 import { fetchLocalEspSensor } from '../../lib/sensorApi';
 
 
@@ -56,6 +56,28 @@ export default function Readings() {
       };
       char.addEventListener('characteristicvaluechanged', handler);
       return () => char.removeEventListener('characteristicvaluechanged', handler);
+    }
+
+    // Real-Time Firebase WebSocket push subscription for CLOUD mode
+    let unsubscribeCloud = null;
+    if (conn.mode === 'CLOUD') {
+      unsubscribeCloud = subscribeToLiveCloudReadings((latestRow) => {
+        if (cancelled) return;
+        console.log('[Readings] Realtime CLOUD push received:', latestRow);
+        const readingObj = {
+          temperature: latestRow.temperature,
+          spectral_data: latestRow.spectral_data,
+          oil_type: latestRow.oil_type || 'Cloud Sample',
+          adulteration_index: latestRow.adulteration_index || 0,
+        };
+        setData(readingObj);
+        try {
+          sessionStorage.setItem('sensor_snapshot', JSON.stringify(readingObj));
+        } catch (_) {}
+        setFailCount(0);
+        setLastUpdated(Date.now());
+        localFails = 0;
+      });
     }
 
     // LOCAL or CLOUD — polling with rapid live updates
@@ -152,6 +174,9 @@ export default function Readings() {
     return () => {
       cancelled = true;
       if (timer) clearTimeout(timer);
+      if (unsubscribeCloud) {
+        try { unsubscribeCloud(); } catch (_) {}
+      }
     };
   }, [conn, pollKey]); // pollKey forces restart on reconnect
 

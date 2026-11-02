@@ -4,6 +4,9 @@
  * Connects to Firebase Realtime Database & Google Cloud Firestore
  */
 
+import { ref, onValue, query, limitToLast } from 'firebase/database';
+import { rtdb } from './supabase';
+
 const FIRESTORE_PROJECT_ID = "oil-adulteration";
 const FIRESTORE_API_KEY    = "AIzaSyAhu9pa7EIlmZD-u68xxDeMXz483G98bS0";
 const FIRESTORE_READINGS_URL = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents/readings?key=${FIRESTORE_API_KEY}`;
@@ -193,6 +196,65 @@ export async function fetchLatestCloudReading() {
   }
 
   return null;
+}
+
+/**
+ * Real-Time WebSocket Push Subscription
+ * Subscribes directly to Firebase Realtime Database /readings/latest and /readings
+ * with automatic reconnect and zero polling latency.
+ */
+export function subscribeToLiveCloudReadings(onData, onError) {
+  if (!rtdb) {
+    if (onError) onError(new Error("Firebase Realtime Database is not initialized"));
+    return () => {};
+  }
+
+  let active = true;
+
+  // Listen to /readings/latest node for instant real-time pushes
+  const latestRef = ref(rtdb, 'readings/latest');
+  const unsubscribeLatest = onValue(
+    latestRef,
+    (snapshot) => {
+      if (!active) return;
+      const val = snapshot.val();
+      if (val) {
+        const parsed = parseRtdbReading(val);
+        if (parsed) onData(parsed);
+      }
+    },
+    (err) => {
+      console.warn('[LiveSubscription] /latest listener notice:', err.message);
+      if (onError) onError(err);
+    }
+  );
+
+  // Also listen for additions to /readings
+  const readingsQuery = query(ref(rtdb, 'readings'), limitToLast(1));
+  const unsubscribeRoot = onValue(
+    readingsQuery,
+    (snapshot) => {
+      if (!active) return;
+      const val = snapshot.val();
+      if (val && typeof val === 'object') {
+        const keys = Object.keys(val).filter(k => k !== 'latest');
+        if (keys.length > 0) {
+          const item = val[keys[keys.length - 1]];
+          const parsed = parseRtdbReading(item);
+          if (parsed) onData(parsed);
+        }
+      }
+    },
+    (err) => {
+      console.warn('[LiveSubscription] /readings query notice:', err.message);
+    }
+  );
+
+  return () => {
+    active = false;
+    try { unsubscribeLatest(); } catch (_) {}
+    try { unsubscribeRoot(); } catch (_) {}
+  };
 }
 
 /**
