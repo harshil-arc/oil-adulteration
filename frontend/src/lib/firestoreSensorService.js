@@ -11,7 +11,6 @@ const FIRESTORE_PROJECT_ID = "oil-adulteration";
 const FIRESTORE_API_KEY    = "AIzaSyAhu9pa7EIlmZD-u68xxDeMXz483G98bS0";
 const FIRESTORE_READINGS_URL = `https://firestore.googleapis.com/v1/projects/${FIRESTORE_PROJECT_ID}/databases/(default)/documents/readings?key=${FIRESTORE_API_KEY}`;
 const FIREBASE_RTDB_READINGS_URL = "https://oil-adulteration-default-rtdb.firebaseio.com/readings.json";
-const FIREBASE_RTDB_LATEST_URL   = "https://oil-adulteration-default-rtdb.firebaseio.com/readings/latest.json";
 
 /**
  * Parses a reading object from Firebase Realtime Database
@@ -52,11 +51,11 @@ export function parseRtdbReading(raw) {
   }
 
   return {
-    temperature: isNaN(temp) ? 28.5 : temp,
+    temperature: isNaN(temp) ? 26.5 : temp,
     spectral_data: parsedSpectral,
     created_at: raw.created_at || new Date(timestamp).toISOString(),
     timestamp,
-    oil_type: raw.oil_type || 'Cloud Sample',
+    oil_type: raw.oil_type || 'Raw Sample',
     adulteration_index: raw.adulteration_index || 0
   };
 }
@@ -120,33 +119,45 @@ export function parseFirestoreDoc(doc) {
     spectral_data: spectral_data || '—',
     created_at: timeStr,
     timestamp,
-    oil_type: fields.oil_type?.stringValue || 'Cloud Sample',
+    oil_type: fields.oil_type?.stringValue || 'Raw Sample',
     adulteration_index: fields.adulteration_index?.doubleValue || 0
   };
 }
 
 /**
  * Primary Fetch Function:
- * 1. Checks Firebase RTDB /readings/latest.json (instant ultra-low latency channel)
- * 2. Checks Firestore REST API /readings collection
- * 3. Falls back to latest key in RTDB /readings.json
+ * 1. Fetches from Firebase RTDB /readings.json and extracts the latest chronological push key
+ * 2. Falls back to Firestore REST API /readings collection
  */
 export async function fetchLatestCloudReading() {
-  // ── 1. PRIMARY: Fetch from Firebase Realtime Database Dedicated Latest Node ──────
+  // ── 1. PRIMARY: Fetch from Firebase Realtime Database /readings.json ──────
   try {
-    const latestRes = await fetch(FIREBASE_RTDB_LATEST_URL, { signal: AbortSignal.timeout(3000) });
-    if (latestRes.ok) {
-      const latestData = await latestRes.json();
-      if (latestData && (latestData.spectral_data || latestData.temperature !== undefined)) {
-        const parsed = parseRtdbReading(latestData);
-        if (parsed) {
-          console.log('[CloudSensorService] Retrieved reading from RTDB /readings/latest:', parsed);
-          return parsed;
+    const rtdbRes = await fetch(FIREBASE_RTDB_READINGS_URL, { signal: AbortSignal.timeout(3500) });
+    if (rtdbRes.ok) {
+      const rtdbData = await rtdbRes.json();
+      if (rtdbData && typeof rtdbData === 'object') {
+        const keys = Object.keys(rtdbData).filter(
+          k => k !== 'latest' && rtdbData[k] && (rtdbData[k].spectral_data || rtdbData[k].temperature !== undefined)
+        );
+        if (keys.length > 0) {
+          // Sort keys chronologically
+          keys.sort((a, b) => {
+            const timeA = Number(rtdbData[a].timestamp) || 0;
+            const timeB = Number(rtdbData[b].timestamp) || 0;
+            if (timeA && timeB && timeA !== timeB) return timeA - timeB;
+            return a.localeCompare(b);
+          });
+          const latestKey = keys[keys.length - 1];
+          const parsed = parseRtdbReading(rtdbData[latestKey]);
+          if (parsed) {
+            console.log('[CloudSensorService] Retrieved live reading from RTDB key:', latestKey, parsed);
+            return parsed;
+          }
         }
       }
     }
-  } catch (err) {
-    console.warn('[CloudSensorService] RTDB /latest fetch notice:', err.message);
+  } catch (rtdbErr) {
+    console.warn('[CloudSensorService] RTDB fetch notice:', rtdbErr.message);
   }
 
   // ── 2. SECONDARY: Try Google Cloud Firestore REST API ────────────────────
@@ -172,36 +183,13 @@ export async function fetchLatestCloudReading() {
     console.warn('[CloudSensorService] Firestore REST notice:', fsErr.message);
   }
 
-  // ── 3. TERTIARY: Fetch from RTDB /readings.json root node ─────────────────
-  try {
-    const rtdbRes = await fetch(FIREBASE_RTDB_READINGS_URL, { signal: AbortSignal.timeout(4000) });
-    if (rtdbRes.ok) {
-      const rtdbData = await rtdbRes.json();
-      if (rtdbData && typeof rtdbData === 'object') {
-        const keys = Object.keys(rtdbData).filter(k => k !== 'latest');
-        if (keys.length > 0) {
-          // Newest key is last
-          const latestKey = keys[keys.length - 1];
-          const item = rtdbData[latestKey];
-          const parsed = parseRtdbReading(item);
-          if (parsed) {
-            console.log('[CloudSensorService] Retrieved latest reading from RTDB historical list:', parsed);
-            return parsed;
-          }
-        }
-      }
-    }
-  } catch (rtdbErr) {
-    console.warn('[CloudSensorService] RTDB historical fetch notice:', rtdbErr.message);
-  }
-
   return null;
 }
 
 /**
  * Real-Time WebSocket Push Subscription
- * Subscribes directly to Firebase Realtime Database /readings/latest and /readings
- * with automatic reconnect and zero polling latency.
+ * Subscribes directly to Firebase Realtime Database /readings via WebSockets
+ * Whenever ANY new reading is pushed by ESP32 or simulator, onValue fires immediately!
  */
 export function subscribeToLiveCloudReadings(onData, onError) {
   if (!rtdb) {
@@ -211,49 +199,42 @@ export function subscribeToLiveCloudReadings(onData, onError) {
 
   let active = true;
 
-  // Listen to /readings/latest node for instant real-time pushes
-  const latestRef = ref(rtdb, 'readings/latest');
-  const unsubscribeLatest = onValue(
-    latestRef,
-    (snapshot) => {
-      if (!active) return;
-      const val = snapshot.val();
-      if (val) {
-        const parsed = parseRtdbReading(val);
-        if (parsed) onData(parsed);
-      }
-    },
-    (err) => {
-      console.warn('[LiveSubscription] /latest listener notice:', err.message);
-      if (onError) onError(err);
-    }
-  );
-
-  // Also listen for additions to /readings
-  const readingsQuery = query(ref(rtdb, 'readings'), limitToLast(1));
-  const unsubscribeRoot = onValue(
+  // Query the last 5 records from /readings node
+  const readingsQuery = query(ref(rtdb, 'readings'), limitToLast(5));
+  const unsubscribe = onValue(
     readingsQuery,
     (snapshot) => {
       if (!active) return;
       const val = snapshot.val();
       if (val && typeof val === 'object') {
-        const keys = Object.keys(val).filter(k => k !== 'latest');
+        const keys = Object.keys(val).filter(
+          k => k !== 'latest' && val[k] && (val[k].spectral_data || val[k].temperature !== undefined)
+        );
         if (keys.length > 0) {
-          const item = val[keys[keys.length - 1]];
-          const parsed = parseRtdbReading(item);
-          if (parsed) onData(parsed);
+          keys.sort((a, b) => {
+            const timeA = Number(val[a].timestamp) || 0;
+            const timeB = Number(val[b].timestamp) || 0;
+            if (timeA && timeB && timeA !== timeB) return timeA - timeB;
+            return a.localeCompare(b);
+          });
+          const latestKey = keys[keys.length - 1];
+          const parsed = parseRtdbReading(val[latestKey]);
+          if (parsed) {
+            console.log('[LiveSubscription] Real-time WebSocket reading received:', latestKey, parsed);
+            onData(parsed);
+          }
         }
       }
     },
     (err) => {
-      console.warn('[LiveSubscription] /readings query notice:', err.message);
+      console.warn('[LiveSubscription] Query error:', err.message);
+      if (onError) onError(err);
     }
   );
 
   return () => {
     active = false;
-    try { unsubscribeLatest(); } catch (_) {}
-    try { unsubscribeRoot(); } catch (_) {}
+    try { unsubscribe(); } catch (_) {}
   };
 }
 
@@ -270,18 +251,7 @@ export async function pushCloudReading(readingData) {
     created_at: new Date().toISOString()
   };
 
-  // 1. Put to /readings/latest.json
-  try {
-    await fetch(FIREBASE_RTDB_LATEST_URL, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-  } catch (e) {
-    console.warn('[pushCloudReading] RTDB /latest error:', e);
-  }
-
-  // 2. Post to /readings.json
+  // 1. Post to /readings.json (new push key created)
   try {
     await fetch(FIREBASE_RTDB_READINGS_URL, {
       method: 'POST',
@@ -292,7 +262,7 @@ export async function pushCloudReading(readingData) {
     console.warn('[pushCloudReading] RTDB /readings error:', e);
   }
 
-  // 3. Post to Firestore REST
+  // 2. Post to Firestore REST
   try {
     await fetch(FIRESTORE_READINGS_URL, {
       method: 'POST',
