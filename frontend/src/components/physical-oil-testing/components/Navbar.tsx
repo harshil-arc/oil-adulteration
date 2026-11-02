@@ -7,7 +7,6 @@ import {
   AlertTriangle, 
   BookmarkCheck, 
   Printer, 
-  Sparkles,
   ShieldCheck,
   Menu,
   X
@@ -16,14 +15,12 @@ import {
 interface NavbarProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
-  onOpenAiModal: () => void;
   savedLogsCount: number;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
   activeTab,
   setActiveTab,
-  onOpenAiModal,
   savedLogsCount,
 }) => {
   const [mobileMenuOpen, setMobileMenuOpen] = React.useState(false);
@@ -99,17 +96,8 @@ export const Navbar: React.FC<NavbarProps> = ({
             })}
           </nav>
 
-          {/* Action Button: AI Chemist */}
+          {/* Right Action */}
           <div className="flex items-center gap-2 shrink-0">
-            <button
-              id="ai-consultant-header-btn"
-              onClick={onOpenAiModal}
-              className="px-3.5 py-2 rounded-xl text-xs font-bold bg-teal-600 hover:bg-teal-700 text-white transition-all shadow-xs flex items-center gap-2 cursor-pointer whitespace-nowrap shrink-0"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-teal-200 animate-pulse" />
-              <span>Ask AI Chemist</span>
-            </button>
-
             {/* Mobile Menu Button */}
             <button
               id="mobile-menu-toggle"

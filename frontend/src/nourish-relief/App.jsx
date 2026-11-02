@@ -1,6 +1,6 @@
 import { jsx, jsxs } from "react/jsx-runtime";
 import { useState, useEffect, useRef } from "react";
-import { collection, onSnapshot, query, orderBy } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, doc, deleteDoc } from "firebase/firestore";
 import { Header } from "./components/Header";
 import { DonorPortal } from "./components/DonorPortal";
 import { AdminDashboard } from "./components/AdminDashboard";
@@ -10,7 +10,9 @@ import { playNotificationSound } from "./lib/sound";
 import { INITIAL_DONATIONS, INITIAL_NOTIFICATIONS } from "./data/mockDonations";
 import { db, supabase } from "../lib/supabase";
 
-function App({ forcedRole }) {
+const MOCK_DONATION_IDS = new Set(["don-101", "don-102", "don-103", "don-104"]);
+
+function App({ forcedRole, onBack }) {
   const [currentRole, setCurrentRole] = useState(forcedRole || "admin");
 
   // State for food donations
@@ -28,15 +30,39 @@ function App({ forcedRole }) {
   useEffect(() => {
     let unsubscribeFirestore = null;
 
+    // Remove legacy cached mock donations from localStorage
+    try {
+      localStorage.removeItem("nourish_donations");
+    } catch (_) {}
+
     try {
       if (db) {
+        // Purge default mock items if present in Firestore
+        ["don-101", "don-102", "don-103", "don-104"].forEach(async (mockId) => {
+          try { await deleteDoc(doc(db, "food_donations", mockId)); } catch (_) {}
+          try { await deleteDoc(doc(db, "nourish_donations", mockId)); } catch (_) {}
+        });
+
         const donationsQuery = query(collection(db, "food_donations"));
         unsubscribeFirestore = onSnapshot(
           donationsQuery,
           (snapshot) => {
             const liveDonations = [];
             snapshot.forEach((docSnap) => {
-              liveDonations.push({ id: docSnap.id, ...docSnap.data() });
+              const data = docSnap.data();
+              const isMock = MOCK_DONATION_IDS.has(docSnap.id) ||
+                data.foodTitle?.includes("Wedding Reception Dinner Buffet") ||
+                data.foodTitle?.includes("Excess Biryani & Curry Servings") ||
+                data.foodTitle?.includes("Fresh Whole Wheat Bread, Buns & Muffins") ||
+                data.donorName === "Grand Regency Banquet & Hotel" ||
+                data.donorName === "The Spice Route Fine Dining" ||
+                data.donorName === "Crown Bakery & Patisserie";
+
+              if (!isMock) {
+                liveDonations.push({ id: docSnap.id, ...data });
+              } else {
+                try { deleteDoc(doc(db, "food_donations", docSnap.id)).catch(() => {}); } catch (_) {}
+              }
             });
 
             // Sort by submittedAt descending
@@ -79,6 +105,10 @@ function App({ forcedRole }) {
             setActiveToastNotif(notification);
             try { playNotificationSound(notification.type || "CONFIRMED"); } catch (_) {}
           }
+        } else if (type === "DONATION_DELETED" && payload) {
+          setDonations((prev) => prev.filter((d) => d.id !== payload.donationId));
+        } else if (type === "ALL_DONATIONS_CLEARED") {
+          setDonations([]);
         }
       };
     }
@@ -234,34 +264,55 @@ function App({ forcedRole }) {
     } catch (_) {}
   };
 
-  const handleQuickAddPreset = async () => {
-    const venues = [
-      { name: "Hotel Taj Mahal Banquet", type: "Hotel", title: "Excess Grand Dinner Buffet", items: "• Shahi Paneer (12 kg)\n• Dal Makhani (15 kg)\n• Jeera Rice (18 kg)\n• Naan (100 pcs)", servings: 150, image: "https://images.unsplash.com/photo-1555244162-803834f70033?q=80&w=800&auto=format&fit=crop" },
-      { name: "Shahi Wedding Pavilion", type: "Wedding Venue", title: "Surplus Marriage Feast Trays", items: "• Mutton Biryani (25 kg)\n• Chicken Gravy (20 kg)\n• Rumali Roti (200 pcs)\n• Gulab Jamun (150 pcs)", servings: 210, image: "https://images.unsplash.com/photo-1633945274405-b6c8069047b0?q=80&w=800&auto=format&fit=crop" },
-      { name: "Oberoi Bakers & Sweets", type: "Bakery & Cafe", title: "Evening Pastries & Artisan Loaves", items: "• Sourdough Bread (20 loaves)\n• Croissants (40 pcs)\n• Fruit Tarts (30 pcs)", servings: 80, image: "https://images.unsplash.com/photo-1509440159596-0249088772ff?q=80&w=800&auto=format&fit=crop" }
-    ];
-    const chosen = venues[Math.floor(Math.random() * venues.length)];
-    await handleSubmitDonation({
-      donorName: chosen.name,
-      venueType: chosen.type,
-      contactPerson: "Manager Malhotra",
-      contactPhone: "+91 98989 12345",
-      address: "Central Avenue, Sector 18",
-      city: "Delhi NCR",
-      foodTitle: chosen.title,
-      foodCategory: "Cooked Meals",
-      detailedFoodItems: chosen.items,
-      quantityServings: chosen.servings,
-      quantityKg: Math.round(chosen.servings * 0.3),
-      numberOfContainers: 4,
-      containerType: "Food Grade Insulated Containers",
-      cookedTime: new Date().toISOString(),
-      estimatedExpiryHours: 5,
-      dietType: "Vegetarian",
-      packagingType: "Sealed Thermal Containers",
-      photoProofUrl: chosen.image,
-      specialNotes: "Freshly prepared surplus. Fully packaged with photo proof."
-    });
+  // Delete a single food donation
+  const handleDeleteDonation = async (donationId) => {
+    setDonations((prev) => prev.filter((d) => d.id !== donationId));
+    try {
+      const updated = donations.filter((d) => d.id !== donationId);
+      localStorage.setItem("nourish_donations", JSON.stringify(updated));
+    } catch (_) {}
+
+    if (broadcastChannelRef.current) {
+      broadcastChannelRef.current.postMessage({
+        type: "DONATION_DELETED",
+        payload: { donationId }
+      });
+    }
+
+    try {
+      if (db) await deleteDoc(doc(db, "food_donations", donationId));
+    } catch (err) {
+      console.warn("[NourishRelief] Firestore database delete error:", err);
+    }
+
+    try {
+      await supabase.from("food_donations").eq("id", donationId).delete();
+    } catch (_) {}
+
+    try {
+      await fetch(`/api/donations/${donationId}`, { method: "DELETE" });
+    } catch (_) {}
+  };
+
+  // Clear all food donations
+  const handleClearAllDonations = async () => {
+    const ids = donations.map((d) => d.id);
+    setDonations([]);
+    try {
+      localStorage.removeItem("nourish_donations");
+    } catch (_) {}
+
+    if (broadcastChannelRef.current) {
+      broadcastChannelRef.current.postMessage({
+        type: "ALL_DONATIONS_CLEARED"
+      });
+    }
+
+    for (const id of ids) {
+      try {
+        if (db) await deleteDoc(doc(db, "food_donations", id));
+      } catch (_) {}
+    }
   };
 
   const pendingCount = donations.filter((d) => d.status === "Pending Request").length;
@@ -276,8 +327,8 @@ function App({ forcedRole }) {
         notifications,
         onMarkRead: handleMarkNotificationsRead,
         isConnected,
-        onQuickAddPreset: handleQuickAddPreset,
         forcedRole,
+        onBack,
         onSelectDonation: (id) => {
           const item = donations.find((d) => d.id === id);
           if (item) setSelectedProofDonation(item);
@@ -291,6 +342,8 @@ function App({ forcedRole }) {
               donations,
               onSubmitDonation: handleSubmitDonation,
               onInspectProof: (item) => setSelectedProofDonation(item),
+              onDeleteDonation: handleDeleteDonation,
+              onClearAllDonations: handleClearAllDonations,
               isSubmitting
             }),
           currentRole === "admin" &&

@@ -3,6 +3,7 @@ import {
   CheckCircle2, XCircle, AlertTriangle, Droplet, Flame, 
   RotateCw, Sparkles, Scale, Info, ArrowRight, ShieldCheck, HeartPulse
 } from 'lucide-react';
+import { HEALTH_CONDITIONS } from '../../data/healthConditionsData';
 
 export const RecommendationResults = ({
   recommendation,
@@ -30,6 +31,18 @@ export const RecommendationResults = ({
             <p className="text-xs text-slate-500 mt-1">
               Calculated for <span className="font-semibold text-slate-800">{profile.selectedConditions.length} Health Conditions</span> & <span className="font-semibold text-slate-800">{profile.householdMembers} Household Members</span>
             </p>
+            {profile.selectedConditions?.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mt-2.5">
+                {profile.selectedConditions.map(cId => {
+                  const cond = HEALTH_CONDITIONS.find(c => c.id === cId);
+                  return (
+                    <span key={cId} className="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800 text-[10px] font-bold border border-amber-200/80 shadow-xs">
+                      {cond?.title ? cond.title.split('(')[0].trim() : cId}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           <button

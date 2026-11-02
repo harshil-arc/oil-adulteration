@@ -22,12 +22,10 @@ import { OilTest } from '../types';
 
 interface TestDirectoryProps {
   onSelectTest: (testId: string) => void;
-  onOpenAiModal: () => void;
 }
 
 export const TestDirectory: React.FC<TestDirectoryProps> = ({
   onSelectTest,
-  onOpenAiModal,
 }) => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');

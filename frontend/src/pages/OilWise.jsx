@@ -92,13 +92,15 @@ export default function OilWise() {
 
             {/* Recommendation Results Display */}
             {recommendation && (
-              <RecommendationResults
-                recommendation={recommendation}
-                aiResult={aiResult}
-                profile={userProfile}
-                onModifyProfile={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-                onCompareOils={handleCompareFromDirectory}
-              />
+              <div id="oilwise-results" className="scroll-mt-6">
+                <RecommendationResults
+                  recommendation={recommendation}
+                  aiResult={aiResult}
+                  profile={userProfile}
+                  onModifyProfile={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                  onCompareOils={handleCompareFromDirectory}
+                />
+              </div>
             )}
 
           </div>

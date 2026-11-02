@@ -10,7 +10,8 @@ import {
   Sparkles,
   WifiOff,
   PlusCircle,
-  Clock
+  Clock,
+  ArrowLeft
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 const Header = ({
@@ -20,14 +21,36 @@ const Header = ({
   notifications,
   onMarkRead,
   isConnected,
-  onQuickAddPreset,
   onSelectDonation,
-  forcedRole
+  forcedRole,
+  onBack
 }) => {
   const [showNotifDrawer, setShowNotifDrawer] = useState(false);
   const unreadCount = notifications.filter((n) => !n.read).length;
   return /* @__PURE__ */ jsx("header", { className: "sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 text-slate-900 shadow-xs", children: /* @__PURE__ */ jsx("div", { className: "max-w-7xl mx-auto px-4 sm:px-6 lg:px-8", children: /* @__PURE__ */ jsxs("div", { className: "flex items-center justify-between h-16 sm:h-20", children: [
-    /* @__PURE__ */ jsxs("div", { className: "flex items-center space-x-3", children: [
+    /* @__PURE__ */ jsxs("div", { className: "flex items-center space-x-2 sm:space-x-3", children: [
+      /* Top Left Back Button */
+      /* @__PURE__ */ jsxs(
+        "button",
+        {
+          onClick: () => {
+            if (onBack) {
+              onBack();
+            } else if (window.history.length > 1) {
+              window.history.back();
+            } else {
+              window.location.href = '/home';
+            }
+          },
+          className: "flex items-center space-x-1.5 px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold border border-slate-200 shadow-xs transition-all active:scale-95 cursor-pointer mr-1",
+          title: "Back to Dashboard",
+          children: [
+            /* @__PURE__ */ jsx(ArrowLeft, { className: "w-4 h-4 text-slate-700" }),
+            /* @__PURE__ */ jsx("span", { className: "hidden xs:inline", children: "Back" })
+          ]
+        }
+      ),
+      /* Logo */
       /* @__PURE__ */ jsx("div", { className: "w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 p-0.5 shadow-md shadow-emerald-600/15 flex items-center justify-center", children: /* @__PURE__ */ jsx("div", { className: "w-full h-full bg-white rounded-[10px] flex items-center justify-center", children: /* @__PURE__ */ jsx(Heart, { className: "w-6 h-6 text-emerald-600 fill-emerald-500/20" }) }) }),
       /* @__PURE__ */ jsxs("div", { children: [
         /* @__PURE__ */ jsxs("div", { className: "flex items-center space-x-2", children: [
@@ -66,18 +89,6 @@ const Header = ({
       )
     ] }),
     /* @__PURE__ */ jsxs("div", { className: "flex items-center space-x-2 sm:space-x-3", children: [
-      /* @__PURE__ */ jsxs(
-        "button",
-        {
-          onClick: onQuickAddPreset,
-          title: "Add sample surplus food listing for quick verification testing",
-          className: "hidden lg:flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-emerald-700 text-xs font-semibold border border-slate-200 transition-colors",
-          children: [
-            /* @__PURE__ */ jsx(PlusCircle, { className: "w-3.5 h-3.5" }),
-            /* @__PURE__ */ jsx("span", { children: "+ Quick Preset" })
-          ]
-        }
-      ),
       /* @__PURE__ */ jsx("div", { className: "flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-slate-100 border border-slate-200 text-[11px] text-slate-600 hidden sm:flex", children: isConnected ? /* @__PURE__ */ jsxs(Fragment, { children: [
         /* @__PURE__ */ jsx("span", { className: "w-2 h-2 rounded-full bg-emerald-500 animate-ping" }),
         /* @__PURE__ */ jsx("span", { className: "w-2 h-2 rounded-full bg-emerald-500 -ml-3" }),

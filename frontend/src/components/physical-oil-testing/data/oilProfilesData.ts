@@ -220,5 +220,41 @@ export const OIL_PROFILES: OilProfile[] = [
       'Smooth absorption when rubbed on hands.'
     ],
     spoilageVsAdulteration: 'Pure sesame oil rarely goes rancid quickly due to sesamol antioxidant power. If the nutty aroma vanishes when heated, synthetic essence was used.'
+  },
+  {
+    id: 'sunflower_oil',
+    name: 'Sunflower & Refined Cooking Oil',
+    hindiName: 'Surajmukhi Ka Tel (सूरजमुखी का तेल)',
+    commonColor: 'Crystal Clear Light Golden Yellow',
+    iconColor: 'bg-yellow-400 text-slate-950',
+    smokePointPure: '230°C (446°F)',
+    naturalConsistency: 'Light, thin, free-flowing liquid that remains crystal clear down to -17°C.',
+    primaryAdulterants: [
+      {
+        name: 'Cheap Palm Olein / Palm Stearin Blend',
+        whyUsed: 'Substitutes costly sunflower oil with heavy saturated palm fractions.',
+        healthHazard: 'High saturated fats, increases LDL cholesterol, cardiovascular stress.',
+        severity: 'Dangerous'
+      },
+      {
+        name: 'Mineral Oil / Petroleum Extenders',
+        whyUsed: 'Colorless, odorless filler to cut packaging costs.',
+        healthHazard: 'Carcinogenic mineral hydrocarbons, severe vitamin malabsorption.',
+        severity: 'Severe / Fatal'
+      },
+      {
+        name: 'Recycled / Re-bleached Fryer Waste Oil',
+        whyUsed: 'Industrial restaurants re-bleach spent fryer oil and resell it.',
+        healthHazard: 'High Total Polar Compounds (TPC), toxic acrylamides and free radicals.',
+        severity: 'Severe / Fatal'
+      }
+    ],
+    bestTests: ['freezing_test', 'heating_test', 'paper_blot_test', 'water_bubble_test'],
+    pureHallmarks: [
+      'Remains 100% transparent and completely liquid in refrigerator (never clouds or solidifies).',
+      'Clean neutral scent; does not froth or release choking smoke when heated.',
+      'Leaves a light, clean, non-greasy feel without sticky film.'
+    ],
+    spoilageVsAdulteration: 'Refined sunflower oil is neutral in odor. If it develops a rancid paint smell, clouds in the fridge, or foams up in the pan, palm oil blending or thermal degradation has occurred.'
   }
 ];

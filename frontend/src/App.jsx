@@ -16,7 +16,6 @@ import History from './pages/History';
 import Hotspots from './pages/Hotspots';
 import Community from './pages/Community';
 import NourishRelief from './pages/NourishRelief';
-import DisasterDashboard from './pages/DisasterDashboard';
 import Profile from './pages/Profile';
 import OilWise from './pages/OilWise';
 import PhysicalOilTesting from './pages/PhysicalOilTesting';
@@ -73,12 +72,12 @@ export default function App() {
                       <Route path="/home" element={<Home />} />
                       <Route path="/ngo-dashboard" element={<Navigate to="/community" replace />} />
                       <Route path="/community" element={<Community />} />
-                      <Route path="/relief" element={<DisasterDashboard />} />
-                      <Route path="/relief-network" element={<DisasterDashboard />} />
-                      <Route path="/disaster" element={<DisasterDashboard />} />
-                      <Route path="/disasters" element={<DisasterDashboard />} />
+                      <Route path="/relief" element={<Navigate to="/home" replace />} />
+                      <Route path="/relief-network" element={<Navigate to="/home" replace />} />
+                      <Route path="/disaster" element={<Navigate to="/home" replace />} />
+                      <Route path="/disasters" element={<Navigate to="/home" replace />} />
                       <Route path="/food-donation" element={<Navigate to="/food-donation" replace />} />
-                      <Route path="/donations" element={<DisasterDashboard />} />
+                      <Route path="/donations" element={<Navigate to="/home" replace />} />
                       <Route path="/scan" element={<QRLanding />} />
                       <Route path="/scan/bluetooth" element={<BluetoothScan />} />
                       <Route path="/scan/local" element={<LocalRouter />} />

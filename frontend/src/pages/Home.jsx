@@ -49,10 +49,8 @@ export default function Home() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showFullAnalytics, setShowFullAnalytics] = useState(false);
 
-  const [selectedStatModal, setSelectedStatModal] = useState(null);
-
-  // Time Range Filter inside Full Analytics Modal
-  const [chartTimeRange, setChartTimeRange] = useState('Weekly');
+  // Time Range Filter inside Full Analytics Modal (Default: 'Today' for real daily readings)
+  const [chartTimeRange, setChartTimeRange] = useState('Today');
 
   // Time-based Greeting
   const greeting = useMemo(() => {
@@ -84,7 +82,28 @@ export default function Home() {
   const fetchData = async () => {
     try {
       const { data: scansData } = await supabase.from('analysis_results').select('*').order('timestamp', { ascending: false });
-      if (scansData) setScans(scansData);
+      
+      let localScans = [];
+      try {
+        localScans = JSON.parse(localStorage.getItem('spectratrust_recent_scans') || '[]');
+      } catch (_) {}
+
+      const all = [...(scansData || []), ...localScans];
+      // Exclude previous mock/demo dummy records
+      const realOnly = all.filter(s => s && s.id !== 'demo-latest-01' && !String(s.id).startsWith('demo-') && s.oil_type !== 'demo');
+      
+      // Deduplicate by id or unique timestamp
+      const map = new Map();
+      realOnly.forEach(s => {
+        const k = s.id || `${s.oil_type}_${s.timestamp || s.created_at}`;
+        if (!map.has(k)) map.set(k, s);
+      });
+
+      const sorted = Array.from(map.values()).sort(
+        (a, b) => new Date(b.timestamp || b.created_at || 0) - new Date(a.timestamp || a.created_at || 0)
+      );
+
+      setScans(sorted);
     } catch (e) {
       console.error('Error fetching data:', e);
     } finally {
@@ -92,78 +111,202 @@ export default function Home() {
     }
   };
 
-  // Latest Scan Object
-  const latestScan = useMemo(() => {
-    if (scans.length > 0) return scans[0];
-    return {
-      id: 'demo-latest-01',
-      oil_type: 'Mustard Oil',
-      purity: 94.2,
-      confidence_score: 98,
-      quality: 'Safe',
-      vendor: 'Amul Vendor Center',
-      timestamp: new Date().toISOString()
-    };
-  }, [scans]);
-
-  // Personal Stats Computation
-  const personalStats = useMemo(() => {
-    const total = scans.length;
-    const puritySum = scans.reduce((acc, val) => acc + parseFloat(val.purity || 0), 0);
-    const avgPurity = scans.length > 0 ? Math.round(puritySum / scans.length) : 0;
-    const unsafeCount = scans.filter(s => s.quality === 'Unsafe' || s.adulteration_detected).length;
-
-    return [
-      { id: 'samples', title: 'Samples Tested', value: `${total}`, unit: 'Scans', icon: Beaker, color: 'text-[#d4af37]', bg: 'bg-[#d4af37]/10' },
-      { id: 'purity', title: 'Average Purity', value: `${avgPurity}%`, unit: 'Score', icon: ShieldCheck, color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-      { id: 'unsafe', title: 'Unsafe Samples', value: `${unsafeCount}`, unit: 'Found', icon: ShieldAlert, color: 'text-red-400', bg: 'bg-red-500/10' },
-      { id: 'reports', title: 'Reports Submitted', value: `${unsafeCount}`, unit: 'Filed', icon: FileText, color: 'text-amber-400', bg: 'bg-amber-500/10' },
-      { id: 'vendors', title: 'Trusted Vendors', value: '0', unit: 'Verified', icon: Building, color: 'text-blue-400', bg: 'bg-blue-500/10' },
-      { id: 'donations', title: 'Food Donations', value: '0', unit: 'Rescues', icon: Heart, color: 'text-rose-400', bg: 'bg-rose-500/10' },
-      { id: 'score', title: 'Food Safety Score', value: total > 0 ? `${avgPurity}` : '0', unit: '/ 100', icon: Award, color: 'text-purple-400', bg: 'bg-purple-500/10' },
-      { id: 'complaints', title: 'Complaint Status', value: '0', unit: 'Resolved', icon: CheckCircle2, color: 'text-teal-400', bg: 'bg-teal-500/10' }
-    ];
-  }, [scans]);
-
-  // Chart dataset for Full Analytics Modal
-  const activeChartData = useMemo(() => {
-    if (chartTimeRange === 'Daily') {
-      return [
-        { label: '04:00', count: 1, avgPurity: 96 },
-        { label: '08:00', count: 3, avgPurity: 95 },
-        { label: '12:00', count: 8, avgPurity: 92 },
-        { label: '16:00', count: 5, avgPurity: 96 },
-        { label: '20:00', count: 4, avgPurity: 97 },
-        { label: '23:00', count: 1, avgPurity: 98 }
-      ];
-    } else if (chartTimeRange === 'Monthly') {
-      return [
-        { label: 'W1', count: 42, avgPurity: 94 },
-        { label: 'W2', count: 38, avgPurity: 95 },
-        { label: 'W3', count: 45, avgPurity: 93 },
-        { label: 'W4', count: 32, avgPurity: 96 }
-      ];
-    } else if (chartTimeRange === 'Yearly') {
-      return [
-        { label: 'Jan', count: 120, avgPurity: 94 },
-        { label: 'Feb', count: 145, avgPurity: 93 },
-        { label: 'Mar', count: 160, avgPurity: 95 },
-        { label: 'Apr', count: 180, avgPurity: 92 },
-        { label: 'May', count: 210, avgPurity: 96 },
-        { label: 'Jun', count: 230, avgPurity: 95 },
-        { label: 'Jul', count: 195, avgPurity: 96 }
-      ];
+  const handleClearPreviousReports = async () => {
+    if (window.confirm("Clear previous cached reports and reset counts to fresh readings from today?")) {
+      try {
+        localStorage.removeItem('spectratrust_recent_scans');
+        localStorage.removeItem('spectratrust_personal_stats');
+      } catch (_) {}
+      await fetchData();
     }
-    return [
-      { label: 'Mon', count: 18, avgPurity: 95 },
-      { label: 'Tue', count: 24, avgPurity: 93 },
-      { label: 'Wed', count: 28, avgPurity: 96 },
-      { label: 'Thu', count: 22, avgPurity: 94 },
-      { label: 'Fri', count: 30, avgPurity: 97 },
-      { label: 'Sat', count: 15, avgPurity: 98 },
-      { label: 'Sun', count: 12, avgPurity: 96 }
-    ];
-  }, [chartTimeRange]);
+  };
+
+  // Latest Scan Object (Real scans only; null if no scans yet)
+  const latestScan = useMemo(() => {
+    return scans.length > 0 ? scans[0] : null;
+  }, [scans]);
+
+  // Check if a date string is today
+  const isToday = (ts) => {
+    if (!ts) return false;
+    const d = new Date(ts);
+    const now = new Date();
+    return (
+      d.getFullYear() === now.getFullYear() &&
+      d.getMonth() === now.getMonth() &&
+      d.getDate() === now.getDate()
+    );
+  };
+
+  // Today's real reading scans
+  const todayScans = useMemo(() => {
+    return scans.filter(s => isToday(s.timestamp || s.created_at));
+  }, [scans]);
+
+  const todayCount = todayScans.length;
+
+  const todaySafeCount = useMemo(() => {
+    return todayScans.filter(s => 
+      (s.quality === 'Safe' || s.quality === 'pure' || parseFloat(s.purity || 0) >= 80) &&
+      s.quality !== 'Unsafe' && !s.adulteration_detected
+    ).length;
+  }, [todayScans]);
+
+  const todayUnsafeCount = useMemo(() => {
+    return todayScans.filter(s => 
+      s.quality === 'Unsafe' || s.quality === 'heavy' || parseFloat(s.purity || 0) < 50 || s.adulteration_detected
+    ).length;
+  }, [todayScans]);
+
+  const todayModerateCount = Math.max(0, todayCount - todaySafeCount - todayUnsafeCount);
+
+  const todayAvgPurity = useMemo(() => {
+    if (todayCount === 0) return 0;
+    const sum = todayScans.reduce((acc, s) => acc + parseFloat(s.purity || 0), 0);
+    return Math.round(sum / todayCount);
+  }, [todayScans, todayCount]);
+
+  // Chart dataset for Full Analytics Modal based 100% on real data
+  const activeChartData = useMemo(() => {
+    if (chartTimeRange === 'Today' || chartTimeRange === 'Daily') {
+      const slots = [
+        { label: '00:00-04:00', startH: 0, endH: 4 },
+        { label: '04:00-08:00', startH: 4, endH: 8 },
+        { label: '08:00-12:00', startH: 8, endH: 12 },
+        { label: '12:00-16:00', startH: 12, endH: 16 },
+        { label: '16:00-20:00', startH: 16, endH: 20 },
+        { label: '20:00-24:00', startH: 20, endH: 24 }
+      ];
+
+      return slots.map(slot => {
+        const matching = todayScans.filter(s => {
+          const d = new Date(s.timestamp || s.created_at);
+          const h = d.getHours();
+          return h >= slot.startH && h < slot.endH;
+        });
+        const count = matching.length;
+        const avgPurity = count > 0 
+          ? Math.round(matching.reduce((acc, m) => acc + parseFloat(m.purity || 0), 0) / count)
+          : 0;
+        return {
+          label: slot.label,
+          count,
+          avgPurity
+        };
+      });
+    } else if (chartTimeRange === 'Weekly') {
+      const now = new Date();
+      const currentDay = now.getDay();
+      const mondayOffset = currentDay === 0 ? -6 : 1 - currentDay;
+      const monday = new Date(now);
+      monday.setDate(now.getDate() + mondayOffset);
+      monday.setHours(0, 0, 0, 0);
+
+      const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      return dayNames.map((name, i) => {
+        const targetDate = new Date(monday);
+        targetDate.setDate(monday.getDate() + i);
+        const dateStr = targetDate.toDateString();
+
+        const matching = scans.filter(s => {
+          const d = new Date(s.timestamp || s.created_at);
+          return d.toDateString() === dateStr;
+        });
+
+        const count = matching.length;
+        const avgPurity = count > 0
+          ? Math.round(matching.reduce((acc, m) => acc + parseFloat(m.purity || 0), 0) / count)
+          : 0;
+        return {
+          label: name,
+          count,
+          avgPurity
+        };
+      });
+    } else if (chartTimeRange === 'Monthly') {
+      const now = new Date();
+      const currentMonth = now.getMonth();
+      const currentYear = now.getFullYear();
+
+      const weekSlots = [
+        { label: 'W1', startD: 1, endD: 7 },
+        { label: 'W2', startD: 8, endD: 14 },
+        { label: 'W3', startD: 15, endD: 21 },
+        { label: 'W4', startD: 22, endD: 31 }
+      ];
+
+      return weekSlots.map(slot => {
+        const matching = scans.filter(s => {
+          const d = new Date(s.timestamp || s.created_at);
+          return (
+            d.getFullYear() === currentYear &&
+            d.getMonth() === currentMonth &&
+            d.getDate() >= slot.startD &&
+            d.getDate() <= slot.endD
+          );
+        });
+        const count = matching.length;
+        const avgPurity = count > 0
+          ? Math.round(matching.reduce((acc, m) => acc + parseFloat(m.purity || 0), 0) / count)
+          : 0;
+        return {
+          label: slot.label,
+          count,
+          avgPurity
+        };
+      });
+    } else if (chartTimeRange === 'Yearly') {
+      const now = new Date();
+      const currentYear = now.getFullYear();
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+      return monthNames.map((name, mIdx) => {
+        const matching = scans.filter(s => {
+          const d = new Date(s.timestamp || s.created_at);
+          return d.getFullYear() === currentYear && d.getMonth() === mIdx;
+        });
+        const count = matching.length;
+        const avgPurity = count > 0
+          ? Math.round(matching.reduce((acc, m) => acc + parseFloat(m.purity || 0), 0) / count)
+          : 0;
+        return {
+          label: name,
+          count,
+          avgPurity
+        };
+      });
+    }
+    return [];
+  }, [chartTimeRange, todayScans, scans]);
+
+  // Quality Breakdown Pie Chart based on real scan readings
+  const activePieData = useMemo(() => {
+    const dataset = (chartTimeRange === 'Today' || chartTimeRange === 'Daily') ? todayScans : scans;
+    const pureCount = dataset.filter(s => 
+      (s.quality === 'Safe' || s.quality === 'pure' || parseFloat(s.purity || 0) >= 80) &&
+      s.quality !== 'Unsafe' && !s.adulteration_detected
+    ).length;
+    const moderateCount = dataset.filter(s => 
+      (s.quality === 'Moderate' || s.quality === 'moderate' || (parseFloat(s.purity || 0) >= 50 && parseFloat(s.purity || 0) < 80))
+    ).length;
+    const unsafeCount = dataset.filter(s => 
+      s.quality === 'Unsafe' || s.quality === 'heavy' || parseFloat(s.purity || 0) < 50 || s.adulteration_detected
+    ).length;
+
+    const items = [
+      { name: 'Pure / Safe', value: pureCount, color: '#22c55e' },
+      { name: 'Moderate', value: moderateCount, color: '#eab308' },
+      { name: 'Adulterated', value: unsafeCount, color: '#ef4444' }
+    ].filter(item => item.value > 0);
+
+    return {
+      items,
+      total: pureCount + moderateCount + unsafeCount,
+      pureCount,
+      moderateCount,
+      unsafeCount
+    };
+  }, [chartTimeRange, todayScans, scans]);
 
   return (
     <div className="min-h-screen theme-bg theme-text pb-28 pt-safe relative overflow-x-hidden">
@@ -204,45 +347,59 @@ export default function Home() {
         <div className="card p-5 rounded-3xl border border-[#d4af37]/40 bg-gradient-to-br from-[var(--bg-card)] via-[var(--bg-card)] to-[#d4af37]/10 relative overflow-hidden shadow-glow-gold">
           <div className="flex items-center justify-between mb-3 border-b border-[var(--border-color)] pb-2.5">
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className={`w-2.5 h-2.5 rounded-full ${latestScan ? 'bg-emerald-400 animate-pulse' : 'bg-gray-400'}`} />
               <span className="text-[10px] font-black uppercase tracking-widest text-[#d4af37]">{t('home.latest_scan', 'Latest Oil Scan')}</span>
             </div>
             <span className="text-[10px] font-bold text-[var(--text-muted)] font-mono">
-              {new Date(latestScan.timestamp || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              {latestScan ? new Date(latestScan.timestamp || latestScan.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Ready'}
             </span>
           </div>
 
-          <div className="flex items-start justify-between gap-3 mb-4">
-            <div>
-              <h2 className="text-xl font-black theme-text tracking-tight">{latestScan.oil_type || t('home.mustard_oil', 'Mustard Oil')}</h2>
-              <p className="text-[11px] text-[var(--text-muted)] mt-0.5 font-medium">{latestScan.vendor || t('home.local_vendor', 'Local Market Vendor')}</p>
-            </div>
+          {latestScan ? (
+            <>
+              <div className="flex items-start justify-between gap-3 mb-4">
+                <div>
+                  <h2 className="text-xl font-black theme-text tracking-tight">{latestScan.oil_type || t('home.mustard_oil', 'Mustard Oil')}</h2>
+                  <p className="text-[11px] text-[var(--text-muted)] mt-0.5 font-medium">{latestScan.vendor || t('home.local_vendor', 'Local Market Vendor')}</p>
+                </div>
 
-            <div className="text-right">
-              <div className="text-2xl font-black font-mono text-[#d4af37]">
-                {parseFloat(latestScan.purity || 94.2).toFixed(1)}%
+                <div className="text-right">
+                  <div className="text-2xl font-black font-mono text-[#d4af37]">
+                    {parseFloat(latestScan.purity || 0).toFixed(1)}%
+                  </div>
+                  <span className={`inline-block text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded mt-1 ${
+                    latestScan.quality === 'Unsafe' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                  }`}>
+                    {latestScan.quality === 'Unsafe' ? t('common.unsafe', 'ADULTERATED') : t('common.safe', 'SAFE')}
+                  </span>
+                </div>
               </div>
-              <span className={`inline-block text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded mt-1 ${
-                latestScan.quality === 'Unsafe' ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-              }`}>
-                {latestScan.quality === 'Unsafe' ? t('common.unsafe', 'ADULTERATED') : t('common.safe', 'SAFE')}
-              </span>
-            </div>
-          </div>
 
-          <div className="flex items-center justify-between text-xs text-gray-300 bg-[var(--bg-elevated)] p-3 rounded-2xl border border-[var(--border-color)] mb-4">
-            <span className="font-bold flex items-center gap-1.5">
-              <Sparkles size={14} className="text-[#d4af37]" /> {t('home.ai_confidence', 'AI Confidence Score:')}
-            </span>
-            <span className="font-mono font-black text-emerald-400">{latestScan.confidence_score || 98}%</span>
-          </div>
+              <div className="flex items-center justify-between text-xs text-gray-300 bg-[var(--bg-elevated)] p-3 rounded-2xl border border-[var(--border-color)] mb-4">
+                <span className="font-bold flex items-center gap-1.5">
+                  <Sparkles size={14} className="text-[#d4af37]" /> {t('home.ai_confidence', 'AI Confidence Score:')}
+                </span>
+                <span className="font-mono font-black text-emerald-400">{latestScan.confidence_score || 95}%</span>
+              </div>
+            </>
+          ) : (
+            <div className="py-5 text-center">
+              <div className="w-12 h-12 rounded-2xl bg-[#d4af37]/15 text-[#d4af37] flex items-center justify-center mx-auto mb-2 border border-[#d4af37]/30">
+                <Droplet size={22} />
+              </div>
+              <h2 className="text-base font-black theme-text">No Scans Recorded Yet Today</h2>
+              <p className="text-[11px] text-[var(--text-muted)] mt-1 max-w-xs mx-auto">
+                All fake reports cleared. Start a new optical scan or physical test to begin tracking live data.
+              </p>
+            </div>
+          )}
 
           <button
             onClick={() => navigate('/scan')}
-            className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-[#f5c842] to-[#d4af37] text-black font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-glow-gold hover:brightness-110 active:scale-95 transition-all"
+            className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-[#f5c842] to-[#d4af37] text-black font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 shadow-glow-gold hover:brightness-110 active:scale-95 transition-all mt-1"
           >
             <ScanLine size={16} />
-            {t('home.scan_again', 'Scan Again')}
+            {latestScan ? t('home.scan_again', 'Scan Again') : 'Start First Scan'}
           </button>
         </div>
 
@@ -267,31 +424,9 @@ export default function Home() {
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-xs font-black text-[#d4af37] uppercase tracking-wider">{t('home.physical_testing', 'Physical Oil Testing')}</p>
-                  <p className="text-[9px] text-gray-300">{t('home.physical_desc', 'Rapid Home Screening, Interactive Lab, FSSAI DART Protocols & AI Chemist')}</p>
+                  <p className="text-[9px] text-gray-300">{t('home.physical_desc', 'Rapid Home Screening, Interactive Lab & FSSAI DART Protocols')}</p>
                 </div>
                 <ChevronRight size={16} className="text-[#d4af37] group-hover:translate-x-1 transition-transform" />
-              </div>
-            </button>
-
-            {/* FEATURED: DISASTER & EMERGENCY RELIEF PLATFORM BUTTON */}
-            <button
-              onClick={() => navigate('/disaster?tab=disaster')}
-              className="p-4 rounded-2xl bg-gradient-to-br from-[var(--bg-card)] via-[var(--bg-card)] to-red-950/30 border border-red-500/40 hover:border-red-400 text-left transition-all group flex flex-col justify-between h-24 col-span-2 shadow-glow-red relative overflow-hidden"
-            >
-              <div className="flex items-center justify-between">
-                <div className="w-9 h-9 rounded-xl bg-red-500/20 text-red-400 flex items-center justify-center group-hover:scale-110 transition-transform border border-red-500/30 shadow-glow-red">
-                  <AlertTriangle size={18} />
-                </div>
-                <span className="text-[9px] font-black uppercase tracking-widest bg-red-500/20 text-red-300 px-2.5 py-0.5 rounded-full border border-red-500/40 flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse" /> {t('home.live_relief', 'Live Relief Platform')}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-black text-red-400 uppercase tracking-wider">{t('home.disaster_title', 'Disaster, Emergency & Relief')}</p>
-                  <p className="text-[9px] text-gray-300">{t('home.disaster_desc', 'Connect with Verified NGOs, Camps & Food Relief Nodes')}</p>
-                </div>
-                <ChevronRight size={16} className="text-red-400 group-hover:translate-x-1 transition-transform" />
               </div>
             </button>
             
@@ -376,58 +511,33 @@ export default function Home() {
           </div>
         </div>
 
-        {/* ── 4. PERSONAL STATS (Horizontal Swipe Carousel) ───────────────────── */}
-        <div>
-          <div className="flex items-center justify-between mb-2.5 pl-1">
-            <h3 className="text-[10px] font-black uppercase tracking-widest text-gray-400">Personal Statistics</h3>
-            <span className="text-[9px] text-[#d4af37] font-bold">Swipe →</span>
-          </div>
-
-          <div className="flex overflow-x-auto gap-3 pb-2 custom-scrollbar snap-x snap-mandatory">
-            {personalStats.map(stat => {
-              const StatIcon = stat.icon;
-              return (
-                <div
-                  key={stat.id}
-                  onClick={() => setSelectedStatModal(stat)}
-                  className="snap-start shrink-0 w-36 p-4 rounded-2xl bg-[var(--bg-card)] border border-[var(--border-color)] hover:border-[#d4af37]/50 transition-all cursor-pointer flex flex-col justify-between h-28"
-                >
-                  <div className="flex justify-between items-center">
-                    <span className="text-[9px] font-bold text-gray-400 uppercase tracking-wider truncate">{stat.title}</span>
-                    <div className={`p-1.5 rounded-lg ${stat.bg} ${stat.color}`}>
-                      <StatIcon size={14} />
-                    </div>
-                  </div>
-                  <div>
-                    <p className={`text-xl font-black font-mono ${stat.color}`}>{stat.value}</p>
-                    <p className="text-[9px] text-gray-400 font-medium">{stat.unit}</p>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* ── 5. VIEW FULL ANALYTICS BUTTON ──────────────────────────────────── */}
+        {/* ── 4. FULL ANALYTICS ────────────────────────────────────────────── */}
         <div className="card p-5 rounded-3xl border border-blue-500/30 bg-gradient-to-r from-blue-500/10 to-purple-500/10 flex items-center justify-between gap-4">
           <div>
-            <h3 className="text-sm font-black theme-text uppercase tracking-wider flex items-center gap-2">
-              <BarChart2 size={18} className="text-blue-400" /> Full Analytics
-            </h3>
-            <p className="text-[10px] text-[var(--text-muted)] mt-1">Inspect weekly volume, pie charts & regional purity maps.</p>
+            <div className="flex items-center gap-2">
+              <h3 className="text-sm font-black theme-text uppercase tracking-wider flex items-center gap-2">
+                <BarChart2 size={18} className="text-blue-400" /> Full Analytics
+              </h3>
+              <span className="bg-blue-500/20 text-blue-400 border border-blue-500/40 text-[9px] font-bold px-2 py-0.5 rounded-full font-mono">
+                {todayCount} Today
+              </span>
+            </div>
+            <p className="text-[10px] text-[var(--text-muted)] mt-1">
+              Live reading counts, real-time volume graphs & quality distribution.
+            </p>
           </div>
 
           <button
             onClick={() => setShowFullAnalytics(true)}
-            className="py-2.5 px-4 rounded-xl bg-blue-500 text-black font-black text-xs uppercase tracking-wider shrink-0 hover:bg-blue-400 transition-colors shadow-glow-blue"
+            className="py-2.5 px-4 rounded-xl bg-blue-500 text-black font-black text-xs uppercase tracking-wider shrink-0 hover:bg-blue-400 transition-colors shadow-glow-blue flex items-center gap-1.5"
           >
-            View →
+            <span>View</span> <ChevronRight size={14} />
           </button>
         </div>
 
       </div>
 
-      {/* ── DEDICATED FULL ANALYTICS MODAL (Charts, Graphs & Heatmaps) ───────── */}
+      {/* ── DEDICATED FULL ANALYTICS MODAL (Real Today Data & Dynamic Graphs) ───────── */}
       {showFullAnalytics && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in overflow-y-auto">
           <div className="relative w-full max-w-2xl bg-[var(--bg-card)] border border-[#d4af37]/40 rounded-3xl shadow-2xl overflow-hidden my-6">
@@ -436,19 +546,84 @@ export default function Home() {
             <div className="flex items-center justify-between p-4 border-b border-[var(--border-color)] bg-[var(--bg-elevated)]">
               <div className="flex items-center gap-2">
                 <BarChart2 className="text-[#d4af37]" size={18} />
-                <h3 className="text-sm font-black theme-text">SpectraTrust Full Analytics & Intelligence</h3>
+                <div>
+                  <h3 className="text-sm font-black theme-text">SpectraTrust Full Analytics & Live Intelligence</h3>
+                  <p className="text-[10px] text-[var(--text-muted)]">Computed dynamically from real scanner & physical test readings</p>
+                </div>
               </div>
-              <button onClick={() => setShowFullAnalytics(false)} className="p-1.5 rounded-full bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:theme-text">
-                <X size={16} />
-              </button>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={handleClearPreviousReports}
+                  title="Clear previous cached reports and reset counts"
+                  className="px-2.5 py-1.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 text-[10px] font-bold flex items-center gap-1.5 transition-colors"
+                >
+                  <RefreshCw size={12} />
+                  <span>Reset Cache</span>
+                </button>
+                <button 
+                  onClick={() => setShowFullAnalytics(false)} 
+                  className="p-1.5 rounded-full bg-[var(--bg-elevated)] text-[var(--text-muted)] hover:theme-text transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              </div>
             </div>
 
             {/* Content */}
             <div className="p-5 space-y-6 max-h-[80vh] overflow-y-auto">
               
+              {/* Real Today Metrics KPI Grid */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-gray-400">Today's Real-Time Reading Summary</h4>
+                  <span className="text-[10px] text-emerald-400 font-bold flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" /> Live Telemetry
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <div className="p-3.5 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-color)]">
+                    <div className="flex items-center justify-between text-gray-400 mb-1">
+                      <span className="text-[10px] font-bold uppercase">Today Scans</span>
+                      <Activity size={14} className="text-[#d4af37]" />
+                    </div>
+                    <p className="text-2xl font-black font-mono theme-text">{todayCount}</p>
+                    <p className="text-[9px] text-[var(--text-muted)] mt-0.5">Real samples logged</p>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-color)]">
+                    <div className="flex items-center justify-between text-gray-400 mb-1">
+                      <span className="text-[10px] font-bold uppercase">Avg Purity</span>
+                      <Sparkles size={14} className="text-emerald-400" />
+                    </div>
+                    <p className="text-2xl font-black font-mono text-emerald-400">
+                      {todayCount > 0 ? `${todayAvgPurity}%` : '--'}
+                    </p>
+                    <p className="text-[9px] text-[var(--text-muted)] mt-0.5">Today's mean purity</p>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-color)]">
+                    <div className="flex items-center justify-between text-gray-400 mb-1">
+                      <span className="text-[10px] font-bold uppercase">Safe Samples</span>
+                      <CheckCircle2 size={14} className="text-emerald-400" />
+                    </div>
+                    <p className="text-2xl font-black font-mono text-emerald-400">{todaySafeCount}</p>
+                    <p className="text-[9px] text-[var(--text-muted)] mt-0.5">Compliant batches</p>
+                  </div>
+
+                  <div className="p-3.5 rounded-2xl bg-[var(--bg-elevated)] border border-[var(--border-color)]">
+                    <div className="flex items-center justify-between text-gray-400 mb-1">
+                      <span className="text-[10px] font-bold uppercase">Adulterated</span>
+                      <ShieldAlert size={14} className="text-red-400" />
+                    </div>
+                    <p className="text-2xl font-black font-mono text-red-400">{todayUnsafeCount}</p>
+                    <p className="text-[9px] text-[var(--text-muted)] mt-0.5">Flagged adulterated</p>
+                  </div>
+                </div>
+              </div>
+
               {/* Filter Tabs */}
               <div className="flex items-center justify-between bg-[var(--bg-elevated)] p-1 rounded-2xl border border-[var(--border-color)] text-xs">
-                {['Daily', 'Weekly', 'Monthly', 'Yearly'].map(range => (
+                {['Today', 'Weekly', 'Monthly', 'Yearly'].map(range => (
                   <button
                     key={range}
                     onClick={() => setChartTimeRange(range)}
@@ -461,48 +636,151 @@ export default function Home() {
                 ))}
               </div>
 
-              {/* Bar Chart */}
+              {/* Bar Chart (Real Scan Counts) */}
               <div className="bg-[var(--bg-elevated)] p-4 rounded-2xl border border-[var(--border-color)] space-y-2">
-                <h4 className="text-xs font-black theme-text uppercase tracking-wider">{chartTimeRange} Scan Volume</h4>
-                <div className="h-48 w-full pt-2">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={activeChartData}>
-                      <XAxis dataKey="label" stroke="#888888" fontSize={10} tickLine={false} />
-                      <YAxis stroke="#888888" fontSize={10} tickLine={false} />
-                      <Tooltip contentStyle={{ backgroundColor: '#1c1c1c', border: '1px solid #333', borderRadius: '12px', fontSize: '12px' }} />
-                      <Bar dataKey="count" fill="#d4af37" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-black theme-text uppercase tracking-wider">{chartTimeRange} Scan Volume</h4>
+                  <span className="text-[10px] font-mono text-[var(--text-muted)]">
+                    Total: {activeChartData.reduce((acc, d) => acc + d.count, 0)} scans
+                  </span>
                 </div>
+                
+                {activeChartData.some(d => d.count > 0) ? (
+                  <div className="h-48 w-full pt-2">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={activeChartData}>
+                        <XAxis dataKey="label" stroke="#888888" fontSize={10} tickLine={false} />
+                        <YAxis stroke="#888888" fontSize={10} tickLine={false} allowDecimals={false} />
+                        <Tooltip 
+                          contentStyle={{ backgroundColor: '#1c1c1c', border: '1px solid #333', borderRadius: '12px', fontSize: '12px' }} 
+                          formatter={(value, name) => [value, name === 'count' ? 'Scans' : name]}
+                        />
+                        <Bar dataKey="count" fill="#d4af37" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                ) : (
+                  <div className="h-44 w-full flex flex-col items-center justify-center text-center p-4">
+                    <Activity size={28} className="text-[#d4af37]/40 mb-2" />
+                    <p className="text-xs font-bold theme-text">No real readings recorded yet for {chartTimeRange.toLowerCase()}</p>
+                    <p className="text-[10px] text-[var(--text-muted)] mt-1 max-w-sm">
+                      Previous fake reports have been removed. Perform an oil scan or physical test to see live counts on this graph.
+                    </p>
+                  </div>
+                )}
               </div>
 
-              {/* Quality Breakdown Pie */}
+              {/* Quality Breakdown Pie (Real Quality Distribution) */}
               <div className="bg-[var(--bg-elevated)] p-4 rounded-2xl border border-[var(--border-color)] space-y-2">
-                <h4 className="text-xs font-black theme-text uppercase tracking-wider">Quality Breakdown</h4>
-                <div className="h-48 w-full flex items-center justify-center">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Pie
-                        data={[
-                          { name: 'Pure', value: 85, color: '#22c55e' },
-                          { name: 'Moderate', value: 10, color: '#eab308' },
-                          { name: 'Adulterated', value: 5, color: '#ef4444' }
-                        ]}
-                        dataKey="value"
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={50}
-                        outerRadius={70}
-                        paddingAngle={5}
-                      >
-                        <Cell key="cell-0" fill="#22c55e" />
-                        <Cell key="cell-1" fill="#eab308" />
-                        <Cell key="cell-2" fill="#ef4444" />
-                      </Pie>
-                      <Tooltip contentStyle={{ backgroundColor: '#1c1c1c', border: '1px solid #333', borderRadius: '12px' }} />
-                    </PieChart>
-                  </ResponsiveContainer>
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-black theme-text uppercase tracking-wider">Quality Distribution</h4>
+                  <span className="text-[10px] font-mono text-[var(--text-muted)]">
+                    {activePieData.total} sample{activePieData.total === 1 ? '' : 's'}
+                  </span>
                 </div>
+
+                {activePieData.total > 0 ? (
+                  <div className="flex flex-col sm:flex-row items-center justify-around gap-4 pt-2">
+                    <div className="h-44 w-44">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={activePieData.items}
+                            dataKey="value"
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={45}
+                            outerRadius={65}
+                            paddingAngle={4}
+                          >
+                            {activePieData.items.map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <Tooltip contentStyle={{ backgroundColor: '#1c1c1c', border: '1px solid #333', borderRadius: '12px', fontSize: '12px' }} />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+
+                    <div className="space-y-2 text-xs font-medium w-full max-w-xs">
+                      <div className="flex items-center justify-between p-2 rounded-xl bg-[var(--bg-card)] border border-emerald-500/20">
+                        <span className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-[#22c55e]" /> Pure / Safe
+                        </span>
+                        <span className="font-mono font-bold text-emerald-400">{activePieData.pureCount}</span>
+                      </div>
+                      <div className="flex items-center justify-between p-2 rounded-xl bg-[var(--bg-card)] border border-yellow-500/20">
+                        <span className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-[#eab308]" /> Moderate
+                        </span>
+                        <span className="font-mono font-bold text-yellow-400">{activePieData.moderateCount}</span>
+                      </div>
+                      <div className="flex items-center justify-between p-2 rounded-xl bg-[var(--bg-card)] border border-red-500/20">
+                        <span className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-[#ef4444]" /> Adulterated
+                        </span>
+                        <span className="font-mono font-bold text-red-400">{activePieData.unsafeCount}</span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-36 w-full flex flex-col items-center justify-center text-center p-4">
+                    <p className="text-xs font-bold theme-text">No quality distribution data yet</p>
+                    <p className="text-[10px] text-[var(--text-muted)] mt-1">
+                      Real purity classifications will automatically render once new readings are completed today.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Today's Live Reading Log */}
+              <div className="bg-[var(--bg-elevated)] p-4 rounded-2xl border border-[var(--border-color)] space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-black theme-text uppercase tracking-wider flex items-center gap-1.5">
+                    <Clock size={14} className="text-[#d4af37]" /> Today's Live Reading Log
+                  </h4>
+                  <span className="text-[10px] font-mono text-[var(--text-muted)]">
+                    {todayScans.length} entry{todayScans.length === 1 ? '' : 'ies'}
+                  </span>
+                </div>
+
+                {todayScans.length > 0 ? (
+                  <div className="space-y-2 max-h-48 overflow-y-auto custom-scrollbar pr-1">
+                    {todayScans.map((scan, idx) => {
+                      const isSafe = scan.quality !== 'Unsafe' && !scan.adulteration_detected && parseFloat(scan.purity || 0) >= 60;
+                      return (
+                        <div 
+                          key={scan.id || idx}
+                          className="flex items-center justify-between p-3 rounded-xl bg-[var(--bg-card)] border border-[var(--border-color)] text-xs"
+                        >
+                          <div className="space-y-0.5">
+                            <p className="font-black theme-text">{scan.oil_type || 'Oil Sample'}</p>
+                            <p className="text-[10px] text-[var(--text-muted)]">
+                              {scan.vendor || 'Lab Test'} • {new Date(scan.timestamp || scan.created_at || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                          <div className="text-right">
+                            <span className="font-mono font-black text-sm text-[#d4af37]">
+                              {parseFloat(scan.purity || 0).toFixed(1)}%
+                            </span>
+                            <div>
+                              <span className={`inline-block text-[8px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded mt-0.5 ${
+                                isSafe ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'
+                              }`}>
+                                {isSafe ? 'SAFE' : 'ADULTERATED'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="py-6 text-center text-[var(--text-muted)]">
+                    <p className="text-xs font-semibold">No readings logged today yet.</p>
+                    <p className="text-[10px] mt-0.5">Real scans performed today will be listed here automatically.</p>
+                  </div>
+                )}
               </div>
 
               {/* National Intelligence Center Map Component */}
@@ -513,29 +791,6 @@ export default function Home() {
           </div>
         </div>
       )}
-
-      {/* ── STAT DETAIL MODAL ───────────────────────────────────────────────── */}
-      {selectedStatModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
-          <div className="relative w-full max-w-sm bg-[var(--bg-card)] border border-[#d4af37]/40 rounded-3xl p-6 shadow-2xl text-center space-y-4">
-            <div className={`w-14 h-14 rounded-2xl ${selectedStatModal.bg} ${selectedStatModal.color} flex items-center justify-center mx-auto`}>
-              <selectedStatModal.icon size={28} />
-            </div>
-            <div>
-              <h3 className="text-lg font-black theme-text">{selectedStatModal.title}</h3>
-              <p className="text-3xl font-black font-mono text-[#d4af37] mt-1">{selectedStatModal.value}</p>
-              <p className="text-xs text-[var(--text-muted)] mt-2">Detailed metric telemetry logged securely in database.</p>
-            </div>
-            <button
-              onClick={() => setSelectedStatModal(null)}
-              className="w-full py-3 rounded-xl bg-[var(--bg-elevated)] border border-[var(--border-color)] theme-text font-bold text-xs uppercase tracking-wider"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      )}
-
 
     </div>
   );

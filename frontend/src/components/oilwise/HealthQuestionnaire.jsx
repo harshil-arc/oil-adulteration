@@ -25,19 +25,81 @@ export const HealthQuestionnaire = ({
   const [householdMembers, setHouseholdMembers] = useState(initialProfile?.householdMembers || 4);
 
   const toggleCondition = (id) => {
-    if (selectedConditions.includes(id)) {
-      setSelectedConditions(selectedConditions.filter(c => c !== id));
-    } else {
-      setSelectedConditions([...selectedConditions, id]);
-    }
+    const next = selectedConditions.includes(id)
+      ? selectedConditions.filter(c => c !== id)
+      : [...selectedConditions, id];
+    setSelectedConditions(next);
+    onCalculate({
+      selectedConditions: next,
+      cookingHabits,
+      ageGroup,
+      weightKg,
+      activityLevel,
+      householdMembers
+    });
   };
 
   const toggleHabit = (id) => {
-    if (cookingHabits.includes(id)) {
-      setCookingHabits(cookingHabits.filter(h => h !== id));
-    } else {
-      setCookingHabits([...cookingHabits, id]);
-    }
+    const next = cookingHabits.includes(id)
+      ? cookingHabits.filter(h => h !== id)
+      : [...cookingHabits, id];
+    setCookingHabits(next);
+    onCalculate({
+      selectedConditions,
+      cookingHabits: next,
+      ageGroup,
+      weightKg,
+      activityLevel,
+      householdMembers
+    });
+  };
+
+  const handleAgeChange = (val) => {
+    setAgeGroup(val);
+    onCalculate({
+      selectedConditions,
+      cookingHabits,
+      ageGroup: val,
+      weightKg,
+      activityLevel,
+      householdMembers
+    });
+  };
+
+  const handleWeightChange = (val) => {
+    setWeightKg(val);
+    onCalculate({
+      selectedConditions,
+      cookingHabits,
+      ageGroup,
+      weightKg: val,
+      activityLevel,
+      householdMembers
+    });
+  };
+
+  const handleActivityChange = (val) => {
+    setActivityLevel(val);
+    onCalculate({
+      selectedConditions,
+      cookingHabits,
+      ageGroup,
+      weightKg,
+      activityLevel: val,
+      householdMembers
+    });
+  };
+
+  const handleHouseholdChange = (val) => {
+    setHouseholdMembers(val);
+    onCalculate({
+      selectedConditions,
+      cookingHabits,
+      ageGroup,
+      weightKg,
+      activityLevel,
+      householdMembers: val
+    });
   };
 
   const handleSubmit = () => {
@@ -50,6 +112,10 @@ export const HealthQuestionnaire = ({
       householdMembers
     };
     onCalculate(profile);
+    const resultsEl = document.getElementById('oilwise-results');
+    if (resultsEl) {
+      resultsEl.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   const renderIcon = (name) => {
@@ -232,7 +298,7 @@ export const HealthQuestionnaire = ({
               </label>
               <select
                 value={ageGroup}
-                onChange={(e) => setAgeGroup(e.target.value)}
+                onChange={(e) => handleAgeChange(e.target.value)}
                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-amber-500"
               >
                 <option value="Child / Teen (<18 yrs)">Child / Teen (&lt;18 yrs)</option>
@@ -249,7 +315,7 @@ export const HealthQuestionnaire = ({
               <input
                 type="number"
                 value={weightKg || ''}
-                onChange={(e) => setWeightKg(e.target.value ? Number(e.target.value) : undefined)}
+                onChange={(e) => handleWeightChange(e.target.value ? Number(e.target.value) : undefined)}
                 placeholder="e.g. 70"
                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-amber-500"
               />
@@ -262,7 +328,7 @@ export const HealthQuestionnaire = ({
               </label>
               <select
                 value={activityLevel}
-                onChange={(e) => setActivityLevel(e.target.value)}
+                onChange={(e) => handleActivityChange(e.target.value)}
                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-amber-500"
               >
                 <option value="sedentary">Sedentary (desk job)</option>
@@ -281,7 +347,7 @@ export const HealthQuestionnaire = ({
                 type="number"
                 min={1}
                 value={householdMembers}
-                onChange={(e) => setHouseholdMembers(Math.max(1, Number(e.target.value)))}
+                onChange={(e) => handleHouseholdChange(Math.max(1, Number(e.target.value)))}
                 className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-amber-500"
               />
             </div>

@@ -1,7 +1,7 @@
 import { 
   X, Home, ScanLine, Clock, MapIcon, Users,
   BookOpen, FileText, User, Settings, Info,
-  LogOut, LayoutDashboard, Zap, Apple, Heart, Droplet, FlaskConical
+  LogOut, LayoutDashboard, Apple, Droplet, FlaskConical
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useApp } from '../context/AppContext';
@@ -21,8 +21,6 @@ export default function GlobalNavigation() {
     { id: 'physical-oil-testing', translationKey: 'nav.physical_testing', label: 'Physical Oil Testing', desc: 'Zero-Device Kitchen Lab & Rapid Screening', icon: FlaskConical, path: '/physical-oil-testing', roles: ['citizen', 'vendor', 'inspector', 'laboratory', 'ngo', 'senior_officer', 'admin'] },
     { id: 'hotspots', translationKey: 'nav.safety_hotspots', label: 'Safety Hotspots', desc: 'Interactive Adulteration Map', icon: MapIcon, path: '/hotspots', roles: ['citizen', 'inspector', 'senior_officer', 'admin'] },
     { id: 'community', translationKey: 'nav.community', label: 'Safety Intelligence', desc: 'Complaints, Recalls & Labs', icon: Users, path: '/community', roles: ['citizen', 'vendor', 'inspector', 'laboratory', 'ngo', 'senior_officer', 'admin'] },
-    { id: 'disaster', translationKey: 'nav.disaster', label: 'Disaster & Emergency', desc: 'Live GDACS Alerts & Emergency', icon: Zap, path: '/disaster?tab=disaster', roles: ['citizen', 'ngo', 'volunteer', 'inspector', 'senior_officer', 'admin'] },
-    { id: 'relief', translationKey: 'nav.relief', label: 'Food Relief & Donations', desc: 'Surplus Food & NGO Logistics', icon: Heart, path: '/disaster?tab=relief', roles: ['citizen', 'ngo', 'volunteer', 'admin'] },
     { id: 'oilwise', translationKey: 'nav.oilwise', label: 'OilWise', desc: 'Edible Oil Health & Quantity Advisor', icon: Droplet, path: '/oilwise', roles: ['citizen', 'admin'] },
     { id: 'learning', translationKey: 'nav.learning', label: 'Learning Center', desc: 'Documentation & Guides', icon: BookOpen, path: '/learning', roles: ['citizen', 'vendor', 'inspector', 'admin'] },
     { id: 'reports', translationKey: 'nav.reports', label: 'System Reports', desc: 'Regulatory Logs & Analytics', icon: FileText, path: '/reports', roles: ['inspector', 'senior_officer', 'admin'] },

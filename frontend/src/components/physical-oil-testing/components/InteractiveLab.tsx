@@ -14,37 +14,48 @@ import {
   Save, 
   Clock, 
   Eye, 
-  Sparkles,
   Info,
   ShieldCheck,
   Check,
-  ChevronRight,
   Flame,
   Snowflake,
   FileSpreadsheet,
   Droplets,
-  FlaskRound
+  FlaskRound,
+  Hand
 } from 'lucide-react';
-import { OIL_TESTS } from '../data/oilTestsData';
-import { OIL_PROFILES } from '../data/oilProfilesData';
-import { OilTest, SimulatorOption, TestOutcome, TestRecord } from '../types';
+import { 
+  OIL_TESTS, 
+  getOilSpecificTest, 
+  getAvailableTestsForOil, 
+  normalizeOilKey 
+} from '../data/oilTestsData';
+import { OilTest, SimulatorOption, TestRecord } from '../types';
 import { VisualTestDiagram } from './VisualTestDiagram';
+
+const OIL_OPTIONS = [
+  { id: 'mustard_oil', label: 'Mustard Oil', hindi: 'Sarson (सरसों)', icon: '🟡', tag: 'High Pungency' },
+  { id: 'desi_ghee', label: 'Desi Ghee / Butter', hindi: 'Shuddh Ghee (घी)', icon: '🧈', tag: 'Dairy Fat' },
+  { id: 'coconut_oil', label: 'Coconut Oil', hindi: 'Nariyal (नारियल)', icon: '🥥', tag: 'Lauric Fat' },
+  { id: 'olive_oil', label: 'Olive Oil (EVOO)', hindi: 'Jaitun (जैतून)', icon: '🫒', tag: 'Oleic Acid' },
+  { id: 'groundnut_oil', label: 'Groundnut Oil', hindi: 'Moongfali (मूंगफली)', icon: '🥜', tag: 'Nutty' },
+  { id: 'sesame_oil', label: 'Sesame (Til) Oil', hindi: 'Til (तिल)', icon: '🌰', tag: 'Toasted' },
+  { id: 'sunflower_oil', label: 'Sunflower Oil', hindi: 'Surajmukhi (सूरजमुखी)', icon: '🌻', tag: 'Refined' },
+];
 
 interface InteractiveLabProps {
   initialTestId?: string;
   onSaveRecord: (record: Omit<TestRecord, 'id' | 'timestamp'>) => void;
-  onOpenAiModal: () => void;
-  onSelectTest: (testId: string) => void;
+  onSelectTest?: (testId: string) => void;
 }
 
 export const InteractiveLab: React.FC<InteractiveLabProps> = ({
   initialTestId = 'freezing_test',
   onSaveRecord,
-  onOpenAiModal,
   onSelectTest,
 }) => {
+  const [selectedOil, setSelectedOil] = useState<string>('mustard_oil');
   const [selectedTestId, setSelectedTestId] = useState<string>(initialTestId);
-  const [selectedOil, setSelectedOil] = useState<string>('Mustard Oil');
   const [brandName, setBrandName] = useState<string>('');
   const [currentStepIndex, setCurrentStepIndex] = useState<number>(0);
   
@@ -59,16 +70,28 @@ export const InteractiveLab: React.FC<InteractiveLabProps> = ({
   const [savedSuccess, setSavedSuccess] = useState<boolean>(false);
   const [activeVisualMode, setActiveVisualMode] = useState<'pure' | 'adulterated' | 'neutral'>('neutral');
 
-  const activeTest: OilTest = OIL_TESTS.find((t) => t.id === selectedTestId) || OIL_TESTS[0];
+  // Compute available tests for the selected oil
+  const availableTests = getAvailableTestsForOil(selectedOil);
 
-  // Update test when prop or tab changes
+  // Retrieve oil-tailored active test
+  const activeTest: OilTest = getOilSpecificTest(selectedOil, selectedTestId);
+
+  // Update test when prop changes
   useEffect(() => {
     if (initialTestId) {
       setSelectedTestId(initialTestId);
     }
   }, [initialTestId]);
 
-  // Reset step and timer when switching tests
+  // Ensure selected test is valid for the current oil
+  useEffect(() => {
+    const isTestAvailable = availableTests.some((t) => t.id === selectedTestId);
+    if (!isTestAvailable && availableTests.length > 0) {
+      setSelectedTestId(availableTests[0].id);
+    }
+  }, [selectedOil]);
+
+  // Reset step, timer, and observations when switching tests or oils
   useEffect(() => {
     setCurrentStepIndex(0);
     setSelectedOption(null);
@@ -76,7 +99,7 @@ export const InteractiveLab: React.FC<InteractiveLabProps> = ({
     setActiveVisualMode('neutral');
     setIsTimerRunning(false);
     setTimerSeconds(0);
-  }, [selectedTestId]);
+  }, [selectedTestId, selectedOil]);
 
   // Step-specific timer initialization
   useEffect(() => {
@@ -105,8 +128,11 @@ export const InteractiveLab: React.FC<InteractiveLabProps> = ({
 
   const handleSaveToJournal = () => {
     if (!selectedOption) return;
+    const currentOilObj = OIL_OPTIONS.find((o) => o.id === selectedOil);
+    const oilDisplayName = currentOilObj ? `${currentOilObj.label} (${currentOilObj.hindi})` : selectedOil;
+    
     onSaveRecord({
-      oilType: selectedOil,
+      oilType: oilDisplayName,
       brandName: brandName.trim() || undefined,
       testId: activeTest.id,
       testTitle: activeTest.title,
@@ -133,44 +159,93 @@ export const InteractiveLab: React.FC<InteractiveLabProps> = ({
     switch (testId) {
       case 'freezing_test': return Snowflake;
       case 'heating_test': return Flame;
+      case 'palm_touch_friction_test': return Hand;
       case 'paper_blot_test': return FileSpreadsheet;
       case 'water_bubble_test': return Droplets;
       case 'yellow_mustard_dye_test': return FlaskRound;
+      case 'argemone_nitric_test': return AlertTriangle;
+      case 'iodine_starch_test': return FlaskConical;
       default: return FlaskConical;
     }
   };
 
+  const activeOilObj = OIL_OPTIONS.find((o) => o.id === selectedOil) || OIL_OPTIONS[0];
+
   return (
     <div className="space-y-6">
-      {/* Top Test Selector Carousel */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-4">
+      
+      {/* Step 1: Select Oil to Test */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
           <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-amber-700">Virtual Kitchen Lab</span>
-            <h2 className="text-xl font-black text-slate-900">Select a Physical Test to Conduct</h2>
+            <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+              Step 1 • Oil Selection
+            </span>
+            <h2 className="text-lg font-black text-slate-900 mt-1">Select the Oil You Want to Test</h2>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-600 font-bold">Sample Oil:</span>
-            <select
-              id="lab-sample-oil-select"
-              value={selectedOil}
-              onChange={(e) => setSelectedOil(e.target.value)}
-              className="bg-slate-50 border border-slate-300 text-amber-900 text-xs font-bold rounded-lg px-3 py-1.5 focus:outline-hidden focus:border-amber-500 cursor-pointer shadow-xs"
-            >
-              <option value="Mustard Oil (Kachi Ghani)">Mustard Oil (Sarson)</option>
-              <option value="Desi Cow / Buffalo Ghee">Desi Ghee / Butter</option>
-              <option value="Coconut Oil (Virgin / Cold Pressed)">Coconut Oil (Nariyal)</option>
-              <option value="Extra Virgin Olive Oil">Extra Virgin Olive Oil</option>
-              <option value="Groundnut / Peanut Oil">Groundnut / Peanut Oil</option>
-              <option value="Sesame / Til Oil">Sesame (Til) Oil</option>
-              <option value="Sunflower / Cooking Blend">Sunflower / Mixed Blend</option>
-            </select>
-          </div>
+          <span className="text-xs text-slate-500 font-medium">
+            Each oil has its own unique chemical profile and authentic testing procedure
+          </span>
         </div>
 
-        {/* Test Pills Grid */}
+        {/* Oil Selection Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2">
+          {OIL_OPTIONS.map((oil) => {
+            const isSelected = oil.id === selectedOil;
+            return (
+              <button
+                key={oil.id}
+                id={`select-oil-${oil.id}`}
+                onClick={() => setSelectedOil(oil.id)}
+                className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer ${
+                  isSelected
+                    ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-md font-bold scale-[1.03]'
+                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-100'
+                }`}
+              >
+                <div className="flex items-center justify-between w-full mb-1">
+                  <span className="text-xl">{oil.icon}</span>
+                  <span className={`text-[8px] font-extrabold px-1.5 py-0.5 rounded uppercase ${
+                    isSelected ? 'bg-slate-950/20 text-slate-950' : 'bg-slate-200 text-slate-600'
+                  }`}>
+                    {oil.tag}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-xs font-black leading-tight block line-clamp-1">
+                    {oil.label}
+                  </span>
+                  <span className={`text-[10px] block mt-0.5 line-clamp-1 ${
+                    isSelected ? 'text-slate-900 font-semibold' : 'text-slate-500'
+                  }`}>
+                    {oil.hindi}
+                  </span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Step 2: Select Physical Testing Method for this Oil */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+          <div>
+            <span className="text-[10px] font-black uppercase tracking-wider text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+              Step 2 • Physical Testing Method
+            </span>
+            <h3 className="text-base font-black text-slate-900 mt-1">
+              Select Testing Method for {activeOilObj.label} ({activeOilObj.hindi})
+            </h3>
+          </div>
+          <span className="text-xs text-slate-500 font-medium">
+            Methods specifically calibrated for {activeOilObj.label}
+          </span>
+        </div>
+
+        {/* Method Selection Buttons */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-          {OIL_TESTS.map((test) => {
+          {availableTests.map((test) => {
             const Icon = getTestIcon(test.id);
             const isSelected = test.id === selectedTestId;
             return (
@@ -179,11 +254,11 @@ export const InteractiveLab: React.FC<InteractiveLabProps> = ({
                 id={`select-test-${test.id}`}
                 onClick={() => {
                   setSelectedTestId(test.id);
-                  onSelectTest(test.id);
+                  if (onSelectTest) onSelectTest(test.id);
                 }}
-                className={`p-2.5 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer ${
+                className={`p-3 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer ${
                   isSelected
-                    ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-xs font-bold scale-[1.02]'
+                    ? 'bg-amber-500 text-slate-950 border-amber-500 shadow-md font-bold scale-[1.02]'
                     : 'bg-slate-50 text-slate-700 border-slate-200 hover:border-slate-300 hover:bg-slate-100'
                 }`}
               >
@@ -195,8 +270,15 @@ export const InteractiveLab: React.FC<InteractiveLabProps> = ({
                     {test.estimatedDuration.split(' ')[0]}
                   </span>
                 </div>
-                <span className="text-xs font-bold leading-tight line-clamp-1">
-                  {test.title.split(' ')[0]} {test.title.split(' ')[1]}
+                <span className="text-xs font-black leading-tight line-clamp-1">
+                  {test.id === 'freezing_test' && 'Freezing Test'}
+                  {test.id === 'heating_test' && 'Heating Test'}
+                  {test.id === 'palm_touch_friction_test' && 'Aroma & Palm Rub'}
+                  {test.id === 'paper_blot_test' && 'Paper Blot Test'}
+                  {test.id === 'water_bubble_test' && 'Water Shake Test'}
+                  {test.id === 'yellow_mustard_dye_test' && 'Yellow Dye Acid Test'}
+                  {test.id === 'argemone_nitric_test' && 'Argemone Nitric Test'}
+                  {test.id === 'iodine_starch_test' && 'Iodine Starch Test'}
                 </span>
                 <span className={`text-[10px] mt-0.5 line-clamp-1 ${
                   isSelected ? 'text-slate-900 font-semibold' : 'text-slate-500'
@@ -225,6 +307,9 @@ export const InteractiveLab: React.FC<InteractiveLabProps> = ({
                   <span className="text-xs font-mono text-slate-500 flex items-center gap-1 font-bold">
                     <Clock className="w-3.5 h-3.5 text-slate-400" />
                     {activeTest.estimatedDuration}
+                  </span>
+                  <span className="text-xs font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-200">
+                    Target: {activeOilObj.label}
                   </span>
                 </div>
                 <h3 className="text-lg font-black text-slate-900">{activeTest.title}</h3>
@@ -293,7 +378,7 @@ export const InteractiveLab: React.FC<InteractiveLabProps> = ({
             {/* Active Step Content */}
             <AnimatePresence mode="wait">
               <motion.div
-                key={currentStepIndex}
+                key={`${selectedOil}_${selectedTestId}_${currentStepIndex}`}
                 initial={{ opacity: 0, x: 10 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -10 }}
@@ -314,7 +399,7 @@ export const InteractiveLab: React.FC<InteractiveLabProps> = ({
 
                 {activeTest.steps[currentStepIndex].tip && (
                   <div className="p-2.5 rounded-lg bg-white border border-amber-200 text-xs text-slate-700 flex items-start gap-2 shadow-2xs">
-                    <Sparkles className="w-3.5 h-3.5 text-amber-600 shrink-0 mt-0.5" />
+                    <span className="text-amber-600 font-black">💡</span>
                     <span><strong>Pro-Tip:</strong> {activeTest.steps[currentStepIndex].tip}</span>
                   </div>
                 )}
@@ -429,11 +514,11 @@ export const InteractiveLab: React.FC<InteractiveLabProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <Eye className="w-4 h-4 text-amber-600" />
-                <span className="text-xs font-bold uppercase tracking-wider text-amber-700">Step Final Inspection</span>
+                <span className="text-xs font-bold uppercase tracking-wider text-amber-700">Final Observation</span>
               </div>
-              <h3 className="text-lg font-black text-slate-900">What did you observe in your kitchen test?</h3>
+              <h3 className="text-lg font-black text-slate-900">What did you observe in your test of {activeOilObj.label}?</h3>
               <p className="text-xs text-slate-600 mt-0.5">
-                Select the observation that matches your test result to receive instant chemical analysis and safety rating.
+                Select your observation to receive instant scientific analysis, purity status, and adulteration health hazards.
               </p>
             </div>
 
@@ -570,8 +655,8 @@ export const InteractiveLab: React.FC<InteractiveLabProps> = ({
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <span className="text-xs font-bold uppercase tracking-wider text-amber-700">Live Visual Simulator</span>
-                <h4 className="text-sm font-black text-slate-900">Apparatus & Phase Reaction</h4>
+                <span className="text-xs font-bold uppercase tracking-wider text-amber-700">Visual Simulator</span>
+                <h4 className="text-sm font-black text-slate-900">{activeOilObj.label} Reaction</h4>
               </div>
               <div className="flex rounded-lg bg-slate-100 p-0.5 border border-slate-200">
                 <button
@@ -595,31 +680,33 @@ export const InteractiveLab: React.FC<InteractiveLabProps> = ({
               </div>
             </div>
 
-            {/* Diagram Rendering */}
-            <VisualTestDiagram testId={activeTest.id} state={activeVisualMode} />
+            {/* Diagram Rendering with oilId passed */}
+            <VisualTestDiagram testId={activeTest.id} state={activeVisualMode} oilId={selectedOil} />
 
             <div className="text-center text-xs font-medium text-slate-600">
               {activeVisualMode === 'pure' ? (
                 <span className="text-emerald-700 font-bold flex items-center justify-center gap-1">
-                  <CheckCircle2 className="w-3.5 h-3.5" /> Simulating Pure Oil Characteristic
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Simulating Pure {activeOilObj.label} Characteristic
                 </span>
               ) : activeVisualMode === 'adulterated' ? (
                 <span className="text-rose-700 font-bold flex items-center justify-center gap-1">
                   <XCircle className="w-3.5 h-3.5" /> Simulating Adulterated Phase Reaction
                 </span>
               ) : (
-                <span>Click above to compare pure vs. adulterated states visually.</span>
+                <span>Click "Pure" or "Adulterated" above to compare phase states visually.</span>
               )}
             </div>
           </div>
 
-          {/* Pure vs Adulterated Reference Specs */}
+          {/* Pure vs Adulterated Reference Specs tailored for this oil */}
           <div className="grid grid-cols-1 gap-3">
             {/* Pure Reference */}
             <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl space-y-2">
               <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-emerald-500"></div>
-                <span className="text-xs font-bold text-emerald-800 uppercase tracking-wide">Pure Benchmark</span>
+                <span className="text-xs font-bold text-emerald-800 uppercase tracking-wide">
+                  Pure Benchmark • {activeOilObj.label}
+                </span>
               </div>
               <h5 className="text-sm font-black text-slate-900">{activeTest.pureObservation.title}</h5>
               <p className="text-xs text-slate-700 leading-relaxed">{activeTest.pureObservation.description}</p>
@@ -637,7 +724,9 @@ export const InteractiveLab: React.FC<InteractiveLabProps> = ({
             <div className="p-4 bg-rose-50 border border-rose-200 rounded-xl space-y-2">
               <div className="flex items-center gap-2">
                 <div className="w-2.5 h-2.5 rounded-full bg-rose-500"></div>
-                <span className="text-xs font-bold text-rose-800 uppercase tracking-wide">Adulterated Red Flags</span>
+                <span className="text-xs font-bold text-rose-800 uppercase tracking-wide">
+                  Adulterated Red Flags • {activeOilObj.label}
+                </span>
               </div>
               <h5 className="text-sm font-black text-slate-900">{activeTest.adulteratedObservation.title}</h5>
               <p className="text-xs text-slate-700 leading-relaxed">{activeTest.adulteratedObservation.description}</p>
@@ -652,23 +741,6 @@ export const InteractiveLab: React.FC<InteractiveLabProps> = ({
             </div>
           </div>
 
-          {/* Ask AI Banner */}
-          <div className="p-4 bg-teal-50 border border-teal-200 rounded-xl flex items-center justify-between gap-3 shadow-xs">
-            <div className="space-y-1">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-teal-800 flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-teal-600" /> Have custom doubts?
-              </span>
-              <p className="text-xs font-black text-slate-900">Ask our AI Food Chemist</p>
-              <p className="text-[11px] text-slate-600">Get specific guidance on any oil brand or odd test result.</p>
-            </div>
-            <button
-              id="ai-prompt-lab-banner-btn"
-              onClick={onOpenAiModal}
-              className="px-3 py-2 rounded-lg bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shrink-0 shadow-xs cursor-pointer"
-            >
-              Consult AI
-            </button>
-          </div>
         </div>
       </div>
     </div>

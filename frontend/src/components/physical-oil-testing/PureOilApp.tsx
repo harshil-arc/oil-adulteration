@@ -7,23 +7,15 @@ import { SymptomChecker } from './components/SymptomChecker';
 import { HealthHazards } from './components/HealthHazards';
 import { TestJournal } from './components/TestJournal';
 import { KitchenCheatSheet } from './components/KitchenCheatSheet';
-import { AiChemistChatModal } from './components/AiChemistChatModal';
 import { TestRecord } from './types';
 import { 
   ShieldAlert, 
-  FlaskConical, 
-  Sparkles, 
-  CheckCircle2, 
-  AlertTriangle,
-  ArrowRight,
-  Droplets,
-  HeartPulse
+  Droplets
 } from 'lucide-react';
 
 export default function PureOilApp() {
   const [activeTab, setActiveTab] = useState<string>('lab');
   const [labSelectedTestId, setLabSelectedTestId] = useState<string>('freezing_test');
-  const [isAiModalOpen, setIsAiModalOpen] = useState<boolean>(false);
   const [testRecords, setTestRecords] = useState<TestRecord[]>([]);
 
   // Load test records from localStorage on initial render
@@ -88,7 +80,6 @@ export default function PureOilApp() {
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        onOpenAiModal={() => setIsAiModalOpen(true)}
         savedLogsCount={testRecords.length}
       />
 
@@ -117,7 +108,6 @@ export default function PureOilApp() {
           <InteractiveLab
             initialTestId={labSelectedTestId}
             onSaveRecord={handleSaveRecord}
-            onOpenAiModal={() => setIsAiModalOpen(true)}
             onSelectTest={setLabSelectedTestId}
           />
         )}
@@ -125,7 +115,6 @@ export default function PureOilApp() {
         {activeTab === 'directory' && (
           <TestDirectory
             onSelectTest={handleSelectTestAndLaunchLab}
-            onOpenAiModal={() => setIsAiModalOpen(true)}
           />
         )}
 
@@ -160,24 +149,6 @@ export default function PureOilApp() {
           <KitchenCheatSheet />
         )}
       </main>
-
-      {/* Floating AI Assistant Quick Trigger */}
-      <div className="fixed bottom-6 right-6 z-30">
-        <button
-          id="floating-ai-chemist-btn"
-          onClick={() => setIsAiModalOpen(true)}
-          className="group px-4 py-3 bg-amber-500 hover:bg-amber-400 text-slate-950 rounded-2xl shadow-xl shadow-amber-500/25 flex items-center gap-2.5 font-bold text-xs transition-all hover:scale-105 border border-amber-400 cursor-pointer"
-        >
-          <Sparkles className="w-4 h-4 text-slate-950 animate-bounce" />
-          <span>Ask AI Food Chemist</span>
-        </button>
-      </div>
-
-      {/* AI Chemist Modal */}
-      <AiChemistChatModal
-        isOpen={isAiModalOpen}
-        onClose={() => setIsAiModalOpen(false)}
-      />
 
       {/* Footer */}
       <footer className="border-t border-slate-200 bg-white py-8 px-4 text-center text-xs text-slate-500 space-y-2">
