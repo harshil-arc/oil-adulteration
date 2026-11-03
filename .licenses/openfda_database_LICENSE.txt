@@ -1,0 +1,4 @@
+openFDA Database License & Terms Notification
+Notification Timestamp: 2026-11-03T09:45:00+05:30
+Source: https://open.fda.gov/apis/ and https://open.fda.gov/license
+OpenFDA terms of service: openFDA is a research project to provide open APIs for FDA data. It is open to the public and not a clinical decision support tool. Please review openFDA terms at https://open.fda.gov/terms/.

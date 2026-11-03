@@ -11,51 +11,146 @@ const NOTIF_PREFS_KEY = 'spectratrust_food_intelligence_notif_prefs_v1';
 const CACHE_KEY = 'spectratrust_food_intelligence_alerts_cache_v1';
 
 /**
- * Fetch live food recall alerts directly from US FDA / OpenFDA Enforcement API
+ * Geographic state coordinates lookup for Leaflet Community Intelligence Map
+ */
+const US_STATE_COORDS = {
+  CA: [36.7783, -119.4179],
+  NY: [40.7128, -74.0060],
+  TX: [31.9686, -99.9018],
+  FL: [27.6648, -81.5158],
+  OH: [40.4173, -82.9071],
+  MI: [44.3148, -85.6024],
+  IL: [40.6331, -89.3985],
+  WA: [47.7511, -120.7401],
+  GA: [32.1656, -82.9001],
+  PA: [41.2033, -77.1945],
+  NC: [35.7596, -79.0193],
+  VA: [37.4316, -78.6569],
+  MO: [37.9643, -91.8318],
+  KY: [37.8393, -84.2700],
+  OR: [43.8041, -120.5542],
+  TN: [35.5175, -86.5804],
+  NJ: [40.0583, -74.4057],
+  IN: [40.2672, -86.1349],
+  WI: [43.7844, -88.7879],
+  MN: [46.7296, -94.6859],
+  CO: [39.5501, -105.7821],
+  AZ: [34.0489, -111.0937],
+  MA: [42.4072, -71.3824],
+  MD: [39.0458, -76.6413],
+  default: [38.9072, -77.0369]
+};
+
+/**
+ * Fetch live, true, and up-to-date food recall alerts directly from US FDA / OpenFDA Enforcement API
+ * Queries both targeted edible oil/fat recalls and newest nationwide enforcement actions sorted descending by report_date
  */
 export async function fetchLiveOpenFdaRecalls() {
   try {
-    const res = await fetch('https://api.fda.gov/food/enforcement.json?limit=10');
-    if (!res.ok) return [];
-    const data = await res.json();
-    const results = data?.results || [];
+    const [oilsRes, generalRes] = await Promise.all([
+      fetch('https://api.fda.gov/food/enforcement.json?search=product_description:oil+OR+product_description:butter+OR+product_description:ghee+OR+product_description:fat&sort=report_date:desc&limit=12')
+        .then(r => r.ok ? r.json() : { results: [] })
+        .catch(() => ({ results: [] })),
+      fetch('https://api.fda.gov/food/enforcement.json?sort=report_date:desc&limit=15')
+        .then(r => r.ok ? r.json() : { results: [] })
+        .catch(() => ({ results: [] }))
+    ]);
 
-    const liveItems = results.map((item, idx) => {
-      const year = item.report_date ? item.report_date.slice(0, 4) : '2026';
-      const month = item.report_date ? item.report_date.slice(4, 6) : '08';
-      const day = item.report_date ? item.report_date.slice(6, 8) : '01';
-      const pubDate = `${year}-${month}-${day}`;
+    const combinedRaw = [...(oilsRes.results || []), ...(generalRes.results || [])];
+    if (combinedRaw.length === 0) return [];
 
+    // Deduplicate by recall_number or event_id
+    const seenNumbers = new Set();
+    const uniqueRaw = [];
+    for (const item of combinedRaw) {
+      const key = item.recall_number || item.event_id;
+      if (key && !seenNumbers.has(key)) {
+        seenNumbers.add(key);
+        uniqueRaw.push(item);
+      }
+    }
+
+    const liveItems = uniqueRaw.map((item, idx) => {
+      // Parse true YYYYMMDD date from OpenFDA
+      let pubDate = 'Recent';
+      if (item.report_date && item.report_date.length === 8) {
+        const year = item.report_date.slice(0, 4);
+        const month = item.report_date.slice(4, 6);
+        const day = item.report_date.slice(6, 8);
+        pubDate = `${year}-${month}-${day}`;
+      } else if (item.recall_initiation_date && item.recall_initiation_date.length === 8) {
+        const year = item.recall_initiation_date.slice(0, 4);
+        const month = item.recall_initiation_date.slice(4, 6);
+        const day = item.recall_initiation_date.slice(6, 8);
+        pubDate = `${year}-${month}-${day}`;
+      }
+
+      // Map FDA Classification to severity
       let severity = 'High';
       if (item.classification?.includes('Class I')) severity = 'Critical';
       else if (item.classification?.includes('Class III')) severity = 'Medium';
 
+      // Detect if product is specifically an edible oil or fat
+      const descLower = (item.product_description || '').toLowerCase();
+      const isOil = descLower.includes('oil') || descLower.includes('ghee') || descLower.includes('butter') || descLower.includes('fat');
+      const category = isOil ? 'Oil Recalls' : 'Food Recalls';
+
+      // Coordinates based on recalling firm state
+      const stateCode = (item.state || '').toUpperCase();
+      const coords = US_STATE_COORDS[stateCode] || US_STATE_COORDS.default;
+
+      // Authentic government verification URLs
+      const safeRecallNumber = item.recall_number || '';
+      const safeFirm = item.recalling_firm || '';
+      const openFdaApiUrl = safeRecallNumber 
+        ? `https://api.fda.gov/food/enforcement.json?search=recall_number:%22${encodeURIComponent(safeRecallNumber)}%22`
+        : `https://api.fda.gov/food/enforcement.json?search=recalling_firm:%22${encodeURIComponent(safeFirm)}%22`;
+      const sourceUrl = `https://www.fda.gov/safety/recalls-market-withdrawals-safety-alerts?search_api_fulltext=${encodeURIComponent(safeFirm || safeRecallNumber)}`;
+      const fdaEnforcementDbUrl = 'https://www.accessdata.fda.gov/scripts/ires/index.cfm';
+
       return {
-        id: `openfda-live-${item.event_id || idx}-${idx}`,
-        title: `OpenFDA Real-Time Recall: ${item.recalling_firm || 'Official Producer'} - ${item.product_description?.slice(0, 65) || 'Food Item'}...`,
-        category: 'Food Recalls',
-        authority: 'US FDA / OpenFDA Enforcement Registry',
-        sourceName: 'US FDA Enforcement Directives (api.fda.gov)',
-        sourceUrl: `https://www.fda.gov/safety/recalls-market-withdrawals-safety-alerts`,
+        id: `openfda-live-${safeRecallNumber || item.event_id || idx}`,
+        recallNumber: safeRecallNumber || 'N/A',
+        eventId: item.event_id || 'N/A',
+        classification: item.classification || 'Class II',
+        status: item.status || 'Ongoing',
+        voluntaryMandated: item.voluntary_mandated || 'Voluntary: Firm initiated',
+        distributionPattern: item.distribution_pattern || 'Nationwide and export distribution',
+        productQuantity: item.product_quantity || 'Commercial retail batch',
+        title: `OpenFDA Live Recall: ${safeFirm || 'Producer'} - ${(item.product_description || 'Food Item').slice(0, 75)}...`,
+        category: category,
+        authority: 'US FDA / OpenFDA Federal Enforcement Registry',
+        sourceName: 'openFDA Live API (U.S. Food & Drug Administration)',
+        sourceBadge: 'Verified OpenFDA API',
+        sourceUrl: sourceUrl,
+        openFdaApiUrl: openFdaApiUrl,
+        fdaEnforcementDbUrl: fdaEnforcementDbUrl,
+        isOfficialOpenFda: true,
         publicationDate: pubDate,
-        productName: item.product_description?.slice(0, 80) || 'Packaged Food Product',
-        brand: item.recalling_firm || 'Imported Brand',
-        company: item.recalling_firm || 'Food Processing Corp',
-        oilType: 'Processed Food / Edible Items',
-        batchInfo: item.code_info?.slice(0, 60) || 'Lot / Code Info On Package',
-        testingLab: 'FDA Central Microbial & Quality Testing Laboratory',
-        labParameterTested: 'Pathogen / Chemical / MRL Regulatory Standard',
-        detectedLevel: item.reason_for_recall?.slice(0, 90) || 'Non-compliance with food safety purity standards',
-        legalAction: `FDA ${item.classification || 'Recall Notice'} - Status: ${item.status || 'Active Enforcement'}`,
-        affectedStates: [item.state || 'Nationwide', 'International Distribution'],
+        productName: (item.product_description || 'Packaged Food Product').slice(0, 90),
+        brand: safeFirm || 'Imported / US Food Brand',
+        company: safeFirm || 'Commercial Manufacturer',
+        oilType: isOil ? 'Edible Oil / Fat Product' : 'Packaged Food Item',
+        batchInfo: item.code_info?.slice(0, 80) || 'Lot & Code details on package',
+        testingLab: 'FDA Office of Regulatory Affairs (ORA) / Central Compliance Labs',
+        labParameterTested: 'Microbial, Allergen, Chemical & Identity Standard Analysis',
+        detectedLevel: item.reason_for_recall?.slice(0, 110) || 'Non-compliance with FDA food purity safety regulations',
+        legalAction: `FDA Enforcement (${item.classification || 'Recall'}) - Status: ${item.status || 'Active'}`,
+        affectedStates: [item.state ? `State: ${item.state}` : 'Nationwide US', 'International Distribution'],
         severity: severity,
-        sourceBadge: 'Live OpenFDA API',
-        thumbnailImage: 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=600&q=80',
-        description: item.product_description || 'Enforcement directive issued following quality control evaluation.',
-        reason: item.reason_for_recall || 'Product recalled due to regulatory non-compliance.',
-        recommendedAction: 'Inspect household inventory. Discontinue usage and return to vendor if batch code matches.',
-        tags: ['OpenFDA Live', 'Real-Time Recall', 'Food Safety Alert'],
-        isFeatured: false
+        thumbnailImage: isOil
+          ? 'https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?auto=format&fit=crop&w=600&q=80'
+          : 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=600&q=80',
+        description: item.product_description || 'Enforcement directive issued following FDA regulatory evaluation.',
+        reason: item.reason_for_recall || 'Product recalled due to regulatory violation or health risk.',
+        recommendedAction: 'Verify lot code on product packaging. Discontinue consumption. Return product to place of purchase or dispose per official FDA safety guidelines.',
+        tags: ['OpenFDA Live', 'Federal Enforcement', isOil ? 'Edible Oil' : 'Food Recall', item.classification || 'Class II'],
+        isFeatured: item.classification?.includes('Class I') || false,
+        lat: coords[0],
+        lng: coords[1],
+        city: item.city || '',
+        state: item.state || '',
+        country: item.country || 'United States'
       };
     });
 

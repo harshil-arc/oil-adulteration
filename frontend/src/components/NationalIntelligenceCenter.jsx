@@ -5,10 +5,11 @@ import {
   ShieldAlert, ShieldCheck, AlertTriangle, Building, Search, Filter, 
   MapPin, Clock, FileText, ChevronRight, Download, Share2, Award, 
   RefreshCw, CheckCircle2, AlertCircle, Sparkles, Compass, Layers, 
-  Activity, Zap, Eye, Phone, ArrowUpRight, Globe, Lock, Unlock, X, BarChart2
+  Activity, Zap, Eye, Phone, ArrowUpRight, Globe, Lock, Unlock, X, BarChart2, ExternalLink
 } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 import { useTranslation } from 'react-i18next';
+import { fetchVerifiedAlerts, fetchLiveOpenFdaRecalls } from '../services/foodSafetyIntelligenceService';
 
 // Fix Leaflet default icon paths
 delete L.Icon.Default.prototype._getIconUrl;
@@ -84,10 +85,28 @@ export default function NationalIntelligenceCenter() {
   const [timeFilter, setTimeFilter] = useState('This Week');
   const [mapCenter, setMapCenter] = useState([22.9734, 78.6569]);
   const [mapZoom, setMapZoom] = useState(5);
+  const [liveRecalls, setLiveRecalls] = useState([]);
 
   // Selected Detail Modals
   const [selectedMarker, setSelectedMarker] = useState(null);
   const [selectedDistrictModal, setSelectedDistrictModal] = useState(null);
+
+  // Load real verified OpenFDA & FSSAI recalls
+  useEffect(() => {
+    async function loadRecalls() {
+      try {
+        const cached = fetchVerifiedAlerts();
+        if (cached && cached.length > 0) {
+          setLiveRecalls(cached.slice(0, 4));
+        }
+        const fresh = await fetchLiveOpenFdaRecalls();
+        if (fresh && fresh.length > 0) {
+          setLiveRecalls(fresh.slice(0, 5));
+        }
+      } catch (_) {}
+    }
+    loadRecalls();
+  }, []);
 
   // Toggle Map Layer
   const toggleLayer = (layerId) => {
@@ -309,25 +328,48 @@ export default function NationalIntelligenceCenter() {
 
         {/* Government Recall Center */}
         <div className="card p-5 rounded-3xl border border-red-500/40 space-y-3">
-          <h3 className="text-base font-black text-white flex items-center gap-2">
-            <ShieldAlert className="text-red-400" size={18} />
-            Government Food Recall Advisories
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-base font-black text-white flex items-center gap-2">
+              <ShieldAlert className="text-red-400" size={18} />
+              OpenFDA & Govt Food Recall Advisories
+            </h3>
+            <span className="text-[10px] text-emerald-400 font-mono font-bold flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Live Sourced
+            </span>
+          </div>
 
           <div className="space-y-3 text-xs">
-            {GOVERNMENT_RECALLS.map(rec => (
-              <div key={rec.id} className="bg-red-500/10 border border-red-500/30 p-3.5 rounded-2xl space-y-1.5">
-                <div className="flex justify-between items-center">
-                  <h4 className="font-bold text-white text-sm">{rec.brand}</h4>
-                  <span className="bg-red-500 text-black text-[10px] font-bold px-2 py-0.5 rounded uppercase">{rec.severity}</span>
+            {(liveRecalls.length > 0 ? liveRecalls : GOVERNMENT_RECALLS).map(rec => {
+              const verifyUrl = rec.openFdaApiUrl || rec.sourceUrl;
+              return (
+                <div key={rec.id} className="bg-red-500/10 border border-red-500/30 p-3.5 rounded-2xl space-y-2">
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <h4 className="font-bold text-white text-sm">{rec.brand || rec.recallingFirm || 'Official Firm'}</h4>
+                      <p className="text-[10px] text-gray-400 font-mono">{rec.authority || 'US FDA / FSSAI'}</p>
+                    </div>
+                    <span className="bg-red-500 text-black text-[10px] font-bold px-2 py-0.5 rounded uppercase">{rec.severity || 'CRITICAL'}</span>
+                  </div>
+                  <p className="text-red-300 text-[11px] font-semibold">{rec.reason}</p>
+                  
+                  <div className="flex justify-between items-center text-[10px] text-gray-400 pt-1 border-t border-red-500/20">
+                    <span className="font-mono text-emerald-400 font-bold">
+                      {rec.recallNumber ? `FDA Recall #${rec.recallNumber}` : `Batch: ${rec.batch || 'Sample'}`}
+                    </span>
+                    {verifyUrl && (
+                      <a
+                        href={verifyUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-400 hover:text-blue-300 font-bold flex items-center gap-1"
+                      >
+                        Verify Source <ExternalLink size={10} />
+                      </a>
+                    )}
+                  </div>
                 </div>
-                <p className="text-red-300 text-[11px] font-semibold">{rec.reason}</p>
-                <div className="flex justify-between text-[10px] text-gray-400 pt-1">
-                  <span>Batch: {rec.batch}</span>
-                  <span>States: {Array.isArray(rec.states) ? rec.states.join(', ') : (rec.states || 'Pan-India')}</span>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 

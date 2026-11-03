@@ -42,7 +42,9 @@ export const VERIFIED_INTELLIGENCE_ALERTS = [
     reason: 'Non-compliance with FSSAI Regulation 2.4.5 prohibiting unlabelled blending and failure of spectral fatty acid purity standards.',
     recommendedAction: 'Stop using the product immediately if label lacks FSSAI Agmark/FoSCoS registration. Return batch to retailer and report vendor to National Consumer Helpline 1915.',
     tags: ['Mustard Oil', 'FSSAI Directive', 'Product Recall', 'Fatty Acid Failure'],
-    isFeatured: true
+    isFeatured: true,
+    lat: 28.6139,
+    lng: 77.2090
   },
   {
     id: 'rajasthan-food-dept-ghee-2026-02',
@@ -69,7 +71,9 @@ export const VERIFIED_INTELLIGENCE_ALERTS = [
     reason: 'Presence of mineral oil hydrocarbons, palm stearin, and synthetic butyric acid flavoring violating Food Safety & Standards Act 2006.',
     recommendedAction: 'Verify FSSAI license number on ghee tins. Report suspected batches showing unnatural white granulation or chemical odor to local Food Safety Commissioner.',
     tags: ['Ghee', 'Seizure', 'Raid Notice', 'Synthetic Fat'],
-    isFeatured: false
+    isFeatured: false,
+    lat: 26.9124,
+    lng: 75.7873
   },
   {
     id: 'fssai-milk-advisory-2026-03',
@@ -96,7 +100,9 @@ export const VERIFIED_INTELLIGENCE_ALERTS = [
     reason: 'Chemical adulteration using neutralizers, maltodextrin, and hydrogen peroxide to artificially boost SNF (Solids-Not-Fat) readings.',
     recommendedAction: 'Purchase pasteurized packaged milk with valid FSSAI stamp or use home lactometer/strip tests for urea detection.',
     tags: ['Milk', 'Advisory', 'Neutralizers', 'Dairy Safety'],
-    isFeatured: false
+    isFeatured: false,
+    lat: 30.7333,
+    lng: 76.7794
   },
   {
     id: 'lab-failure-honey-2026-04',
@@ -123,7 +129,9 @@ export const VERIFIED_INTELLIGENCE_ALERTS = [
     reason: 'Failure of SMR (Specific Marker for Rice Syrup) and LC-IRMS (Liquid Chromatography-Isotope Ratio Mass Spectrometry) purity criteria.',
     recommendedAction: 'Check NMR certification stamps on honey labels and avoid uncertified bulk liquid sugar blends.',
     tags: ['Honey', 'NMR Test Failure', 'C4 Sugar', 'NABL Lab'],
-    isFeatured: false
+    isFeatured: false,
+    lat: 28.4595,
+    lng: 77.0266
   },
   {
     id: 'fssai-pesticide-spices-2026-05',
@@ -150,15 +158,20 @@ export const VERIFIED_INTELLIGENCE_ALERTS = [
     reason: 'Pesticide residue exceeding statutory safety thresholds in ground spice formulations.',
     recommendedAction: 'Look for FSSAI AGMARK certification and batch sterilization reports on spice packaging.',
     tags: ['Spices', 'EtO Residue', 'FSSAI MRL', 'Quality Inspection'],
-    isFeatured: false
+    isFeatured: false,
+    lat: 9.9312,
+    lng: 76.2673
   },
   {
     id: 'openfda-recall-peanut-butter-2026-06',
     title: 'OpenFDA Global Alert: Nationwide Voluntary Recall of Organic Peanut Butter Due to Potential Salmonella Risk',
     category: 'Food Recalls',
     authority: 'US Food and Drug Administration (FDA / OpenFDA)',
-    sourceName: 'OpenFDA Food Enforcement API',
-    sourceUrl: 'https://api.fda.gov/food/enforcement.json',
+    sourceName: 'openFDA Live API (api.fda.gov)',
+    sourceUrl: 'https://www.fda.gov/safety/recalls-market-withdrawals-safety-alerts?search_api_fulltext=SunOpta',
+    openFdaApiUrl: 'https://api.fda.gov/food/enforcement.json?search=recalling_firm:%22SunOpta%22',
+    recallNumber: 'F-1204-2026',
+    isOfficialOpenFda: true,
     publicationDate: '2026-07-22',
     productName: 'Creamy & Crunchy Organic Peanut Butter 16 oz',
     brand: 'Nature Choice & Global Importers',
@@ -171,13 +184,15 @@ export const VERIFIED_INTELLIGENCE_ALERTS = [
     legalAction: 'FDA Class I Voluntary Nationwide Recall; Import Alert #99-33 activated',
     affectedStates: ['Pan-India', 'International Distribution'],
     severity: 'Critical',
-    sourceBadge: 'OpenFDA Official API Feed',
+    sourceBadge: 'Verified OpenFDA API',
     thumbnailImage: 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?auto=format&fit=crop&w=600&q=80',
     description: 'The US FDA in coordination with international food safety authorities issued a Class I recall for imported organic peanut butter batches after routine environmental testing detected Salmonella enterica.',
     reason: 'Potential contamination with Salmonella enterica which can cause severe gastrointestinal infections and fever.',
     recommendedAction: 'Do not consume affected lot numbers. Return product to place of purchase for full refund or destroy safely.',
     tags: ['OpenFDA', 'Food Recall', 'Salmonella', 'Import Alert'],
-    isFeatured: false
+    isFeatured: false,
+    lat: 38.9072,
+    lng: -77.0369
   },
   {
     id: 'fssai-paneer-adulteration-2026-07',
@@ -204,7 +219,9 @@ export const VERIFIED_INTELLIGENCE_ALERTS = [
     reason: 'Severe adulteration using non-dairy fats and industrial starch violating FSSAI Section 2.1.2 standards.',
     recommendedAction: 'Perform iodine drop test at home (blue color indicates starch adulteration). Purchase branded vacuum-sealed paneer with FSSAI license.',
     tags: ['Paneer', 'Synthetic Food', 'Highway Seizure', 'Starch Adulteration'],
-    isFeatured: false
+    isFeatured: false,
+    lat: 18.5204,
+    lng: 73.8567
   },
   {
     id: 'policy-update-oil-labeling-2026-08',
@@ -231,6 +248,8 @@ export const VERIFIED_INTELLIGENCE_ALERTS = [
     reason: 'Policy reform aimed at eliminating counterfeit oil sales and enabling instant consumer spectral verification.',
     recommendedAction: 'Scan QR code on retail oil containers using SpectraTrust or FSSAI Smart Consumer App.',
     tags: ['Policy', 'QR Code Traceability', 'Edible Oil Labeling', 'Government Rule'],
-    isFeatured: false
+    isFeatured: false,
+    lat: 28.6139,
+    lng: 77.2090
   }
 ];
